@@ -1,6 +1,13 @@
+initEnsures StdEncoding.EncMem()
 package base64
 
 import p "predicates"
+
+pred (enc *Encoding) EncMem() {
+	acc(enc) && 
+		(forall i int :: 0 <= i && i < len(enc.encode) ==> acc(&enc.encode[i])) && 
+		(forall i int :: 0 <= i && i < len(enc.decodeMap) ==> acc(&enc.decodeMap[i]))
+}
 
 // An Encoding is a radix 64 encoding/decoding scheme, defined by a
 // 64-character alphabet. The most common encoding is the "base64"
@@ -8,18 +15,41 @@ import p "predicates"
 // (RFC 1421).  RFC 4648 also defines an alternate encoding, which is
 // the standard encoding with - and _ substituted for + and /.
 type Encoding struct {
-	// we keep this struct opaque, its contents are never accessed anyways
+	// we keep this struct opaque, as its contents are never accessed anyways
+	encode    [64]byte
+	decodeMap [256]byte
+	padChar   rune
+	strict    bool
 }
 
-var StdEncoding@ = Encoding{}
+const encodeStd = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-ensures acc(res)
+// NewEncoding returns a new padded Encoding defined by the given alphabet,
+// which must be a 64-byte string that does not contain the padding character
+// or CR / LF ('\r', '\n'). The alphabet is treated as sequence of byte values
+// without any special treatment for multi-byte UTF-8.
+// The resulting Encoding uses the default padding character ('='),
+// which may be changed or disabled via WithPadding.
+ensures res.EncMem()
+decreases
 func NewEncoding(encoder string) (res *Encoding)
 
+// StdEncoding is the standard base64 encoding, as defined in
+// RFC 4648.
+var StdEncoding = NewEncoding(encodeStd)
+
+func init() {
+	assert StdEncoding.EncMem()
+	unfold StdEncoding.EncMem()
+	assert acc(&StdEncoding.padChar) && acc(&StdEncoding.encode[1])
+	fold StdEncoding.EncMem()
+}
+
 // DecodedLen returns the maximum length in bytes of the decoded data
-// corresponding to n bytes of base64-encoded data.
-preserves acc(enc)
+// corresponding to n bytejs of base64-encoded data.
+preserves enc.EncMem()
 ensures n >= 0 ==> res >= 0
+decreases
 func (enc *Encoding) DecodedLen(n int) (res int)
 
 // Decode decodes src using the encoding enc. It writes at most
@@ -27,6 +57,6 @@ func (enc *Encoding) DecodedLen(n int) (res int)
 // written. If src contains invalid base64 data, it will return the
 // number of bytes successfully written and CorruptInputError.
 // New line characters (\r and \n) are ignored.
-preserves acc(enc) && p.BytesMem(dst) && p.BytesMem(src)
+preserves enc.EncMem() && p.BytesMem(dst) && acc(p.BytesMem(src), _)
 ensures 0 <= n && n <= len(dst)
 func (enc *Encoding) Decode(dst, src []byte) (n int, err error)

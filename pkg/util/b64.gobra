@@ -1,7 +1,19 @@
+initEnsures base64.StdEncoding.EncMem()
 package util
 
-import "encoding/base64"
-import p "predicates"
+import (
+	importRequires base64.StdEncoding.EncMem()
+	"encoding/base64"
+
+	p "predicates"
+)
+
+
+func init() {
+	assert base64.StdEncoding.EncMem()
+	res := base64.StdEncoding.DecodedLen(100)
+	assert res >= 0
+}
 
 // B64Dec decodes a base64-encoded string (represented as byte array) into a
 // byte array.
