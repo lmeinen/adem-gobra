@@ -1,0 +1,117 @@
+package util
+
+/*
+a set can contain any element that accepts an identifier of type T
+in our case:
+- a set is a map from such an identifier to such an element
+- the identifier type T is int64
+- elements are timestamp structs
+
+Idea 1:
+	Ignore all of the complexities and just turn this into a map
+	from int64 to timestamps, because that's all it really is.
+*/
+
+type Elem interface {
+	pred mem()
+
+	requires acc(mem(), _)
+	pure ToComparable() (res int64)
+}
+
+type Set interface {
+	pred mem()
+
+	preserves acc(mem(), p0) && acc(val.mem(), p1)
+	ensures res.mem()
+	Has(val Elem, ghost p0, p1 perm) (res Elem)
+
+	preserves acc(mem(), p)
+	ensures res.mem()
+	HasKey(key int64, ghost p perm) (res Elem)
+
+	preserves mem() && acc(val.mem(), p)
+	Add(val Elem, ghost p perm)
+
+	preserves mem() && acc(val.mem(), p)
+	ensures res.mem()
+	Rm(val Elem, ghost p perm) (res Elem)
+
+	requires acc(mem(), _)
+	pure Size() int
+}
+
+type int64Set map[int64]Elem
+
+func MkSet() Set {
+	m@ := make(int64Set)
+	return &m
+}
+
+preserves acc(s, p0) && acc(val.mem(), p1)
+ensures res.mem()
+func (s *int64Set) Has(val Elem, ghost p0, p1 perm) (res Elem) {
+	e := (*s)[val.ToComparable()]
+	return e
+}
+
+preserves acc(s, p)
+ensures res.mem()
+func (s *int64Set) HasKey(key int64, ghost p perm) (res Elem) {
+	e := (*s)[key]
+	return e
+}
+
+preserves acc(s) && acc(val.mem(), p)
+func (s *int64Set) Add(val Elem, ghost p perm) {
+	(*s)[val.ToComparable()] = val
+}
+
+preserves acc(s) && acc(val.mem(), p)
+ensures res.mem()
+func (s *int64Set) Rm(val Elem, ghost p perm) (res Elem) {
+	e := (*s)[val.ToComparable()]
+	delete(*s, val.ToComparable())
+	return e
+}
+
+requires acc(s, _)
+pure func (s *int64Set) Size() int {
+	return len(*s)
+}
+
+pred (s *int64Set) mem() {
+	acc(s)
+}
+
+(*int64Set) implements Set {
+	(s *int64Set) Has(val Elem, ghost p0, p1 perm) (res Elem) {
+		unfold acc(s.mem(), p0)
+		unfold acc(val.mem(), p1)
+		res = s.Has(val, p0, p1)
+		fold acc(val.mem(), p1)
+		fold acc(s.mem(), p0)
+	}
+
+	(s *int64Set) HasKey(key int64, ghost p perm) (res Elem) {
+		unfold acc(s.mem(), p)
+		res = s.HasKey(key, p)
+		fold acc(s.mem(), p)
+	}
+
+	(s *int64Set) Add(val Elem, ghost p perm) {
+		unfold s.mem()
+		s.Add(val, p)
+		fold s.mem()
+	}
+
+	(s *int64Set) Rm(val Elem, ghost p perm) (res Elem) {
+		unfold s.mem()
+		res = s.Rm(val, p)
+		fold s.mem()
+	}
+
+	pure (s *int64Set) Size() int {
+		return unfolding acc(s.mem(), _) in s.Size()
+	}
+}
