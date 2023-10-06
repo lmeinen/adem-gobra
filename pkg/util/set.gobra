@@ -1,17 +1,5 @@
 package util
 
-/*
-a set can contain any element that accepts an identifier of type T
-in our case:
-- a set is a map from such an identifier to such an element
-- the identifier type T is int64
-- elements are timestamp structs
-
-Idea 1:
-	Ignore all of the complexities and just turn this into a map
-	from int64 to timestamps, because that's all it really is.
-*/
-
 type Elem interface {
 	pred mem()
 
@@ -22,23 +10,23 @@ type Elem interface {
 type Set interface {
 	pred mem()
 
-	preserves acc(mem(), p0) && acc(val.mem(), p1)
+	preserves p0 > 0 && p1 > 0 && acc(mem(), p0) && acc(val.mem(), p1)
 	ensures res.mem()
 	Has(val Elem, ghost p0, p1 perm) (res Elem)
 
-	preserves acc(mem(), p)
+	preserves p > 0 && acc(mem(), p)
 	ensures res.mem()
 	HasKey(key int64, ghost p perm) (res Elem)
 
-	preserves mem() && acc(val.mem(), p)
+	preserves mem() && p > 0 && acc(val.mem(), p)
 	Add(val Elem, ghost p perm)
 
 	preserves mem() && acc(val.mem(), p)
 	ensures res.mem()
 	Rm(val Elem, ghost p perm) (res Elem)
 
-	requires acc(mem(), _)
-	pure Size() int
+	requires p > 0 && acc(mem(), p)
+	pure Size(ghost p perm) int
 }
 
 type int64Set map[int64]Elem
@@ -48,21 +36,21 @@ func MkSet() Set {
 	return &m
 }
 
-preserves acc(s, p0) && acc(val.mem(), p1)
+preserves p0 > 0 && p1 > 0 && acc(s, p0) && acc(val.mem(), p1)
 ensures res.mem()
 func (s *int64Set) Has(val Elem, ghost p0, p1 perm) (res Elem) {
 	e := (*s)[val.ToComparable()]
 	return e
 }
 
-preserves acc(s, p)
+preserves p > 0 && acc(s, p)
 ensures res.mem()
 func (s *int64Set) HasKey(key int64, ghost p perm) (res Elem) {
 	e := (*s)[key]
 	return e
 }
 
-preserves acc(s) && acc(val.mem(), p)
+preserves acc(s) && p > 0 && acc(val.mem(), p)
 func (s *int64Set) Add(val Elem, ghost p perm) {
 	(*s)[val.ToComparable()] = val
 }
@@ -75,8 +63,8 @@ func (s *int64Set) Rm(val Elem, ghost p perm) (res Elem) {
 	return e
 }
 
-requires acc(s, _)
-pure func (s *int64Set) Size() int {
+requires p > 0 && acc(s, p)
+pure func (s *int64Set) Size(ghost p perm) int {
 	return len(*s)
 }
 
@@ -111,7 +99,7 @@ pred (s *int64Set) mem() {
 		fold s.mem()
 	}
 
-	pure (s *int64Set) Size() int {
-		return unfolding acc(s.mem(), _) in s.Size()
+	pure (s *int64Set) Size(ghost p perm) int {
+		return unfolding acc(s.mem(), p) in s.Size(p)
 	}
 }
