@@ -13,9 +13,6 @@ type Encoding struct {
 
 var StdEncoding@ = Encoding{}
 
-ensures acc(res)
-func NewEncoding(encoder string) (res *Encoding)
-
 // DecodedLen returns the maximum length in bytes of the decoded data
 // corresponding to n bytes of base64-encoded data.
 preserves acc(enc)
