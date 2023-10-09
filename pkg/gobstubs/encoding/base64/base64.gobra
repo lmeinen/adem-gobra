@@ -15,9 +15,9 @@ var StdEncoding@ = Encoding{}
 
 // DecodedLen returns the maximum length in bytes of the decoded data
 // corresponding to n bytes of base64-encoded data.
-preserves acc(enc)
+requires acc(enc)
 ensures n >= 0 ==> res >= 0
-func (enc *Encoding) DecodedLen(n int) (res int)
+pure func (enc *Encoding) DecodedLen(n int) (res int)
 
 // Decode decodes src using the encoding enc. It writes at most
 // DecodedLen(len(src)) bytes to dst and returns the number of bytes
