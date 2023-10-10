@@ -38,82 +38,82 @@ type Set interface {
 type int64Set map[int64]Elem
 
 func MkSet() Set {
-	m := make(int64Set)
-	return m
+	m@ := make(int64Set)
+	return &m
 }
 
-preserves p0 > 0 && p1 > 0 && acc(s, p0) && acc(val.mem(), p1)
-func (s int64Set) Has(val Elem, ghost p0, p1 perm) (res Elem) {
+preserves p0 > 0 && p1 > 0 && acc(s, p0) && acc(*s, p0) && acc(val.mem(), p1)
+func (s *int64Set) Has(val Elem, ghost p0, p1 perm) (res Elem) {
 	if val != nil {
-		return s[val.ToComparable()]
+		return (*s)[val.ToComparable()]
 	}
 	return nil
 }
 
-preserves p > 0 && acc(s, p)
-func (s int64Set) HasKey(key int64, ghost p perm) (res Elem) {
-	return s[key]
+preserves p > 0 && acc(s, p) && acc(*s, p)
+func (s *int64Set) HasKey(key int64, ghost p perm) (res Elem) {
+	return (*s)[key]
 }
 
-preserves acc(s) && p > 0 && acc(val.mem(), p)
-func (s int64Set) Add(val Elem, ghost p perm) {
+preserves acc(s) && acc(*s) && p > 0 && acc(val.mem(), p)
+func (s *int64Set) Add(val Elem, ghost p perm) {
 	if val != nil {
-		s[val.ToComparable()] = val
+		(*s)[val.ToComparable()] = val
 	}
 }
 
-preserves acc(s) && p > 0 && acc(val.mem(), p)
-func (s int64Set) Rm(val Elem, ghost p perm) (res Elem) {
+preserves acc(s) && acc(*s) && p > 0 && acc(val.mem(), p)
+func (s *int64Set) Rm(val Elem, ghost p perm) (res Elem) {
 	if val != nil {
-		e := s[val.ToComparable()]
+		e := (*s)[val.ToComparable()]
 		s.DoDeleteElem(val, p)
 		return e
 	}
 	return nil
 }
 
-requires p > 0 && acc(s, p)
-pure func (s int64Set) Size(ghost p perm) int {
-	return len(s)
+requires p > 0 && acc(s, p) && acc(*s, p)
+pure func (s *int64Set) Size(ghost p perm) int {
+	return len(*s)
 }
 
 requires val != nil
-preserves acc(s) && p > 0 && acc(val.mem(), p)
+preserves acc(s) && acc(*s) && p > 0 && acc(val.mem(), p)
 trusted
-func (s int64Set) DoDeleteElem(val Elem, ghost p perm) {
-	delete(s, val.ToComparable())
+func (s *int64Set) DoDeleteElem(val Elem, ghost p perm) {
+	delete((*s), val.ToComparable())
 }
 
-pred (s int64Set) mem() {
-	acc(s)
+pred (s *int64Set) mem() {
+	acc(s) && acc(*s)
 }
 
-(int64Set) implements Set {
-	(s int64Set) Has(val Elem, ghost p0, p1 perm) (res Elem) {
+(*int64Set) implements Set {
+	(s *int64Set) Has(val Elem, ghost p0, p1 perm) (res Elem) {
 		unfold acc(s.mem(), p0)
 		res = s.Has(val, p0, p1)
 		fold acc(s.mem(), p0)
 	}
 
-	(s int64Set) HasKey(key int64, ghost p perm) (res Elem) {
+	(s *int64Set) HasKey(key int64, ghost p perm) (res Elem) {
 		unfold acc(s.mem(), p)
 		res = s.HasKey(key, p)
 		fold acc(s.mem(), p)
 	}
 
-	(s int64Set) Add(val Elem, ghost p perm) {
+	(s *int64Set) Add(val Elem, ghost p perm) {
 		unfold s.mem()
 		s.Add(val, p)
 		fold s.mem()
 	}
 
-	(s int64Set) Rm(val Elem, ghost p perm) (res Elem) {
+	(s *int64Set) Rm(val Elem, ghost p perm) (res Elem) {
 		unfold s.mem()
 		res = s.Rm(val, p)
 		fold s.mem()
 	}
 
-	pure (s int64Set) Size(ghost p perm) int {
+	pure (s *int64Set) Size(ghost p perm) int {
 		return unfolding acc(s.mem(), p) in s.Size(p)
 	}
 }
