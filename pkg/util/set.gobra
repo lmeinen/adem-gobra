@@ -66,7 +66,7 @@ preserves acc(s) && p > 0 && acc(val.mem(), p)
 func (s int64Set) Rm(val Elem, ghost p perm) (res Elem) {
 	if val != nil {
 		e := s[val.ToComparable()]
-		// delete(*s, val.ToComparable())
+		s.DoDeleteElem(val, p)
 		return e
 	}
 	return nil
@@ -75,6 +75,13 @@ func (s int64Set) Rm(val Elem, ghost p perm) (res Elem) {
 requires p > 0 && acc(s, p)
 pure func (s int64Set) Size(ghost p perm) int {
 	return len(s)
+}
+
+requires val != nil
+preserves acc(s) && p > 0 && acc(val.mem(), p)
+trusted
+func (s int64Set) DoDeleteElem(val Elem, ghost p perm) {
+	delete(s, val.ToComparable())
 }
 
 pred (s int64Set) mem() {
