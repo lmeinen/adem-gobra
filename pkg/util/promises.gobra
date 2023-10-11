@@ -1,0 +1,134 @@
+package util
+
+import (
+	"github.com/lestrrat-go/jwx/v2/jwk"
+)
+
+type PromiseState adt {
+	US{} // 0 Unfulfilled State
+	FS{} // 1 Fulfilled State
+	RS{} // 2 Rejected State
+	GS{} // 3 Gotten State
+}
+
+// An interface to implement promises that can be created and fullfilled later.
+type Promise interface {
+	pred mem()
+
+	// Fullfil the promise. [Get] will unblock (when called already) or succeed
+	// (when called later).
+	requires mem() && GetState() == US{}
+	ensures mem() && GetState() == FS{}
+	Fulfill(jwk.Key)
+
+	// Cancel a promise. Subsequent calls to [Get] will return jwk.Key's null value.
+	requires mem() && GetState() == US{}
+	ensures mem() && GetState() == RS{}
+	Reject()
+
+	// Return the value of the promise. Will only return the result the promise
+	// was fullfilled with exactly once. Afterwards, it will return the null
+	// value. Call will block on unfullfilled promise.
+	requires mem()
+	ensures mem() && GetState() == GS{}
+	Get() jwk.Key
+
+	ghost
+	requires mem()
+	pure GetState() PromiseState
+}
+
+type promise struct {
+	ch chan jwk.Key
+	state int // Gobra doesn't yet support ghost struct members
+}
+
+// Create a new promise.
+ensures res != nil && res.mem() && res.GetState() == US{}
+func NewPromise() (res Promise) {
+	p@ := promise{ch: make(chan jwk.Key, 1), state: 0}
+	p.ch.Init(SendInvariant!<_!>, PredTrue!<!>)
+	p.ch.CreateDebt(1, 2, PredTrue!<!>)
+	fold p.mem()
+	return &p
+}
+
+requires p.mem() && p.GetState() == US{}
+ensures p.mem() && p.GetState() == FS{}
+func (p *promise) Fulfill(val jwk.Key) {
+	unfold p.mem()
+	fold SendInvariant!<_!>(val)
+	p.ch <- val
+	fold PredTrue!<!>()
+	close(p.ch, 1, 2, PredTrue!<!>)
+	p.state = 1
+	fold p.mem()
+}
+
+requires p.mem() && p.GetState() == US{}
+ensures p.mem() && p.GetState() == RS{}
+func (p *promise) Reject() {
+	unfold p.mem()
+	fold PredTrue!<!>()
+	close(p.ch, 1, 2, PredTrue!<!>)
+	p.state = 2
+	fold p.mem()
+}
+
+requires p.mem()
+ensures p.mem() && p.GetState() == GS{}
+func (p *promise) Get() (res jwk.Key) {
+	unfold p.mem()
+	fold PredTrue!<!>()
+	e := <-p.ch
+	p.state = 3
+	fold p.mem()
+	return e
+}
+
+// Return a promise that is already fullfilled with the given value.
+ensures res != nil && res.mem() && res.GetState() == FS{}
+func Fullfilled(val jwk.Key) (res Promise) {
+	p := NewPromise()
+	p.Fulfill(val)
+	return p
+}
+
+// Return a rejected promise.
+ensures res != nil && res.mem() && res.GetState() == RS{}
+func Rejected() (res Promise) {
+	p := NewPromise()
+	p.Reject()
+	return p
+}
+
+ghost
+requires p.mem()
+pure func (p *promise) GetState() PromiseState {
+	return unfolding p.mem() in (
+		match p.state {
+			case 0: US{}
+			case 1: FS{}
+			case 2: RS{}
+			case 3: GS{}
+		})
+}
+
+pred (p *promise) mem() {
+	acc(p) &&
+		0 <= p.state && p.state <= 3 &&
+		p.ch.RecvChannel() && p.ch.Token(PredTrue!<!>) &&
+		p.ch.RecvGivenPerm() == PredTrue!<!> &&
+		(p.state == 0 ==> (acc(p.ch.SendChannel(), 1/2) && 
+			p.ch.ClosureDebt(PredTrue!<!>, 1, 2) &&
+			p.ch.SendGivenPerm() == SendInvariant!<_!>)) && // not closed
+		((p.state == 1 || p.state == 2) ==> p.ch.Closed()) && // closed 
+		// Note that we can't make any guarantees on the state of p.ch at the end of a Get call
+		(p.state == 3 ==> true) // unknown 
+}
+
+pred SendInvariant(val jwk.Key) {
+	true
+}
+
+(* promise) implements Promise
