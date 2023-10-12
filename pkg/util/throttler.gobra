@@ -1,0 +1,105 @@
+package util
+
+import (
+	"math/big"
+	"net"
+	"time"
+)
+
+preserves p > 0 && acc(addr.Mem(), p)
+func ipToInt(addr *net.UDPAddr, ghost p perm) int64 {
+	unfold acc(addr.Mem(), p)
+	e := big.NewInt(0).SetBytes(addr.IP, p).Int64()
+	fold acc(addr.Mem(), p)
+	return e
+}
+
+type timestamp struct {
+	time int64
+	val  int64
+}
+
+requires acc(ts.mem(), _)
+pure func (ts *timestamp) ToComparable() int64 {
+	return unfolding ts.mem() in ts.val
+}
+
+pred (ts *timestamp) mem() {
+	acc(ts)
+}
+
+(*timestamp) implements Elem
+
+const SIZE int = 2 ^ 20
+
+type ipThrottle struct {
+	timeout  int64
+	stored   Set
+	queue    [SIZE]*timestamp
+	queuePtr int
+}
+
+// Returns a throttler that can memorize up to 2^20 IP addresses. Can be queried
+// to check if an IP address was stored within the timeout window. If size is
+// exceeded, the odlest IP address that was stored will be discarded first.
+ensures res.mem()
+func MkThrottler(timeout int64) (res *ipThrottle) {
+	e@ := ipThrottle{timeout: timeout, stored: MkSet()}
+	assert len(e.queue) == SIZE
+	assert forall i int :: 0 <= i && i < len(e.queue) ==> e.queue[i] == nil
+	assert forall i int :: 0 <= i && i < len(e.queue) ==> acc(&(e.queue)[i])
+	fold arraymem(e.queue)
+	fold e.mem()
+	return &e
+}
+
+preserves t.mem()
+func (t *ipThrottle) store(val int64) {
+	unfold t.mem()
+	ts@ := timestamp{time: time.Now().Unix(), val: val}
+	if t.stored.Size(perm(1/2)) < SIZE {
+		t.queue[t.stored.Size(perm(1/2))] = &ts
+	} else {
+		t.stored.Rm(t.queue[t.queuePtr], perm(1/2))
+		t.queue[t.queuePtr] = &ts
+		t.queuePtr = (t.queuePtr + 1) % SIZE
+	}
+	t.stored.Add(&ts, perm(1/2))
+	fold t.mem()
+}
+
+// Check if an address was checked within timeout. Returns true if the IP
+// address has not been stored, i.e., an expensive operation for that address
+// can be performed. May result in false negatives if the throttler's capacity
+// was exceeded, which is is 2^20.
+preserves p > 0 && acc(addr.Mem(), p)
+preserves t.mem()
+func (t *ipThrottle) CanGo(addr *net.UDPAddr, ghost p perm) bool {
+	val := ipToInt(addr, p)
+	defer t.store(val)
+
+	unfold t.mem()
+	el := t.stored.HasKey(val, perm(1/2))
+	fold t.mem()
+
+	if el == nil {
+		return true
+	}
+	ts := el.(*timestamp)
+	if ts == nil || ts.time+t.timeout < time.Now().Unix() {
+		return true
+	}
+	return false
+}
+
+pred (t *ipThrottle) mem() {
+	acc(t) &&
+		t.stored != nil && t.stored.mem() &&
+		0 <= t.queuePtr && t.queuePtr < len(t.queue) &&
+		len(t.queue) == SIZE &&
+		arraymem(t.queue)
+}
+
+pred arraymem(a []*timestamp) {
+	forall i int :: 0 <= i && i < SIZE ==> acc(&a[i])
+}
