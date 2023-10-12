@@ -32,13 +32,16 @@ type Set interface {
 	Rm(val Elem, ghost p perm) (res Elem)
 
 	requires p > 0 && acc(mem(), p)
-	pure Size(ghost p perm) int
+	ensures 0 <= res
+	pure Size(ghost p perm) (res int)
 }
 
 type int64Set map[int64]Elem
 
-func MkSet() Set {
+ensures res != nil && res.mem()
+func MkSet() (res Set) {
 	m@ := make(int64Set)
+	fold m.mem()
 	return &m
 }
 
@@ -73,7 +76,8 @@ func (s *int64Set) Rm(val Elem, ghost p perm) (res Elem) {
 }
 
 requires p > 0 && acc(s, p) && acc(*s, p)
-pure func (s *int64Set) Size(ghost p perm) int {
+ensures 0 <= res
+pure func (s *int64Set) Size(ghost p perm) (res int) {
 	return len(*s)
 }
 
