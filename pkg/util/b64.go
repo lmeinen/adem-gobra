@@ -1,3 +1,5 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
 package util
 
 import (

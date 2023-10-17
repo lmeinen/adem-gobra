@@ -1,3 +1,5 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
 package consts
 
 type CTY string

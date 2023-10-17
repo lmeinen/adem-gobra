@@ -1,3 +1,5 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
 package big
 
 // An unsigned integer x of the form

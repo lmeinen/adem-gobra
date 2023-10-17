@@ -1,3 +1,5 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
 package big
 
 // An Int represents a signed multi-precision integer.
@@ -23,17 +25,17 @@ type Int struct {
 }
 
 // NewInt allocates and returns a new Int set to x.
-ensures acc(res)
+// @ ensures acc(res)
 func NewInt(x int64) (res *Int)
 
 // SetBytes interprets buf as the bytes of a big-endian unsigned
 // integer, sets z to that value, and returns z.
-preserves p > 0 && forall i int :: 0 <= i && i < len(buf) ==> acc(&buf[i], p)
-requires acc(z)
-ensures acc(res)
-func (z *Int) SetBytes(buf []byte, ghost p perm) (res *Int)
+// @ preserves p > 0 && forall i int :: 0 <= i && i < len(buf) ==> acc(&buf[i], p)
+// @ requires acc(z)
+// @ ensures acc(res)
+func (z *Int) SetBytes(buf []byte /*@, ghost p perm @*/) (res *Int)
 
 // Int64 returns the int64 representation of x.
 // If x cannot be represented in an int64, the result is undefined.
-requires acc(x, _)
+// @ requires acc(x, _)
 func (x *Int) Int64() int64

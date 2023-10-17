@@ -1,3 +1,5 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
 package util
 
 // @ requires pSlice > 0 && pSliceElem > 0
