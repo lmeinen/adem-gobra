@@ -20,10 +20,10 @@ var ErrIllegalAddress = errors.New("illegal address component")
 var ErrWildcard = errors.New("illegal usage of domain name wildcards")
 
 type AI struct {
-	domain   []string
-	ipAddr   net.IP
-	ipPrefix *net.IPNet
-	port     *uint16
+	domainName []string
+	ipAddr     net.IP
+	ipPrefix   *net.IPNet
+	port       *uint16
 }
 
 func joinDomain(labels []string) string {
@@ -41,15 +41,15 @@ func (ai *AI) MoreGeneral(than *AI) bool {
 		return false
 	}
 
-	if ai.domain != nil {
-		if len(than.domain) == 0 {
+	if ai.domainName != nil {
+		if len(than.domainName) == 0 {
 			return false
 		}
 
-		aiJoined := joinDomain(ai.domain)
-		thanJoined := joinDomain(than.domain)
-		if ai.domain[0] == "*" {
-			return thanJoined == joinDomain(ai.domain[1:]) || strings.HasSuffix(thanJoined, aiJoined)
+		aiJoined := joinDomain(ai.domainName)
+		thanJoined := joinDomain(than.domainName)
+		if ai.domainName[0] == "*" {
+			return thanJoined == joinDomain(ai.domainName[1:]) || strings.HasSuffix(thanJoined, aiJoined)
 		} else {
 			return thanJoined == aiJoined
 		}
@@ -77,7 +77,7 @@ func (ai *AI) UnmarshalJSON(bs []byte) error {
 	} else if parsed, err := ParseAI(str); err != nil {
 		return err
 	} else {
-		ai.domain = parsed.domain
+		ai.domainName = parsed.domainName
 		ai.ipAddr = parsed.ipAddr
 		ai.ipPrefix = parsed.ipPrefix
 		ai.port = parsed.port
@@ -127,7 +127,7 @@ func ParseAI(aiStr string) (*AI, error) {
 			// If leftmost label is wildcard, leftmost label may be the wildcard only
 			return nil, ErrWildcard
 		} else {
-			ai.domain = labels
+			ai.domainName = labels
 		}
 	}
 
@@ -150,8 +150,8 @@ func (ai *AI) String() string {
 	}
 
 	var addr string
-	if ai.domain != nil {
-		addr = strings.Join(ai.domain, ".")
+	if ai.domainName != nil {
+		addr = strings.Join(ai.domainName, ".")
 	} else if ai.ipAddr != nil {
 		addr = fmt.Sprintf("[%s]", ai.ipAddr.String())
 	} else if ai.ipPrefix != nil {
