@@ -81,10 +81,10 @@ func SetKID(key jwk.Key, force bool) error {
 
 // Calculate and set the KID of every key in the given set. Will override old
 // KIDs.
-func SetKIDs(set jwk.Set, alg *jwa.SignatureAlgorithm) (jwk.Set, error) {
+func SetKIDs(jwkSet jwk.Set, alg *jwa.SignatureAlgorithm) (jwk.Set, error) {
 	withKIDs := jwk.NewSet()
 	ctx := context.TODO()
-	iter := set.Keys(ctx)
+	iter := jwkSet.Keys(ctx)
 	for iter.Next(ctx) {
 		k := iter.Pair().Value.(jwk.Key)
 		if pk, err := k.PublicKey(); err != nil {
