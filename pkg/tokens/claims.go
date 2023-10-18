@@ -28,8 +28,11 @@ var ErrIllegalConst = errors.New("json element is illegal constant")
 
 type PurposeMask byte
 
-const Protective PurposeMask = 0b0000_0001
-const Indicative PurposeMask = 0b0000_0010
+// const Protective PurposeMask = 0b0000_0001
+const Protective PurposeMask = 0x01
+
+// const Indicative PurposeMask = 0b0000_0010
+const Indicative PurposeMask = 0x02
 
 func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
 	var prps []string
@@ -65,9 +68,14 @@ func (pm *PurposeMask) MarshalJSON() ([]byte, error) {
 
 type ChannelMask byte
 
-const DNS ChannelMask = 0b0000_0001
-const TLS ChannelMask = 0b0000_0010
-const UDP ChannelMask = 0b0000_0100
+// const DNS ChannelMask = 0b0000_0001
+const DNS ChannelMask = 0x01
+
+// const TLS ChannelMask = 0b0000_0010
+const TLS ChannelMask = 0x02
+
+// const UDP ChannelMask = 0b0000_0100
+const UDP ChannelMask = 0x04
 
 func (cm *ChannelMask) UnmarshalJSON(bs []byte) error {
 	var dsts []string
