@@ -2,10 +2,6 @@
 // ##(--onlyFilesWithHeader)
 package base64
 
-import (
-// @ p "predicates"
-)
-
 // An Encoding is a radix 64 encoding/decoding scheme, defined by a
 // 64-character alphabet. The most common encoding is the "base64"
 // encoding defined in RFC 4648 and used in MIME (RFC 2045) and PEM
@@ -32,6 +28,8 @@ func (enc Encoding) DecodedLen(n int) (res int)
 // written. If src contains invalid base64 data, it will return the
 // number of bytes successfully written and CorruptInputError.
 // New line characters (\r and \n) are ignored.
-// @ preserves p.BytesMem(dst) && p.BytesMem(src)
+// @ preserves forall i int :: 0 <= i && i < len(dst) ==> acc(&dst[i])
+// @ preserves forall i int :: 0 <= i && i < len(src) ==> acc(&src[i])
 // @ ensures 0 <= n && n <= len(dst)
+// @ ensures err.ErrorMem()
 func (enc Encoding) Decode(dst, src []byte) (n int, err error)
