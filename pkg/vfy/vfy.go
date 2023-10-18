@@ -1,3 +1,5 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
 package vfy
 
 import (
@@ -122,61 +124,21 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 
 // Verify a slice of ADEM tokens.
 func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
-	// We maintain a thread count for termination purposes. It might be that we
-	// cannot verify all token's verification key and must cancel verification.
-	threadCount := len(rawTokens)
-	km := NewKeyManager(len(rawTokens))
-	// Put trusted public keys into key manager. This allows for termination for
-	// tokens without issuer.
-	ctx := context.TODO()
-	iter := trustedKeys.Keys(ctx)
-	for iter.Next(ctx) {
-		km.put(iter.Pair().Value.(jwk.Key))
-	}
-	results := make(chan *TokenVerificationResult)
-	// Start verification threads
-	for _, rawToken := range rawTokens {
-		go vfyToken(rawToken, km, results)
-	}
 
-	// Wait until all verification threads obtained a verification key promise.
-	km.waitForInit()
+	threadCount, km, results := setupPromiseChain(rawTokens, trustedKeys)
 
-	ts := []*ADEMToken{}
-	for {
-		// [waiting] is the number of unresolved promises in the key manager, i.e.,
-		// blocked threads that wait for a verification key.
-		// [threadCount] is the number of threads that could still provide
-		// a new verification key in the [results] channel.
-		// If there are as many waiting threads as threads that could result in a
-		// new verification, we miss verification keys and verification will be
-		// aborted.
-		if waiting := km.waiting(); waiting > 0 && waiting == threadCount {
-			km.killListeners()
-		} else if result := <-results; result == nil {
-			// All threads have terminated
-			break
-		} else {
-			// We got a new non-nil result from <-results, and hence, one thread must
-			// have terminated. Decrement the counter accordingly.
-			threadCount -= 1
-			// Every call to [vfyToken] will write exactly one result. Hence, only
-			// close the [results] channel, when all threads have terminated.
-			if threadCount == 0 {
-				close(results)
-			}
+	/*
+		(lmeinen) Note the nuance in terminology:
+			1 To verify a JWT: Check that the encoded string corresponds to a valid JSON encoding of a JWT, and that the JWT's signature is valid w.r.t. to its verification key
+			2 To validate a JWT: Check that a JWT's claims stand (and in this case: that the required field 'ass' resp. 'end' is present)
+			3 To verify a security level: Assuming the two above steps have been executed, walk the endorsement chain and check the security level of the emblem as defined in ADEM (incl. endorsement constraints)
+	*/
 
-			if result.err != nil {
-				log.Printf("discarding invalid token: %s", result.err)
-			} else {
-				ts = append(ts, result.token)
-				if k, ok := result.token.Token.Get("key"); ok {
-					km.put(k.(tokens.EmbeddedKey).Key)
-				}
-			}
-		}
-	}
+	// (lmeinen) 1 - verify the JWT tokens AND that the key chain results in a valid root key
+	// 		only verified keys are used to verify JWT signatures
+	ts := awaitTokenSignatureResults(km, threadCount, results)
 
+	// (lmeinen) 2 - validate the JWT tokens AND that the required fields are present and valid
 	var emblem *ADEMToken
 	var protected []*ident.AI
 	endorsements := []*ADEMToken{}
@@ -218,6 +180,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 		return ResultInvalid()
 	}
 
+	// (lmeinen) 3 - verify/determine the security levels of the emblem
 	vfyResults, root := verifySignedOrganizational(emblem, endorsements, trustedKeys)
 	if util.Contains(vfyResults, INVALID) {
 		return ResultInvalid()
@@ -228,10 +191,76 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 		return ResultInvalid()
 	}
 
+	// (lmeinen) return results
 	return VerificationResults{
 		results:    append(vfyResults, endorsedResults...),
 		issuer:     root.Token.Issuer(),
 		endorsedBy: endorsedBy,
 		protected:  protected,
 	}
+}
+
+func awaitTokenSignatureResults(km *keyManager, threadCount int, results chan *TokenVerificationResult) []*ADEMToken {
+	ts := []*ADEMToken{}
+	for {
+		// [waiting] is the number of unresolved promises in the key manager, i.e.,
+		// blocked threads that wait for a verification key.
+		// [threadCount] is the number of threads that could still provide
+		// a new verification key in the [results] channel.
+		if waiting := km.waiting(); waiting > 0 && waiting == threadCount {
+			// If there are as many waiting threads as threads that could result in a
+			// new verification, we miss verification keys and verification will be
+			// aborted.
+			km.killListeners()
+		} else if result := <-results; result == nil {
+			// All threads have terminated
+			break
+		} else {
+			// We got a new non-nil result from <-results, and hence, one thread must
+			// have terminated. Decrement the counter accordingly.
+			threadCount -= 1
+
+			if threadCount == 0 {
+				// Every call to [vfyToken] will write exactly one result. Hence, only
+				// close the [results] channel, when all threads have terminated.
+				close(results)
+			}
+
+			if result.err != nil {
+				log.Printf("discarding invalid token: %s", result.err)
+			} else {
+				ts = append(ts, result.token)
+				if k, ok := result.token.Token.Get("key"); ok {
+					km.put(k.(tokens.EmbeddedKey).Key)
+				}
+			}
+		}
+	}
+	return ts
+}
+
+func setupPromiseChain(rawTokens [][]byte, trustedKeys jwk.Set) (int, *keyManager, chan *TokenVerificationResult) {
+	// We maintain a thread count for termination purposes. It might be that we
+	// cannot verify all token's verification key and must cancel verification.
+	threadCount := len(rawTokens)
+	km := NewKeyManager(len(rawTokens))
+
+	// Put trusted public keys into key manager. This allows for termination for
+	// tokens without issuer.
+	ctx := context.TODO()
+	iter := trustedKeys.Keys(ctx)
+	for iter.Next(ctx) {
+		km.put(iter.Pair().Value.(jwk.Key))
+	}
+
+	results := make(chan *TokenVerificationResult)
+
+	// Start verification threads
+	for _, rawToken := range rawTokens {
+		go vfyToken(rawToken, km, results)
+	}
+
+	// Wait until all verification threads obtained a verification key promise.
+	km.waitForInit()
+	return threadCount, km, results
 }
