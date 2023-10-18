@@ -82,9 +82,9 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 				return err
 			} else {
 				subjects := append(cert.DNSNames, cert.Subject.CommonName)
-				if !util.Contains(subjects, issuerUrl.Hostname()) {
+				if !util.ContainsString(subjects, issuerUrl.Hostname()) {
 					return ErrCertNotForIss
-				} else if !util.Contains(subjects, fmt.Sprintf("%s.adem-configuration.%s", kid, issuerUrl.Hostname())) {
+				} else if !util.ContainsString(subjects, fmt.Sprintf("%s.adem-configuration.%s", kid, issuerUrl.Hostname())) {
 					return ErrCertNotForKey
 				}
 			}

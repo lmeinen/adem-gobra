@@ -5,11 +5,12 @@ package vfy
 import (
 	"log"
 
+	"github.com/adem-wg/adem-proto/pkg/consts"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set) ([]VerificationResult, *ADEMToken) {
+func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set) ([]consts.VerificationResult, *ADEMToken) {
 	endorsedBy := make(map[string]*ADEMToken)
 	for _, endorsement := range endorsements {
 		kid, err := tokens.GetEndorsedKID(endorsement.Token)
@@ -25,7 +26,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 			continue
 		} else if _, ok := endorsedBy[kid]; ok {
 			log.Println("illegal branch in endorsements")
-			return []VerificationResult{INVALID}, nil
+			return []consts.VerificationResult{consts.INVALID}, nil
 		} else {
 			endorsedBy[kid] = endorsement
 		}
@@ -41,7 +42,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		if endorsing := endorsedBy[last.VerificationKey.KeyID()]; endorsing != nil {
 			if err := tokens.VerifyConstraints(emblem.Token, endorsing.Token); err != nil {
 				log.Printf("emblem does not comply with endorsement constraints: %s", err)
-				return []VerificationResult{INVALID}, nil
+				return []consts.VerificationResult{consts.INVALID}, nil
 			} else {
 				last = endorsing
 			}
@@ -50,18 +51,18 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		}
 	}
 
-	results := []VerificationResult{SIGNED}
+	results := []consts.VerificationResult{consts.SIGNED}
 	if trustedFound {
-		results = append(results, SIGNED_TRUSTED)
+		results = append(results, consts.SIGNED_TRUSTED)
 	}
 
 	_, rootLogged := root.Token.Get("log")
 	if emblem.Token.Issuer() != "" && !rootLogged {
-		return []VerificationResult{INVALID}, nil
+		return []consts.VerificationResult{consts.INVALID}, nil
 	} else if rootLogged {
-		results = append(results, ORGANIZATIONAL)
+		results = append(results, consts.ORGANIZATIONAL)
 		if _, ok := trustedKeys.LookupKeyID(root.VerificationKey.KeyID()); ok {
-			results = append(results, ORGANIZATIONAL_TRUSTED)
+			results = append(results, consts.ORGANIZATIONAL_TRUSTED)
 		}
 	}
 	return results, root

@@ -31,7 +31,7 @@ type keyManager struct {
 	// Maps KIDs to keys. Only contains verified keys.
 	keys map[string]jwk.Key
 	// Promises waiting for keys.
-	listeners map[string][]util.Promise[jwk.Key]
+	listeners map[string][]util.Promise
 }
 
 // Creates a new key manager to verify [numThreads]-many tokens asynchronously.
@@ -39,7 +39,7 @@ func NewKeyManager(numThreads int) *keyManager {
 	var km keyManager
 	km.init.Add(numThreads)
 	km.keys = make(map[string]jwk.Key)
-	km.listeners = make(map[string][]util.Promise[jwk.Key])
+	km.listeners = make(map[string][]util.Promise)
 	return &km
 }
 
@@ -111,11 +111,11 @@ func (km *keyManager) put(k jwk.Key) bool {
 }
 
 // Get a key based on its [kid]. Returns a promise that may already be resolved.
-func (km *keyManager) get(kid string) util.Promise[jwk.Key] {
+func (km *keyManager) get(kid string) util.Promise {
 	km.lock.Lock()
 	defer km.lock.Unlock()
 
-	c := util.NewPromise[jwk.Key]()
+	c := util.NewPromise()
 	k, ok := km.keys[kid]
 	if ok {
 		c.Fulfill(k)
@@ -125,13 +125,13 @@ func (km *keyManager) get(kid string) util.Promise[jwk.Key] {
 	return c
 }
 
-func (km *keyManager) getVerificationKey(sig *jws.Signature) util.Promise[jwk.Key] {
+func (km *keyManager) getVerificationKey(sig *jws.Signature) util.Promise {
 	if headerKID := sig.ProtectedHeaders().KeyID(); headerKID != "" {
 		return km.get(headerKID)
 	} else if sig.ProtectedHeaders().JWK().KeyID() != "" {
 		return km.get(sig.ProtectedHeaders().JWK().KeyID())
 	} else {
-		return util.Rejected[jwk.Key]()
+		return util.Rejected()
 	}
 }
 
@@ -140,7 +140,7 @@ func (km *keyManager) getVerificationKey(sig *jws.Signature) util.Promise[jwk.Ke
 // key will be used for verification. All other keys will register a listener
 // and wait for their verification key to be verified externally.
 func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.Signature, m *jws.Message) error {
-	var promise util.Promise[jwk.Key]
+	var promise util.Promise
 	var err error
 	if t, e := jwt.Parse(m.Payload(), jwt.WithVerify(false)); e != nil {
 		log.Printf("could not decode payload: %s", e)

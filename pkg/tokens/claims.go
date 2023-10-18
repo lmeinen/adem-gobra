@@ -31,10 +31,10 @@ type PurposeMask byte
 const Protective PurposeMask = 0b0000_0001
 const Indicative PurposeMask = 0b0000_0010
 
-func (pm *PurposeMask) UnmarshalJSON(in []byte) error {
+func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
 	var prps []string
 	var mask PurposeMask
-	if err := json.Unmarshal(in, &prps); err != nil {
+	if err := json.Unmarshal(bs, &prps); err != nil {
 		return err
 	} else {
 		for _, prp := range prps {

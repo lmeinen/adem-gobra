@@ -20,14 +20,14 @@ import (
 )
 
 type VerificationResults struct {
-	results    []VerificationResult
+	results    []consts.VerificationResult
 	protected  []*ident.AI
 	issuer     string
 	endorsedBy []string
 }
 
 func ResultInvalid() VerificationResults {
-	return VerificationResults{results: []VerificationResult{INVALID}}
+	return VerificationResults{results: []consts.VerificationResult{consts.INVALID}}
 }
 
 func (res VerificationResults) Print() {
@@ -52,40 +52,6 @@ func (res VerificationResults) Print() {
 	}
 	log.Print(strings.Join(lns, "\n"))
 }
-
-type VerificationResult byte
-
-func (vr VerificationResult) String() string {
-	switch vr {
-	case UNSIGNED:
-		return "UNSIGNED"
-	case INVALID:
-		return "INVALID"
-	case SIGNED:
-		return "SIGNED"
-	case ORGANIZATIONAL:
-		return "ORGANIZATIONAL"
-	case ENDORSED:
-		return "ENDORSED"
-	case SIGNED_TRUSTED:
-		return "SIGNED_TRUSTED"
-	case ORGANIZATIONAL_TRUSTED:
-		return "ORGANIZATIONAL_TRUSTED"
-	case ENDORSED_TRUSTED:
-		return "ENDORSED_TRUSTED"
-	default:
-		return ""
-	}
-}
-
-const UNSIGNED VerificationResult = 0
-const INVALID VerificationResult = 1
-const SIGNED VerificationResult = 2
-const ORGANIZATIONAL VerificationResult = 3
-const ENDORSED VerificationResult = 4
-const SIGNED_TRUSTED VerificationResult = 5
-const ORGANIZATIONAL_TRUSTED VerificationResult = 6
-const ENDORSED_TRUSTED VerificationResult = 7
 
 var ErrTokenNonCompact = errors.New("token is not in compact serialization")
 
@@ -159,7 +125,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 			protected = ass.([]*ident.AI)
 			if emblem.Headers.Algorithm() == jwa.NoSignature {
 				return VerificationResults{
-					results:   []VerificationResult{UNSIGNED},
+					results:   []consts.VerificationResult{consts.UNSIGNED},
 					protected: protected,
 				}
 			}
@@ -182,12 +148,12 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
 	vfyResults, root := verifySignedOrganizational(emblem, endorsements, trustedKeys)
-	if util.Contains(vfyResults, INVALID) {
+	if util.ContainsVerificationResult(vfyResults, consts.INVALID) {
 		return ResultInvalid()
 	}
 
 	endorsedResults, endorsedBy := verifyEndorsed(emblem, root, endorsements, trustedKeys)
-	if util.Contains(endorsedResults, INVALID) {
+	if util.ContainsVerificationResult(endorsedResults, consts.INVALID) {
 		return ResultInvalid()
 	}
 
