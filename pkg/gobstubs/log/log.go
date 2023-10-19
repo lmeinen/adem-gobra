@@ -1,5 +1,4 @@
 // +gobra
-// ##(--onlyFilesWithHeader)
 
 // Package log implements a simple logging package. It defines a type, Logger,
 // with methods for formatting output. It also has a predefined 'standard'

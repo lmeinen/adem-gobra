@@ -1,5 +1,5 @@
 // +gobra
-// ##(--onlyFilesWithHeader)
+
 package util
 
 import jwk "github.com/lestrrat-go/jwx/v2/jwk"

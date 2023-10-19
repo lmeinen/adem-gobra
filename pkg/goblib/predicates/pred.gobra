@@ -1,5 +1,5 @@
 // +gobra
-// ##(--onlyFilesWithHeader)
+
 package predicates
 
 pred BytesMem(bytes []byte) {

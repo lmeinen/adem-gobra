@@ -1,5 +1,4 @@
 // +gobra
-// ##(--onlyFilesWithHeader)
 
 // Represents JSON data structure using native Go types: booleans, floats,
 // strings, arrays, and maps.

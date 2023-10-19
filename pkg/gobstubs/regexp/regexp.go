@@ -1,5 +1,4 @@
 // +gobra
-// ##(--onlyFilesWithHeader)
 
 // Package regexp implements regular expression search.
 //

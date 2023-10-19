@@ -1,5 +1,4 @@
 // +gobra
-// ##(--onlyFilesWithHeader)
 
 // Package json implements encoding and decoding of JSON as defined in
 // RFC 7159. The mapping between JSON and Go values is described

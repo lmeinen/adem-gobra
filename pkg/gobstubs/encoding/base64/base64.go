@@ -1,5 +1,5 @@
 // +gobra
-// ##(--onlyFilesWithHeader)
+
 package base64
 
 // An Encoding is a radix 64 encoding/decoding scheme, defined by a

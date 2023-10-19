@@ -1,5 +1,4 @@
 // +gobra
-// ##(--onlyFilesWithHeader)
 
 /*
 This file implements the checking of root key commitments for the Certificate

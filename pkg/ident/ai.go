@@ -1,5 +1,5 @@
 // +gobra
-// ##(--onlyFilesWithHeader)
+
 package ident
 
 import (

@@ -1,5 +1,5 @@
 // +gobra
-// ##(--onlyFilesWithHeader)
+
 package jsoncanonicalizer
 
 // @ preserves forall i int :: 0 <= i && i < len(jsonData) ==> acc(&jsonData[i])
