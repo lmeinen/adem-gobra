@@ -111,7 +111,7 @@ func (km *keyManager) put(k jwk.Key) bool {
 }
 
 // Get a key based on its [kid]. Returns a promise that may already be resolved.
-func (km *keyManager) get(kid string) util.Promise {
+func (km *keyManager) getKey(kid string) util.Promise {
 	km.lock.Lock()
 	defer km.lock.Unlock()
 
@@ -127,9 +127,9 @@ func (km *keyManager) get(kid string) util.Promise {
 
 func (km *keyManager) getVerificationKey(sig *jws.Signature) util.Promise {
 	if headerKID := sig.ProtectedHeaders().KeyID(); headerKID != "" {
-		return km.get(headerKID)
+		return km.getKey(headerKID)
 	} else if sig.ProtectedHeaders().JWK().KeyID() != "" {
-		return km.get(sig.ProtectedHeaders().JWK().KeyID())
+		return km.getKey(sig.ProtectedHeaders().JWK().KeyID())
 	} else {
 		return util.Rejected()
 	}
