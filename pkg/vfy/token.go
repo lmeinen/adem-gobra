@@ -13,10 +13,10 @@ import (
 type ADEMToken struct {
 	VerificationKey jwk.Key
 	Headers         jws.Headers
-	Token           jwt.Token
+	Token           jwt.JwtToken
 }
 
-func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.Token) (*ADEMToken, error) {
+func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.JwtToken) (*ADEMToken, error) {
 	verifKey := km.getVerificationKey(sig).Get()
 	if verifKey == nil {
 		return nil, errors.New("no verification key")

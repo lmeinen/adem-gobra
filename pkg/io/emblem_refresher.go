@@ -10,7 +10,7 @@ import (
 type EmblemRefresher struct {
 	emblemCfg    *gen.EmblemConfig
 	threshold    int64
-	lastToken    jwt.Token
+	lastToken    jwt.JwtToken
 	lastTokenRaw []byte
 	lastErr      error
 }
@@ -22,7 +22,7 @@ func MkRefresher(cfg *gen.EmblemConfig, threshold int64) *EmblemRefresher {
 	return &EmblemRefresher{emblemCfg: cfg, threshold: threshold}
 }
 
-func (er *EmblemRefresher) SignToken() (jwt.Token, []byte, error) {
+func (er *EmblemRefresher) SignToken() (jwt.JwtToken, []byte, error) {
 	if er.lastToken == nil || er.lastToken.Expiration().Unix() <= time.Now().Unix()+er.threshold {
 		er.lastToken, er.lastTokenRaw, er.lastErr = er.emblemCfg.SignToken()
 	}

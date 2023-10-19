@@ -11,7 +11,7 @@ import (
 
 // Check that the given emblem's ass claim complies with the given ass
 // constraints.
-func checkAssetConstraint(emblem jwt.Token, constraints EmblemConstraints) bool {
+func checkAssetConstraint(emblem jwt.JwtToken, constraints EmblemConstraints) bool {
 	ass, _ := emblem.Get("ass")
 	for _, ai := range ass.([]*ident.AI) {
 		constraintFound := false
@@ -35,7 +35,7 @@ var ErrWndConstraint = errors.New("emblem does not satisfy wnd constraint")
 
 // Verify that the given emblem complies with the given endorsement's
 // constraints.
-func VerifyConstraints(emblem jwt.Token, endorsement jwt.Token) error {
+func VerifyConstraints(emblem jwt.JwtToken, endorsement jwt.JwtToken) error {
 	if endCnstrs, ok := endorsement.Get("emb"); !ok {
 		return nil
 	} else if !checkAssetConstraint(emblem, endCnstrs.(EmblemConstraints)) {

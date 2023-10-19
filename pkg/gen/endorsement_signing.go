@@ -8,11 +8,11 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
-func (cfg *EndorsementConfig) SignToken() (jwt.Token, []byte, error) {
+func (cfg *EndorsementConfig) SignToken() (jwt.JwtToken, []byte, error) {
 	return SignEndorsement(cfg.sk, cfg.alg, cfg.proto, cfg.endorse, cfg.endorseAlg, cfg.lifetime)
 }
 
-func SignEndorsement(secretKey jwk.Key, signingAlg *jwa.SignatureAlgorithm, token jwt.Token, endorseKey jwk.Key, pkAlg *jwa.SignatureAlgorithm, lifetime int64) (jwt.Token, []byte, error) {
+func SignEndorsement(secretKey jwk.Key, signingAlg *jwa.SignatureAlgorithm, token jwt.JwtToken, endorseKey jwk.Key, pkAlg *jwa.SignatureAlgorithm, lifetime int64) (jwt.JwtToken, []byte, error) {
 	if err := prepToken(token, lifetime); err != nil {
 		return nil, nil, err
 	}

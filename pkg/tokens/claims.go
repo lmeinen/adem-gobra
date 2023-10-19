@@ -174,7 +174,7 @@ var ErrIllegalType = jwt.NewValidationError(errors.New("illegal claim type"))
 var ErrAssMissing = jwt.NewValidationError(errors.New("emblems require ass claim"))
 
 // Validation function for emblem tokens.
-var EmblemValidator = jwt.ValidatorFunc(func(_ context.Context, t jwt.Token) jwt.ValidationError {
+var EmblemValidator = jwt.ValidatorFunc(func(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
 	if err := validateCommon(t); err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ var EmblemValidator = jwt.ValidatorFunc(func(_ context.Context, t jwt.Token) jwt
 })
 
 // Validation function for endorsement tokens.
-var EndorsementValidator = jwt.ValidatorFunc(func(_ context.Context, t jwt.Token) jwt.ValidationError {
+var EndorsementValidator = jwt.ValidatorFunc(func(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
 	if err := validateCommon(t); err != nil {
 		return err
 	}
@@ -220,7 +220,7 @@ func validateOI(oi string) error {
 }
 
 // Validate claims shared by emblems and endorsements.
-func validateCommon(t jwt.Token) jwt.ValidationError {
+func validateCommon(t jwt.JwtToken) jwt.ValidationError {
 	if err := jwt.Validate(t); err != nil {
 		return err.(jwt.ValidationError)
 	}
