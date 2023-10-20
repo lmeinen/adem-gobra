@@ -26,12 +26,10 @@ type VerificationResults struct {
 	endorsedBy []string
 }
 
-// @ trusted
 func ResultInvalid() VerificationResults {
 	return VerificationResults{results: []consts.VerificationResult{consts.INVALID}}
 }
 
-// @ trusted
 func (res VerificationResults) Print() {
 	lns := []string{"Verified set of tokens. Results:"}
 	resultsStrs := make([]string, 0, len(res.results))
@@ -66,7 +64,7 @@ type TokenVerificationResult struct {
 // Results will be returned to the [results] channel. Verification keys will be
 // obtained from [km].
 // Every call to [vfyToken] will write to [results] exactly once.
-// @ trusted
+
 func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult) {
 	result := TokenVerificationResult{}
 	defer func() { results <- &result }()
@@ -169,7 +167,6 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 	}
 }
 
-// @ trusted
 func awaitTokenSignatureResults(km *keyManager, threadCount int, results chan *TokenVerificationResult) []*ADEMToken {
 	ts := []*ADEMToken{}
 	for {
@@ -209,7 +206,6 @@ func awaitTokenSignatureResults(km *keyManager, threadCount int, results chan *T
 	return ts
 }
 
-// @ trusted
 func setupPromiseChain(rawTokens [][]byte, trustedKeys jwk.Set) (int, *keyManager, chan *TokenVerificationResult) {
 	// We maintain a thread count for termination purposes. It might be that we
 	// cannot verify all token's verification key and must cancel verification.
