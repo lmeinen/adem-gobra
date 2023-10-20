@@ -21,7 +21,7 @@ import (
 	"github.com/google/certificate-transparency-go/tls"
 	"github.com/google/certificate-transparency-go/x509"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"github.com/transparency-dev/merkle/proof"
+	"github.com/transparency-dev/merkle/merkleProof"
 	"github.com/transparency-dev/merkle/rfc6962"
 )
 
@@ -32,7 +32,6 @@ var ErrWrongEntryType = errors.New("do not recognize entry type")
 
 // Verify that the rootKey is correctly bound to the issuer OI by the CT entry
 // identified by hash. Queries will be made to the given CT client.
-// @ trusted
 func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk.Key) error {
 	kid, err := tokens.CalcKID(rootKey)
 	if err != nil {
@@ -62,7 +61,7 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 	} else if respE, err := cl.GetEntryAndProof(ctx, uint64(respH.LeafIndex), sth.TreeSize); err != nil {
 		log.Print("could not fetch entry")
 		return err
-	} else if err := proof.VerifyInclusion(rfc6962.DefaultHasher, uint64(respH.LeafIndex), sth.TreeSize, hash, respE.AuditPath, sth.SHA256RootHash[:]); err != nil {
+	} else if err := merkleProof.VerifyInclusion(rfc6962.DefaultHasher, uint64(respH.LeafIndex), sth.TreeSize, hash, respE.AuditPath, sth.SHA256RootHash[:]); err != nil {
 		log.Print("could not verify inclusion proof")
 		return err
 	} else {
