@@ -19,4 +19,4 @@ const StdEncoding Encoding = 0
 
 // EncodeToString returns the base32 encoding of src.
 // @ preserves forall i int :: 0 <= i && i < len(src) ==> acc(&src[i])
-func (enc *Encoding) EncodeToString(src []byte) string
+func (enc Encoding) EncodeToString(src []byte) string

@@ -17,6 +17,7 @@ type Hasher struct {
 }
 
 // New creates a new Hashers.LogHasher on the passed in hash function.
+// @ decreases
 func New(h crypto.Hash) *Hasher
 
 // EmptyRoot returns a special case for an empty tree.

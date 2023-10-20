@@ -21,6 +21,10 @@ import (
 //
 //nolint:interfacebloat
 type Set interface {
+	// AddKey adds the specified key. If the key already exists in the set,
+	// an error is returned.
+	AddKey(Key) error
+
 	// Keys creates an iterator to iterate through all keys in the set.
 	Keys(context.Context) KeyIterator
 }

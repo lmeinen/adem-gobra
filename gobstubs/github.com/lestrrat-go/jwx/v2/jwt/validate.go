@@ -35,3 +35,9 @@ func NewValidationError(err error) ValidationError
 // ValidatorFunc is a type of Validator that does not have any
 // state, that is implemented as a function
 type ValidatorFunc func(context.Context, JwtToken) ValidationError
+
+// Validate makes sure that the essential claims stand.
+//
+// See the various `WithXXX` functions for optional parameters
+// that can control the behavior of this method.
+func Validate(t JwtToken, options ...ValidateOption) error
