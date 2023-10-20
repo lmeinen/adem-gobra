@@ -71,7 +71,7 @@ func (ai *AI) MoreGeneral(than *AI) bool {
 }
 
 func (ai *AI) UnmarshalJSON(bs []byte) error {
-	var str string
+	var str /*@@@*/ string
 	if err := json.Unmarshal(bs, &str); err != nil {
 		return err
 	} else if parsed, err := ParseAI(str); err != nil {
@@ -101,8 +101,8 @@ func ParseAI(aiStr string) (*AI, error) {
 		return nil, ErrIllegalAI
 	}
 
-	ai := AI{}
-	if addr[0] == '[' {
+	ai /*@@@*/ := AI{}
+	if isIPv6(addr) {
 		// must be IPv6
 		trimmed := addr[1 : len(addr)-1] // drop [...]
 		if ip := net.ParseIP(trimmed); ip != nil {
@@ -135,12 +135,19 @@ func ParseAI(aiStr string) (*AI, error) {
 		if p, err := strconv.ParseInt(port, 10, 16); err != nil {
 			return nil, err
 		} else {
-			unsiged := uint16(p)
+			unsiged /*@@@*/ := uint16(p)
 			ai.port = &unsiged
 		}
 	}
 
 	return &ai, nil
+}
+
+// @ trusted
+func isIPv6(s string) bool {
+	// TODO: (lmeinen) is there any way I can reduce this trusted function?
+	// string indexing is currently not supported by Gobra
+	return s[0] == '['
 }
 
 func (ai *AI) String() string {
