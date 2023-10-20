@@ -56,7 +56,7 @@ func CalcKID(key jwk.Key) (string, error) {
 	} else if canonical, err := jsoncanonicalizer.Transform(jsonKey); err != nil {
 		return "", err
 	} else {
-		h := sha256.Sum256(canonical)
+		h /*@@@*/ := sha256.Sum256(canonical)
 		b32 := base32.StdEncoding.EncodeToString(h[:])
 		return strings.ToLower(strings.TrimRight(b32, "=")), nil
 	}

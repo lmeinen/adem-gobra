@@ -13,7 +13,9 @@ import (
 // constraints.
 func checkAssetConstraint(emblem jwt.JwtToken, constraints EmblemConstraints) bool {
 	ass, _ := emblem.Get("ass")
-	for _, ai := range ass.([]*ident.AI) {
+	// (lmeinen) Gobra can't parse the range expression properly when the type cast is inlined
+	casted := ass.([]*ident.AI)
+	for _, ai := range casted {
 		constraintFound := false
 		for _, constraint := range constraints.Assets {
 			if constraint.MoreGeneral(ai) {

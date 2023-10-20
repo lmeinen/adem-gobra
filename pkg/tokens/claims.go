@@ -35,7 +35,7 @@ const Protective PurposeMask = 0x01
 const Indicative PurposeMask = 0x02
 
 func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
-	var prps []string
+	var prps /*@@@*/ []string
 	var mask PurposeMask
 	if err := json.Unmarshal(bs, &prps); err != nil {
 		return err
@@ -58,10 +58,10 @@ func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
 func (pm *PurposeMask) MarshalJSON() ([]byte, error) {
 	var purposes []string
 	if *pm&Protective != 0 {
-		purposes = append(purposes, consts.Protective)
+		purposes = append( /*@perm(1/2), @*/ purposes, consts.Protective)
 	}
 	if *pm&Indicative != 0 {
-		purposes = append(purposes, consts.Indicative)
+		purposes = append( /*@perm(1/2), @*/ purposes, consts.Indicative)
 	}
 	return json.Marshal(purposes)
 }
@@ -78,7 +78,7 @@ const TLS ChannelMask = 0x02
 const UDP ChannelMask = 0x04
 
 func (cm *ChannelMask) UnmarshalJSON(bs []byte) error {
-	var dsts []string
+	var dsts /*@@@*/ []string
 	var mask ChannelMask
 	if err := json.Unmarshal(bs, &dsts); err != nil {
 		return err
@@ -103,13 +103,13 @@ func (cm *ChannelMask) UnmarshalJSON(bs []byte) error {
 func (cm *ChannelMask) MarshalJSON() ([]byte, error) {
 	var dsts []string
 	if *cm&DNS != 0 {
-		dsts = append(dsts, consts.DNS)
+		dsts = append( /*@ perm(1/2), @*/ dsts, consts.DNS)
 	}
 	if *cm&TLS != 0 {
-		dsts = append(dsts, consts.TLS)
+		dsts = append( /*@ perm(1/2), @*/ dsts, consts.TLS)
 	}
 	if *cm&UDP != 0 {
-		dsts = append(dsts, consts.UDP)
+		dsts = append( /*@ perm(1/2), @*/ dsts, consts.UDP)
 	}
 	return json.Marshal(dsts)
 }
