@@ -1,11 +1,15 @@
 // +gobra
-
-// Package ct holds core types and utilities for Certificate Transparency.
 package ct
 
 import (
 	"crypto/sha256"
 	"github.com/google/certificate-transparency-go/tls"
+)
+
+// LogEntryType constants from section 3.1.
+const (
+	X509LogEntryType    LogEntryType = 0
+	PrecertLogEntryType LogEntryType = 1
 )
 
 // LogEntryType represents the LogEntryType enum from section 3.1:
@@ -24,12 +28,6 @@ type SHA256Hash [sha256.Size]byte
 // DigitallySigned is a local alias for tls.DigitallySigned so that we can
 // attach a MarshalJSON method.
 type DigitallySigned tls.DigitallySigned
-
-// LogEntryType constants from section 3.1.
-const (
-	X509LogEntryType    LogEntryType = 0
-	PrecertLogEntryType LogEntryType = 1
-)
 
 // ASN1Cert type for holding the raw DER bytes of an ASN.1 Certificate
 // (section 3.1).

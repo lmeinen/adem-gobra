@@ -1,6 +1,4 @@
 // +gobra
-
-// Package merkle provides Merkle tree interfaces and implementation.
 package merkle
 
 // LogHasher provides the hash functions needed to compute dense merkle trees.

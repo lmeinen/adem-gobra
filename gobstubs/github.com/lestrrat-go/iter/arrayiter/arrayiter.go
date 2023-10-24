@@ -1,5 +1,4 @@
 // +gobra
-
 package arrayiter
 
 import (

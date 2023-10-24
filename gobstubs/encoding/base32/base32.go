@@ -1,6 +1,4 @@
 // +gobra
-
-// Package base32 implements base32 encoding as specified by RFC 4648.
 package base32
 
 // An Encoding is a radix 32 encoding/decoding scheme, defined by a
