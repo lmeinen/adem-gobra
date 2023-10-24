@@ -1,0 +1,21 @@
+// +gobra
+package jsonclient
+
+// JSONClient provides common functionality for interacting with a JSON server
+// that uses cryptographic signatures.
+type JSONClient struct {
+	// (lmeinen) fields never accessed
+}
+
+// Options are the options for creating a new JSONClient.
+type Options struct {
+	// (lmeinen) fields omitted
+
+	// DER format public key to use for signature verification.
+	PublicKeyDER []byte
+}
+
+// BaseURI returns the base URI that the JSONClient makes queries to.
+// @ requires acc(c)
+// @ pure
+func (c *JSONClient) BaseURI() string

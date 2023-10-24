@@ -21,3 +21,7 @@ func Print(v ...any)
 // Printf calls Output to print to the standard logger.
 // Arguments are handled in the manner of fmt.Printf.
 func Printf(format string, v ...any)
+
+// Println calls Output to print to the standard logger.
+// Arguments are handled in the manner of fmt.Println.
+func Println(v ...any)

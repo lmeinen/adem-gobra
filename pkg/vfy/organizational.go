@@ -53,16 +53,16 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 
 	results := []consts.VerificationResult{consts.SIGNED}
 	if trustedFound {
-		results = append(results, consts.SIGNED_TRUSTED)
+		results = append( /*@ perm(1/2), @*/ results, consts.SIGNED_TRUSTED)
 	}
 
 	_, rootLogged := root.Token.Get("log")
 	if emblem.Token.Issuer() != "" && !rootLogged {
 		return []consts.VerificationResult{consts.INVALID}, nil
 	} else if rootLogged {
-		results = append(results, consts.ORGANIZATIONAL)
+		results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL)
 		if _, ok := trustedKeys.LookupKeyID(root.VerificationKey.KeyID()); ok {
-			results = append(results, consts.ORGANIZATIONAL_TRUSTED)
+			results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL_TRUSTED)
 		}
 	}
 	return results, root

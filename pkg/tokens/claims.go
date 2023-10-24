@@ -137,6 +137,7 @@ type LeafHash struct {
 
 // Attempt to parse a JSON value as string that contains a base64-encoded leaf
 // hash.
+
 func (h *LeafHash) UnmarshalJSON(bs []byte) (err error) {
 	trimmed := bytes.Trim(bs, `"`)
 	if raw, e := util.B64Dec(trimmed); e != nil {
@@ -159,6 +160,7 @@ type EmbeddedKey struct {
 
 // Attempt to parse a JSON value as string that contains a single JWK in JSON
 // encoding.
+
 func (ek *EmbeddedKey) UnmarshalJSON(bs []byte) (err error) {
 	trimmed := bytes.Trim(bs, `"`)
 	if k, e := jwk.ParseKey(trimmed); e != nil {
@@ -173,37 +175,8 @@ var ErrIllegalVersion = jwt.NewValidationError(errors.New("illegal version"))
 var ErrIllegalType = jwt.NewValidationError(errors.New("illegal claim type"))
 var ErrAssMissing = jwt.NewValidationError(errors.New("emblems require ass claim"))
 
-// Validation function for emblem tokens.
-var EmblemValidator = jwt.ValidatorFunc(func(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
-	if err := validateCommon(t); err != nil {
-		return err
-	}
-
-	if _, ok := t.Get("ass"); !ok {
-		return ErrAssMissing
-	}
-
-	return nil
-})
-
-// Validation function for endorsement tokens.
-var EndorsementValidator = jwt.ValidatorFunc(func(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
-	if err := validateCommon(t); err != nil {
-		return err
-	}
-
-	end, ok := t.Get("end")
-	if ok {
-		_, check := end.(bool)
-		if !check {
-			return ErrIllegalType
-		}
-	}
-
-	return nil
-})
-
 // Validate that an OI has the form https://DOMAINNAME.
+
 func validateOI(oi string) error {
 	if oi == "" {
 		return nil
@@ -220,9 +193,10 @@ func validateOI(oi string) error {
 }
 
 // Validate claims shared by emblems and endorsements.
+
 func validateCommon(t jwt.JwtToken) jwt.ValidationError {
 	if err := jwt.Validate(t); err != nil {
-		return err.(jwt.ValidationError)
+		return foo(err)
 	}
 
 	if ver, ok := t.Get(`ver`); !ok || ver.(string) != string(consts.V1) {
@@ -235,3 +209,42 @@ func validateCommon(t jwt.JwtToken) jwt.ValidationError {
 
 	return nil
 }
+
+// @ trusted
+func foo(err error) jwt.ValidationError {
+	return err.(jwt.ValidationError)
+}
+
+func EmblemValidator(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
+	if err := validateCommon(t); err != nil {
+		return err
+	}
+
+	if _, ok := t.Get("ass"); !ok {
+		return ErrAssMissing
+	}
+
+	return nil
+}
+
+// Validation function for emblem tokens.
+// var EmblemValidator = jwt.ValidatorFunc(ValidateEmblem)
+
+func EndorsementValidator(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
+	if err := validateCommon(t); err != nil {
+		return err
+	}
+
+	end, ok := t.Get("end")
+	if ok {
+		_, check := end.(bool)
+		if !check {
+			return ErrIllegalType
+		}
+	}
+
+	return nil
+}
+
+// Validation function for endorsement tokens.
+// var EndorsementValidator = jwt.ValidatorFunc(ValidateEndorsement)

@@ -182,3 +182,21 @@ type todoCtx struct{ emptyCtx }
 func TODO() (res Context) {
 	return todoCtx{}
 }
+
+// Background returns a non-nil, empty [Context]. It is never canceled, has no
+// values, and has no deadline. It is typically used by the main function,
+// initialization, and tests, and as the top-level Context for incoming
+// requests.
+func Background() Context
+
+// WithTimeout returns WithDeadline(parent, time.Now().Add(timeout)).
+//
+// Canceling this context releases resources associated with it, so code should
+// call cancel as soon as the operations running in this [Context] complete:
+//
+//	func slowOperationWithTimeout(ctx context.Context) (Result, error) {
+//		ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+//		defer cancel()  // releases resources if slowOperation completes before timeout elapses
+//		return slowOperation(ctx)
+//	}
+func WithTimeout(parent Context, timeout time.Duration) (Context, func())

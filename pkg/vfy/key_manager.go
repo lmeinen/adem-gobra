@@ -34,10 +34,36 @@ type keyManager struct {
 	listeners map[string][]util.Promise
 }
 
+/*@
+pred WaitInv() {
+	true
+}
+@*/
+
 // Creates a new key manager to verify [numThreads]-many tokens asynchronously.
-func NewKeyManager(numThreads int) *keyManager {
-	var km keyManager
-	km.init.Add(numThreads)
+/*@
+requires numThreads > 0
+ensures acc(res) &&
+	acc(res.init.WaitGroupP(), 1/2) &&
+	acc(res.init.WaitGroupStarted(), 1/2) &&
+	!res.init.WaitMode() &&
+	acc(res.init.UnitDebt(WaitInv!<!>), numThreads/1) &&
+	res.init.Token(WaitInv!<!>)
+@*/
+func NewKeyManager(numThreads int) (res *keyManager) {
+	var km /*@@@*/ keyManager
+	// @ km.init.Init()
+	km.init.Add(numThreads /*@, perm(1/2), PredTrue!<!> @*/)
+	/*@
+	invariant acc(km.init.UnitDebt(WaitInv!<!>), i/1) && acc(km.init.Token(WaitInv!<!>), i/1)
+	for i := 0; i < numThreads; i++ {
+		// do we fold PredTrue or km.init.UnitDebt!<!>(PredTrue!<!>) ?
+		fold PredTrue!<!>()
+		km.init.GenerateTokenAndDebt(WaitInv!<!>)
+	}
+	@*/
+	// @ km.init.Start(1/2, WaitInv!<!>)
+
 	km.keys = make(map[string]jwk.Key)
 	km.listeners = make(map[string][]util.Promise)
 	return &km
@@ -45,8 +71,10 @@ func NewKeyManager(numThreads int) *keyManager {
 
 // Wait until all verification threads obtained a promise for their verification
 // key.
+// @ preserves acc(km.init.WaitGroupP(), 1/2)
+// @ requires km.init.WaitMode()
 func (km *keyManager) waitForInit() {
-	km.init.Wait()
+	km.init.Wait( /*@ 1/2, seq[pred()]{ } @*/ )
 }
 
 // Cancel any further verification.
@@ -58,8 +86,14 @@ func (km *keyManager) killListeners() {
 		for _, promise := range listeners {
 			promise.Reject()
 		}
-		delete(km.listeners, k)
+		doDelete(km.listeners, k)
 	}
+}
+
+// @ trusted
+// @ preserves acc(listeners)
+func doDelete(listeners map[string][]util.Promise, k string) {
+	delete(listeners, k)
 }
 
 // How many blocked threads are there that wait for a key promise to be resolved?
@@ -106,7 +140,7 @@ func (km *keyManager) put(k jwk.Key) bool {
 			promise.Fulfill(k)
 		}
 	}
-	delete(km.listeners, kid)
+	doDelete(km.listeners, kid)
 	return true
 }
 
@@ -120,7 +154,8 @@ func (km *keyManager) getKey(kid string) util.Promise {
 	if ok {
 		c.Fulfill(k)
 	} else {
-		km.listeners[kid] = append(km.listeners[kid], c)
+		listenersForKid := km.listeners[kid]
+		km.listeners[kid] = append( /*@ perm(1/2), @*/ listenersForKid, c)
 	}
 	return c
 }
@@ -160,6 +195,7 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 	}
 
 	promise = km.getVerificationKey(sig)
+	// @ fold PredTrue!<!>()
 	km.init.Done()
 	if err != nil {
 		log.Printf("err: %s", err)

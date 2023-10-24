@@ -1,5 +1,4 @@
 // +gobra
-
 package roots
 
 import (
@@ -23,16 +22,16 @@ const log_list_google = "https://www.gstatic.com/ct/log_list/v3/log_list.json"
 const log_list_apple = "https://valid.apple.com/ct/log_list/current_log_list.json"
 
 // Map that stores Certificate Transparency log info associated to their IDs.
-var ctLogs map[string]CTLog = make(map[string]CTLog)
+var ctLogs /*@@@*/ map[string]CTLog = make(map[string]CTLog)
 
 // [ctLogs] access lock.
-var logMapLock sync.Mutex = sync.Mutex{}
+var logMapLock /*@@@*/ sync.Mutex = sync.Mutex{}
 
 func storeLogs(rawJson []byte) error {
 	logMapLock.Lock()
 	defer logMapLock.Unlock()
 
-	logs := KnownLogs{}
+	logs /*@@@*/ := KnownLogs{}
 	err := json.Unmarshal(rawJson, &logs)
 	if err != nil {
 		return err
@@ -48,6 +47,7 @@ func storeLogs(rawJson []byte) error {
 }
 
 // Get the log client associate to a CT log ID.
+
 func GetLogClient(id string) (*client.LogClient, error) {
 	logMapLock.Lock()
 	defer logMapLock.Unlock()
@@ -80,6 +80,7 @@ type LogKey struct {
 }
 
 // Decodes a base64-encoded JSON string into a CT log public key.
+
 func (k *LogKey) UnmarshalJSON(bs []byte) (err error) {
 	if raw, e := util.B64Dec(bytes.Trim(bs, `"`)); e != nil {
 		err = e
@@ -90,6 +91,7 @@ func (k *LogKey) UnmarshalJSON(bs []byte) (err error) {
 }
 
 // Load logs from a given log list.
+
 func fetchLogs(url string) error {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -106,11 +108,13 @@ func fetchLogs(url string) error {
 }
 
 // Load logs known to Google.
+
 func FetchGoogleKnownLogs() error {
 	return fetchLogs(log_list_google)
 }
 
 // Load logs known to Apple.
+
 func FetchAppleKnownLogs() error {
 	return fetchLogs(log_list_apple)
 }

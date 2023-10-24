@@ -21,6 +21,7 @@ var ErrAlgMissing = errors.New("input key misses algorithm")
 
 // Get the KID of a key endorsed in an emblem. If the endorsed key has no KID,
 // it will be calculated.
+
 func GetEndorsedKID(t jwt.JwtToken) (string, error) {
 	if jwKey, ok := t.Get("key"); !ok {
 		return "", ErrNoEndorsedKey
@@ -32,6 +33,7 @@ func GetEndorsedKID(t jwt.JwtToken) (string, error) {
 }
 
 // Get a key's KID. If it has no KID, it will be calculated.
+
 func GetKID(key jwk.Key) (string, error) {
 	if key.KeyID() != "" {
 		return key.KeyID(), nil
@@ -42,6 +44,7 @@ func GetKID(key jwk.Key) (string, error) {
 
 // Calculate a key's KID by hashing it using a canonical JSON representation and
 // SHA256. This function will drop any private-key parameters.
+
 func CalcKID(key jwk.Key) (string, error) {
 	if pk, err := key.PublicKey(); err != nil {
 		return "", err
@@ -63,6 +66,7 @@ func CalcKID(key jwk.Key) (string, error) {
 }
 
 // Set a key's KID if not already present.
+
 func SetKID(key jwk.Key, force bool) error {
 	var kid string
 	var err error
@@ -81,6 +85,7 @@ func SetKID(key jwk.Key, force bool) error {
 
 // Calculate and set the KID of every key in the given set. Will override old
 // KIDs.
+
 func SetKIDs(jwkSet jwk.Set, alg *jwa.SignatureAlgorithm) (jwk.Set, error) {
 	withKIDs := jwk.NewSet()
 	ctx := context.TODO()

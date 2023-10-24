@@ -57,3 +57,9 @@ type URL struct {
 // @ ensures acc(url)
 // @ ensures err.ErrorMem()
 func Parse(rawURL string) (url *URL, err error)
+
+// Hostname returns u.Host, stripping any valid port number if present.
+//
+// If the result is enclosed in square brackets, as literal IPv6 addresses are,
+// the square brackets are removed from the result.
+func (u *URL) Hostname() string

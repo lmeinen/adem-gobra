@@ -1,5 +1,4 @@
 // +gobra
-
 package vfy
 
 import (
@@ -34,21 +33,21 @@ func (res VerificationResults) Print() {
 	lns := []string{"Verified set of tokens. Results:"}
 	resultsStrs := make([]string, 0, len(res.results))
 	for _, r := range res.results {
-		resultsStrs = append(resultsStrs, r.String())
+		resultsStrs = append( /*@ perm(1/2), @*/ resultsStrs, r.String())
 	}
-	lns = append(lns, fmt.Sprintf("- Security levels:    %s", strings.Join(resultsStrs, ", ")))
+	lns = append( /*@ perm(1/2), @*/ lns, fmt.Sprintf("- Security levels:    %s", strings.Join(resultsStrs, ", ")))
 	if len(res.protected) > 0 {
 		assets := make([]string, 0, len(res.protected))
 		for _, ass := range res.protected {
-			assets = append(assets, ass.String())
+			assets = append( /*@ perm(1/2), @*/ assets, ass.String())
 		}
-		lns = append(lns, fmt.Sprintf("- Protected assets:   %s", strings.Join(assets, ", ")))
+		lns = append( /*@ perm(1/2), @*/ lns, fmt.Sprintf("- Protected assets:   %s", strings.Join(assets, ", ")))
 	}
 	if res.issuer != "" {
-		lns = append(lns, fmt.Sprintf("- Issuer of emblem:   %s", res.issuer))
+		lns = append( /*@ perm(1/2), @*/ lns, fmt.Sprintf("- Issuer of emblem:   %s", res.issuer))
 	}
 	if len(res.endorsedBy) > 0 {
-		lns = append(lns, fmt.Sprintf("- Issuer endorsed by: %s", strings.Join(res.endorsedBy, ", ")))
+		lns = append( /*@ perm(1/2), @*/ lns, fmt.Sprintf("- Issuer endorsed by: %s", strings.Join(res.endorsedBy, ", ")))
 	}
 	log.Print(strings.Join(lns, "\n"))
 }
@@ -60,14 +59,18 @@ type TokenVerificationResult struct {
 	err   error
 }
 
+func doSend(results chan *TokenVerificationResult, result *TokenVerificationResult) {
+	// (lmeinen) Gobra doesn't handle anonymous function call properly
+	results <- result
+}
+
 // Verify an ADEM token's signature. Designed to be called asynchronously.
 // Results will be returned to the [results] channel. Verification keys will be
 // obtained from [km].
 // Every call to [vfyToken] will write to [results] exactly once.
-
 func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult) {
-	result := TokenVerificationResult{}
-	defer func() { results <- &result }()
+	result /*@@@*/ := TokenVerificationResult{}
+	defer doSend(results, &result)
 
 	jwtT, err := jwt.Parse(rawToken, jwt.WithKeyProvider(km))
 	if err != nil {
@@ -90,8 +93,10 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 }
 
 // Verify a slice of ADEM tokens.
+
 func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 
+	// (lmeinen) 0 - set up chain of promises from root keys to signing keys
 	threadCount, km, results := setupPromiseChain(rawTokens, trustedKeys)
 
 	/*
@@ -115,7 +120,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 				// Multiple emblems
 				log.Print("Token set contains multiple emblems")
 				return ResultInvalid()
-			} else if err := jwt.Validate(t.Token, jwt.WithValidator(tokens.EmblemValidator)); err != nil {
+			} else if err := jwt.Validate(t.Token, jwt.WithValidator(jwt.ValidatorFunc(tokens.EmblemValidator))); err != nil {
 				log.Printf("Invalid emblem: %s", err)
 				return ResultInvalid()
 			} else {
@@ -131,11 +136,11 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 				}
 			}
 		} else if t.Headers.ContentType() == string(consts.EndorsementCty) {
-			err := jwt.Validate(t.Token, jwt.WithValidator(tokens.EndorsementValidator))
+			err := jwt.Validate(t.Token, jwt.WithValidator(jwt.ValidatorFunc(tokens.EndorsementValidator)))
 			if err != nil {
 				log.Printf("Invalid endorsement: %s", err)
 			} else {
-				endorsements = append(endorsements, t)
+				endorsements = append( /*@ perm(1/2), @*/ endorsements, t)
 			}
 		} else {
 			log.Printf("Token has wrong type: %s", t.Headers.ContentType())
@@ -158,9 +163,9 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 		return ResultInvalid()
 	}
 
-	// (lmeinen) return results
+	// (lmeinen) 4 - return results
 	return VerificationResults{
-		results:    append(vfyResults, endorsedResults...),
+		results:    append( /*@ perm(1/2), @*/ vfyResults, endorsedResults...),
 		issuer:     root.Token.Issuer(),
 		endorsedBy: endorsedBy,
 		protected:  protected,
@@ -190,13 +195,13 @@ func awaitTokenSignatureResults(km *keyManager, threadCount int, results chan *T
 			if threadCount == 0 {
 				// Every call to [vfyToken] will write exactly one result. Hence, only
 				// close the [results] channel, when all threads have terminated.
-				close(results)
+				close(results /*@, 1, 2, PredTrue!<!> @*/)
 			}
 
 			if result.err != nil {
 				log.Printf("discarding invalid token: %s", result.err)
 			} else {
-				ts = append(ts, result.token)
+				ts = append( /*@ perm(1/2), @*/ ts, result.token)
 				if k, ok := result.token.Token.Get("key"); ok {
 					km.put(k.(tokens.EmbeddedKey).Key)
 				}

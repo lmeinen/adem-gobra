@@ -1,16 +1,443 @@
 // +gobra
-
-
-// Copyright 2009 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in https://golang.org/LICENSE
-
-// Signatures for the public declarations in file
-// https://github.com/golang/go/blob/master/src/net/net.go
-
 package net
 
+
 import "time"
+
+
+// IP address lengths (bytes).
+const (
+	IPv4len = 4
+	IPv6len = 16
+)
+
+type IP []byte
+
+type IPMask []byte
+
+type IPNet struct {
+	IP   IP
+	Mask IPMask
+}
+
+pred (ip IP) Mem() {
+	(len(ip) == IPv4len || len(ip) == IPv6len) &&
+	forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i])
+}
+
+pred (mask IPMask) Mem() {
+	(len(mask) == IPv4len || len(mask) == IPv6len) &&
+	forall i int :: 0 <= i && i < len(mask) ==> acc(&mask[i])
+}
+
+pred (ipnet *IPNet) Mem() {
+	acc(ipnet) && ipnet.IP.Mem() && ipnet.Mask.Mem()
+}
+
+// IPv4 returns the IP address (in 16-byte form) of the
+// IPv4 address a.b.c.d.
+ensures len(res) == 4 && forall i int :: 0 <= i && i < len(res) ==> acc(&res[i])
+func IPv4(a, b, c, d byte) (res IP)
+
+// IPv4Mask returns the IP mask (in 4-byte form) of the
+// IPv4 mask a.b.c.d.
+ensures len(res) == 4 && forall i int :: 0 <= i && i < len(res) ==> acc(&res[i])
+func IPv4Mask(a, b, c, d byte) (res IPMask)
+
+// CIDRMask returns an IPMask consisting of 'ones' 1 bits
+// followed by 0s up to a total length of 'bits' bits.
+requires bits >= 0
+ensures forall i int :: 0 <= i && i < len(res) ==> acc(&res[i])
+func CIDRMask(ones, bits int) (res IPMask)
+
+// Well-known IPv4 addresses
+// TODO: add support for global vars
+/*
+var (
+	IPv4bcast     = IPv4(255, 255, 255, 255) // limited broadcast
+	IPv4allsys    = IPv4(224, 0, 0, 1)       // all systems
+	IPv4allrouter = IPv4(224, 0, 0, 2)       // all routers
+	IPv4zero      = IPv4(0, 0, 0, 0)         // all zeros
+)
+*/
+
+// Well-known IPv6 addresses
+// TODO: add support for global vars
+/*
+var (
+	IPv6zero                   = IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	IPv6unspecified            = IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	IPv6loopback               = IP{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
+	IPv6interfacelocalallnodes = IP{255, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
+	IPv6linklocalallnodes      = IP{255, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}
+	IPv6linklocalallrouters    = IP{255, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2}
+)
+*/
+
+// IsUnspecified reports whether ip is an unspecified address, either
+// the IPv4 address "0.0.0.0" or the IPv6 address "::".
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+func (ip IP) IsUnspecified() bool /*{
+	return ip.Equal(IPv4zero) || ip.Equal(IPv6unspecified)
+}*/
+
+// IsLoopback reports whether ip is a loopback address.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+func (ip IP) IsLoopback() bool // {
+//	if ip4 := ip.To4(); ip4 != nil {
+//		return ip4[0] == 127
+//	}
+//	return ip.Equal(IPv6loopback)
+//}
+
+// IsMulticast reports whether ip is a multicast address.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+func (ip IP) IsMulticast() bool
+
+// IsInterfaceLocalMulticast reports whether ip is an interface-local multicast address.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+func (ip IP) IsInterfaceLocalMulticast() bool
+
+// IsLinkLocalMulticast reports whether ip is a link-local multicast address.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+func (ip IP) IsLinkLocalMulticast() bool 
+
+// IsLinkLocalUnicast reports whether ip is a link-local unicast address.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+func (ip IP) IsLinkLocalUnicast() bool 
+
+// IsGlobalUnicast reports whether ip is a global unicast
+// address.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+func (ip IP) IsGlobalUnicast() bool /*{
+	return (len(ip) == IPv4len || len(ip) == IPv6len) &&
+		!ip.Equal(IPv4bcast) &&
+		!ip.IsUnspecified() &&
+		!ip.IsLoopback() &&
+		!ip.IsMulticast() &&
+		!ip.IsLinkLocalUnicast()
+}*/
+
+// To4 converts the IPv4 address ip to a 4-byte representation.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+ensures res != nil ==> len(res) == IPv4len
+ensures len(ip) == IPv4len ==> forall i int :: 0 <= i && i < len(ip) ==> &ip[i] == &res[i]
+ensures (len(ip) == IPv6len && isZeros(ip[0:10]) && ip[10] == 255 && ip[11] == 255) ==> res != nil
+ensures (len(ip) == IPv6len && res != nil) ==> (forall i int :: 0 <= i && i < IPv4len ==> &ip[12+i] == &res[i])
+ensures len(ip) != IPv4len && len(ip) != IPv6len ==> res == nil
+ensures len(ip) == IPv4len ==> len(res) == IPv4len
+decreases
+func (ip IP) To4() (res IP) {
+	if len(ip) == IPv4len {
+		return ip
+	}
+	if len(ip) == IPv6len &&
+		isZeros(ip[0:10]) &&
+		ip[10] == 255 &&
+		ip[11] == 255 {
+		return ip[12:16]
+	}
+	return nil
+}
+
+pure
+preserves forall i int :: 0 <= i && i < len(s) ==> acc(&s[i], 1/100000)
+func isZeros(s []byte) bool
+
+// To16 converts the IP address ip to a 16-byte representation.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+ensures len(ip) == IPv4len ==> (len(res) == IPv4len && forall i int :: 0 <= i && i < len(res) ==> acc(&res[i]))
+ensures len(ip) == IPv6len ==> (len(res) == IPv6len && forall i int :: 0 <= i && i < len(res) ==> &ip[i] == &res[i])
+func (ip IP) To16() (res IP) {
+	if len(ip) == IPv4len {
+		return IPv4(ip[0], ip[1], ip[2], ip[3])
+	}
+	if len(ip) == IPv6len {
+		return ip
+	}
+	return nil
+}
+
+// DefaultMask returns the default IP mask for the IP address ip.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+func (ip IP) DefaultMask() IPMask
+
+// Mask returns the result of masking the IP address ip with mask.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+func (ip IP) Mask(mask IPMask) IP
+
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+decreases _
+func (ip IP) String() string
+
+// MarshalText implements the encoding.TextMarshaler interface.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+ensures forall i int :: 0 <= i && i < len(res) ==> acc(&res[i])
+ensures (len(ip) == IPv4len || len(ip) == IPv6len || len(ip) == 0) ==> err == nil
+func (ip IP) MarshalText() (res []byte, err error) {
+	if len(ip) == 0 {
+		return []byte(""), nil
+	}
+	if len(ip) != IPv4len && len(ip) != IPv6len {
+		// (joao) Gobra cannot assign `*AddrError` to `error`
+		assume false
+		// return nil, &AddrError{Err: "invalid IP address", Addr: hexString(ip)}
+	}
+	return []byte(ip.String()), nil
+}
+
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+func hexString(ip IP) string
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+// The IP address is expected in a form accepted by ParseIP.
+preserves acc(ip)
+preserves forall i int :: 0 <= i && i < len(text) ==> acc(&text[i], 1/10000)
+ensures forall i int :: 0 <= i && i < len(*ip) ==> acc(&((*ip)[i]))
+func (ip *IP) UnmarshalText(text []byte) error 
+
+// Equal reports whether ip and x are the same IP address.
+// An IPv4 address and that same address in IPv6 form are
+// considered to be equal.
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+preserves forall i int :: 0 <= i && i < len(x) ==> acc(&x[i], 1/10000)
+decreases _
+func (ip IP) Equal(x IP) bool // {
+//	if len(ip) == len(x) {
+//		return bytealg.Equal(ip, x)
+//	}
+//	if len(ip) == IPv4len && len(x) == IPv6len {
+//		return bytealg.Equal(x[0:12], v4InV6Prefix) && bytealg.Equal(ip, x[12:])
+//	}
+//	if len(ip) == IPv6len && len(x) == IPv4len {
+//		return bytealg.Equal(ip[0:12], v4InV6Prefix) && bytealg.Equal(ip[12:], x)
+//	}
+//	return false
+//}
+
+// Size returns the number of leading ones and total bits in the mask.
+preserves forall i int :: 0 <= i && i < len(m) ==> acc(&m[i], 1/10000)
+func (m IPMask) Size() (ones, bits int)
+
+// String returns the hexadecimal form of m, with no punctuation.
+preserves forall i int :: 0 <= i && i < len(m) ==> acc(&m[i], 1/10000)
+func (m IPMask) String() string 
+
+// Contains reports whether the network includes ip.
+preserves acc(n) && forall i int :: 0 <= i && i < len(n.IP) ==> acc(&(n.IP)[i], 1/10000)
+preserves forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i], 1/10000)
+func (n *IPNet) Contains(ip IP) bool
+
+// Network returns the address's network name, "ip+net".
+func (n *IPNet) Network() string { return "ip+net" }
+
+// String returns the CIDR notation of n like "192.0.2.0/24"
+// or "2001:db8::/48" as defined in RFC 4632 and RFC 4291.
+preserves acc(n)
+preserves forall i int :: 0 <= i && i < len(n.IP) ==> acc(&(n.IP)[i], 1/10000)
+preserves forall i int :: 0 <= i && i < len(n.Mask) ==> acc(&(n.Mask)[i], 1/10000)
+func (n *IPNet) String() string
+
+// ParseIP parses s as an IP address, returning the result.
+ensures forall i int :: 0 <= i && i < len(res) ==> acc(&res[i])
+decreases _
+func ParseIP(s string) (res IP)
+
+// ParseCIDR parses s as a CIDR notation IP address and prefix length,
+// like "192.0.2.0/24" or "2001:db8::/32", as defined in
+// RFC 4632 and RFC 4291.
+ensures err == nil ==> acc(ipnet)
+ensures forall i int :: 0 <= i && i < len(ip) ==> acc(&ip[i])
+func ParseCIDR(s string) (ip IP, ipnet *IPNet, err error)
+
+// BUG(mikio): On every POSIX platform, reads from the "ip4" network
+// using the ReadFrom or ReadFromIP method might not return a complete
+// IPv4 packet, including its header, even if there is space
+// available. This can occur even in cases where Read or ReadMsgIP
+// could return a complete packet. For this reason, it is recommended
+// that you do not use these methods if it is important to receive a
+// full packet.
+//
+// The Go 1 compatibility guidelines make it impossible for us to
+// change the behavior of these methods; use Read or ReadMsgIP
+// instead.
+
+// BUG(mikio): On JS and Plan 9, methods and functions related
+// to IPConn are not implemented.
+
+// BUG(mikio): On Windows, the File method of IPConn is not
+// implemented.
+
+// IPAddr represents the address of an IP end point.
+type IPAddr struct {
+	IP   IP
+	Zone string // IPv6 scoped addressing zone
+}
+
+pred (a *IPAddr) Mem() {
+    // The second conjunct should be eventually replaced by a.IP.Mem().
+    // However, doing this at the moment requires changes in the VerifiedSCION codebase.
+    acc(a) && forall i int :: 0 <= i && i < len(a.IP) ==> acc(&(a.IP)[i])
+}
+
+(*IPAddr) implements Addr {
+	(e *IPAddr) Network() string {
+		return e.Network()
+	}
+
+	(e *IPAddr) String() string {
+		return e.String()
+	}
+}
+
+// Network returns the address's network name, "ip".
+ensures res == "ip"
+func (a *IPAddr) Network() (res string) { return "ip" }
+
+preserves a != nil ==> acc(a.Mem(), 1/1000)
+func (a *IPAddr) String() string // {
+//	if a == nil {
+//		return "<nil>"
+//	}
+//	ip := ipEmptyString(a.IP)
+//	if a.Zone != "" {
+//		return ip + "%" + a.Zone
+//	}
+//	return ip
+//}
+
+//func (a *IPAddr) isWildcard() bool {
+//	if a == nil || a.IP == nil {
+//		return true
+//	}
+//	return a.IP.IsUnspecified()
+//}
+
+//func (a *IPAddr) opAddr() Addr {
+//	if a == nil {
+//		return nil
+//	}
+//	return a
+//}
+
+// ResolveIPAddr returns an address of IP end point.
+//
+// The network must be an IP network name.
+//func ResolveIPAddr(network, address string) (*IPAddr, error) {
+//	if network == "" { // a hint wildcard for Go 1.0 undocumented behavior
+//		network = "ip"
+//	}
+//	afnet, _, err := parseNetwork(context.Background(), network, false)
+//	if err != nil {
+//		return nil, err
+//	}
+//	switch afnet {
+//	case "ip", "ip4", "ip6":
+//	default:
+//		return nil, UnknownNetworkError(network)
+//	}
+//	addrs, err := DefaultResolver.internetAddrList(context.Background(), afnet, address)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return addrs.forResolve(network, address).(*IPAddr), nil
+//}
+
+// IPConn is the implementation of the Conn and PacketConn interfaces
+// for IP network connections.
+type IPConn struct {
+// TODO(Gobra): abstract types would be useful here
+// TODO(Gobra): embedded fields not supported
+//	conn
+}
+
+pred (i *IPConn) Mem() {
+    acc(i)
+}
+
+// SyscallConn returns a raw network connection.
+// This implements the syscall.Conn interface.
+//func (c *IPConn) SyscallConn() (syscall.RawConn, error) {
+//	if !c.ok() {
+//		return nil, syscall.EINVAL
+//	}
+//	return newRawConn(c.fd)
+//}
+
+// ReadFromIP acts like ReadFrom but returns an IPAddr.
+requires c.Mem()
+requires forall i int :: 0 <= i && i < len(b) ==> acc(&b[i])
+ensures c.Mem()
+ensures forall i int :: 0 <= i && i < len(b) ==> acc(&b[i])
+ensures 0 <= retInt && retInt <= len(b)
+func (c *IPConn) ReadFromIP(b []byte) (retInt int, *IPAddr, error) // {
+//	if !c.ok() {
+//		return 0, nil, syscall.EINVAL
+//	}
+//	n, addr, err := c.readFrom(b)
+//	if err != nil {
+//		err = &OpError{Op: "read", Net: c.fd.net, Source: c.fd.laddr, Addr: c.fd.raddr, Err: err}
+//	}
+//	return n, addr, err
+//}
+
+// ReadFrom implements the PacketConn ReadFrom method.
+requires c.Mem()
+requires forall i int :: 0 <= i && i < len(b) ==> acc(&b[i])
+ensures c.Mem()
+ensures forall i int :: 0 <= i && i < len(b) ==> acc(&b[i])
+ensures 0 <= retInt && retInt <= len(b)
+func (c *IPConn) ReadFrom(b []byte) (retInt int, Addr, error) // {
+//	if !c.ok() {
+//		return 0, nil, syscall.EINVAL
+//	}
+//	n, addr, err := c.readFrom(b)
+//	if err != nil {
+//		err = &OpError{Op: "read", Net: c.fd.net, Source: c.fd.laddr, Addr: c.fd.raddr, Err: err}
+//	}
+//	if addr == nil {
+//		return n, nil, err
+//	}
+//	return n, addr, err
+//}
+
+// ReadMsgIP reads a message from c, copying the payload into b and
+// the associated out-of-band data into oob. It returns the number of
+// bytes copied into b, the number of bytes copied into oob, the flags
+// that were set on the message and the source address of the message.
+//func (c *IPConn) ReadMsgIP(b, oob []byte) (n, oobn, flags int, addr *IPAddr, err error) {
+//	if !c.ok() {
+//		return 0, 0, 0, nil, syscall.EINVAL
+//	}
+//	n, oobn, flags, addr, err = c.readMsg(b, oob)
+//	if err != nil {
+//		err = &OpError{Op: "read", Net: c.fd.net, Source: c.fd.laddr, Addr: c.fd.raddr, Err: err}
+//	}
+//	return
+//}
+
+// WriteToIP acts like WriteTo but takes an IPAddr.
+requires c.Mem() && acc(addr.Mem(), 1/1000)
+requires forall i int :: 0 <= i && i < len(b) ==> acc(&b[i], 1/1000)
+ensures c.Mem() && acc(addr.Mem(), 1/1000)
+ensures forall i int :: 0 <= i && i < len(b) ==> acc(&b[i], 1/1000)
+func (c *IPConn) WriteToIP(b []byte, addr *IPAddr) (int, error) // {
+//	if !c.ok() {
+//		return 0, syscall.EINVAL
+//	}
+//	n, err := c.writeTo(b, addr)
+//	if err != nil {
+//		err = &OpError{Op: "write", Net: c.fd.net, Source: c.fd.laddr, Addr: addr.opAddr(), Err: err}
+//	}
+//	return n, err
+//}
+
+// WriteTo implements the PacketConn WriteTo method.
+requires c.Mem() && acc(addr.Mem(), 1/1000)
+requires forall i int :: 0 <= i && i < len(b) ==> acc(&b[i], 1/1000)
+ensures c.Mem() && acc(addr.Mem(), 1/1000)
+ensures forall i int :: 0 <= i && i < len(b) ==> acc(&b[i], 1/1000)
+func (c *IPConn) WriteTo(b []byte, addr Addr) (int, error)
 
 // Addr represents a network end point address.
 type Addr interface {
@@ -150,13 +577,6 @@ type Error interface {
 	ensures acc(Mem(), 1/1000)
 	Temporary() bool // Is the error temporary?
 }
-
-// Various errors contained in OpError.
-// (joao): global variables and errors package not supported
-/*
-var (
-	ErrWriteToConnected = errors.New("use of WriteTo with pre-connected connection")
-)*/
 
 // OpError is the error type usually returned by functions in the net
 // package. It describes the operation, network type, and address of
@@ -331,49 +751,3 @@ ensures unfolding acc(e.Mem(), _) in res == e.IsTimeout || e.IsTemporary
 
 // Buffers contains zero or more runs of bytes to write.
 type Buffers [][]byte
-
-// TODO: add support for io.Writer
-/*
-func (v *Buffers) WriteTo(w io.Writer) (n int64, err error) {
-	if wv, ok := w.(buffersWriter); ok {
-		return wv.writeBuffers(v)
-	}
-	for _, b := range *v {
-		nb, err := w.Write(b)
-		n += int64(nb)
-		if err != nil {
-			v.consume(n)
-			return n, err
-		}
-	}
-	v.consume(n)
-	return n, nil
-}
-*/
-
-/*
-func (v *Buffers) Read(p []byte) (n int, err error) {
-	for len(p) > 0 && len(*v) > 0 {
-		n0 := copy(p, (*v)[0])
-		v.consume(int64(n0))
-		p = p[n0:]
-		n += n0
-	}
-	if len(*v) == 0 {
-		err = io.EOF
-	}
-	return
-}
-
-func (v *Buffers) consume(n int64) {
-	for len(*v) > 0 {
-		ln0 := int64(len((*v)[0]))
-		if ln0 > n {
-			(*v)[0] = (*v)[0][n:]
-			return
-		}
-		n -= ln0
-		*v = (*v)[1:]
-	}
-}
-*/

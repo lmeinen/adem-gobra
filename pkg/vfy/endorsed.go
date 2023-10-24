@@ -31,7 +31,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 			return []consts.VerificationResult{consts.INVALID}, nil
 		} else {
 			existsEndorsement = true
-			issuers = append(issuers, endorsement.Token.Issuer())
+			issuers = append( /*@ perm(1/2), @*/ issuers, endorsement.Token.Issuer())
 			_, ok := trustedKeys.LookupKeyID(endorsement.VerificationKey.KeyID())
 			trustedFound = trustedFound || ok
 		}
@@ -40,7 +40,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 	if existsEndorsement {
 		results := []consts.VerificationResult{consts.ENDORSED}
 		if trustedFound {
-			results = append(results, consts.ENDORSED_TRUSTED)
+			results = append( /*@ perm(1/2), @*/ results, consts.ENDORSED_TRUSTED)
 		}
 		return results, issuers
 	} else {

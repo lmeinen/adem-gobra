@@ -1,5 +1,4 @@
 // +gobra
-
 package roots
 
 import (
@@ -20,6 +19,7 @@ type VerificationResult struct {
 
 // Verify that the given key was correctly committed to the Certificate
 // Transparency infrastructure for the given issuer.
+
 func VerifyBindingCerts(iss string, key jwk.Key, logs []*tokens.LogConfig) []VerificationResult {
 	verified := []VerificationResult{}
 	for _, logConfig := range logs {
@@ -38,7 +38,7 @@ func VerifyBindingCerts(iss string, key jwk.Key, logs []*tokens.LogConfig) []Ver
 			}
 			result.Ok = err == nil
 		}
-		verified = append(verified, result)
+		verified = append( /*@ perm(1 / 2), @*/ verified, result)
 	}
 	return verified
 }

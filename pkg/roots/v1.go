@@ -1,10 +1,10 @@
 // +gobra
+package roots
 
 /*
 This file implements the checking of root key commitments for the Certificate
 Transparency API in v1.
 */
-package roots
 
 import (
 	"context"
@@ -30,6 +30,18 @@ var ErrCertNotForIss = errors.New("certificate is not valid for issuer OI")
 var ErrCertNotForKey = errors.New("certificate is not valid for key")
 var ErrWrongEntryType = errors.New("do not recognize entry type")
 
+// @ trusted
+func doCancel(c func()) {
+	// (lmeinen) haven't been able to figure out how function types work in Gobra
+	c()
+}
+
+func toSlice(h [32]byte) []byte {
+	// (lmeinen) leaving the array to slice cast as-is (sth.SHA256RootHash[:]) causes a ClassCastException in SliceEncoding
+	// @ share h
+	return h[:]
+}
+
 // Verify that the rootKey is correctly bound to the issuer OI by the CT entry
 // identified by hash. Queries will be made to the given CT client.
 func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk.Key) error {
@@ -47,7 +59,7 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute))
-	defer cancel()
+	defer doCancel(cancel)
 
 	if sth, err := cl.GetSTH(ctx); err != nil {
 		log.Print("could not fetch STH")
@@ -61,11 +73,11 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 	} else if respE, err := cl.GetEntryAndProof(ctx, uint64(respH.LeafIndex), sth.TreeSize); err != nil {
 		log.Print("could not fetch entry")
 		return err
-	} else if err := merkleProof.VerifyInclusion(rfc6962.DefaultHasher, uint64(respH.LeafIndex), sth.TreeSize, hash, respE.AuditPath, sth.SHA256RootHash[:]); err != nil {
+	} else if err := merkleProof.VerifyInclusion(rfc6962.DefaultHasher, uint64(respH.LeafIndex), sth.TreeSize, hash, respE.AuditPath, toSlice((sth.SHA256RootHash))); err != nil {
 		log.Print("could not verify inclusion proof")
 		return err
 	} else {
-		var certT ct.CertificateTimestamp
+		var certT /*@@@*/ ct.CertificateTimestamp
 		if _, err := tls.Unmarshal(respE.LeafInput, &certT); err != nil {
 			log.Print("could not parse certificate timestamp")
 			return err
@@ -83,7 +95,7 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 				log.Print("could not parse certificate")
 				return err
 			} else {
-				subjects := append(cert.DNSNames, cert.Subject.CommonName)
+				subjects := append( /*@ perm(1/2), @*/ cert.DNSNames, cert.Subject.CommonName)
 				if !util.ContainsString(subjects, issuerUrl.Hostname()) {
 					return ErrCertNotForIss
 				} else if !util.ContainsString(subjects, fmt.Sprintf("%s.adem-configuration.%s", kid, issuerUrl.Hostname())) {

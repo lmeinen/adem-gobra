@@ -11,6 +11,7 @@ import (
 
 // Check that the given emblem's ass claim complies with the given ass
 // constraints.
+
 func checkAssetConstraint(emblem jwt.JwtToken, constraints EmblemConstraints) bool {
 	ass, _ := emblem.Get("ass")
 	// (lmeinen) Gobra can't parse the range expression properly when the type cast is inlined
@@ -37,6 +38,7 @@ var ErrWndConstraint = errors.New("emblem does not satisfy wnd constraint")
 
 // Verify that the given emblem complies with the given endorsement's
 // constraints.
+
 func VerifyConstraints(emblem jwt.JwtToken, endorsement jwt.JwtToken) error {
 	if endCnstrs, ok := endorsement.Get("emb"); !ok {
 		return nil
