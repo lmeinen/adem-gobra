@@ -59,11 +59,6 @@ type TokenVerificationResult struct {
 	err   error
 }
 
-func doSend(results chan *TokenVerificationResult, result *TokenVerificationResult) {
-	// (lmeinen) Gobra doesn't handle anonymous function call properly
-	results <- result
-}
-
 // Verify an ADEM token's signature. Designed to be called asynchronously.
 // Results will be returned to the [results] channel. Verification keys will be
 // obtained from [km].
@@ -106,8 +101,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 			3 To verify a security level: Assuming the two above steps have been executed, walk the endorsement chain and check the security level of the emblem as defined in ADEM (incl. endorsement constraints)
 	*/
 
-	// (lmeinen) 1 - verify the JWT tokens AND that the key chain results in a valid root key
-	// 		only verified keys are used to verify JWT signatures
+	// (lmeinen) 1 - verify the JWT tokens AND that the key chain results in a valid root key only verified keys are used to verify JWT signatures
 	ts := awaitTokenSignatureResults(km, threadCount, results)
 
 	// (lmeinen) 2 - validate the JWT tokens AND that the required fields are present and valid
@@ -120,7 +114,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 				// Multiple emblems
 				log.Print("Token set contains multiple emblems")
 				return ResultInvalid()
-			} else if err := jwt.Validate(t.Token, jwt.WithValidator(jwt.ValidatorFunc(tokens.EmblemValidator))); err != nil {
+			} else if err := jwt.Validate(t.Token, jwt.WithValidator(tokens.EmblemValidator)); err != nil {
 				log.Printf("Invalid emblem: %s", err)
 				return ResultInvalid()
 			} else {
@@ -136,7 +130,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) VerificationResults {
 				}
 			}
 		} else if t.Headers.ContentType() == string(consts.EndorsementCty) {
-			err := jwt.Validate(t.Token, jwt.WithValidator(jwt.ValidatorFunc(tokens.EndorsementValidator)))
+			err := jwt.Validate(t.Token, jwt.WithValidator(tokens.EndorsementValidator))
 			if err != nil {
 				log.Printf("Invalid endorsement: %s", err)
 			} else {
@@ -235,4 +229,9 @@ func setupPromiseChain(rawTokens [][]byte, trustedKeys jwk.Set) (int, *keyManage
 	// Wait until all verification threads obtained a verification key promise.
 	km.waitForInit()
 	return threadCount, km, results
+}
+
+func doSend(results chan *TokenVerificationResult, result *TokenVerificationResult) {
+	// FIXME: (lmeinen) Gobra doesn't handle anonymous function call properly
+	results <- result
 }

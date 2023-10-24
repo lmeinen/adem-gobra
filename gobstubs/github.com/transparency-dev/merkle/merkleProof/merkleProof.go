@@ -1,6 +1,8 @@
 // +gobra
 package merkleProof
 
+// FIXME: (lmeinen) Had to rename this package from proof to merkleProof due to reserved Gobra keywords
+
 import (
 	"github.com/transparency-dev/merkle"
 )

@@ -28,6 +28,7 @@ var ErrIllegalConst = errors.New("json element is illegal constant")
 
 type PurposeMask byte
 
+// FIXME: (lmeinen) Gobra throws a NumberFormatException for the below binary literals
 // const Protective PurposeMask = 0b0000_0001
 const Protective PurposeMask = 0x01
 
@@ -68,6 +69,7 @@ func (pm *PurposeMask) MarshalJSON() ([]byte, error) {
 
 type ChannelMask byte
 
+// FIXME: (lmeinen) Gobra throws a NumberFormatException for the below binary literals
 // const DNS ChannelMask = 0b0000_0001
 const DNS ChannelMask = 0x01
 
@@ -137,7 +139,6 @@ type LeafHash struct {
 
 // Attempt to parse a JSON value as string that contains a base64-encoded leaf
 // hash.
-
 func (h *LeafHash) UnmarshalJSON(bs []byte) (err error) {
 	trimmed := bytes.Trim(bs, `"`)
 	if raw, e := util.B64Dec(trimmed); e != nil {
@@ -160,7 +161,6 @@ type EmbeddedKey struct {
 
 // Attempt to parse a JSON value as string that contains a single JWK in JSON
 // encoding.
-
 func (ek *EmbeddedKey) UnmarshalJSON(bs []byte) (err error) {
 	trimmed := bytes.Trim(bs, `"`)
 	if k, e := jwk.ParseKey(trimmed); e != nil {
@@ -175,47 +175,14 @@ var ErrIllegalVersion = jwt.NewValidationError(errors.New("illegal version"))
 var ErrIllegalType = jwt.NewValidationError(errors.New("illegal claim type"))
 var ErrAssMissing = jwt.NewValidationError(errors.New("emblems require ass claim"))
 
-// Validate that an OI has the form https://DOMAINNAME.
-
-func validateOI(oi string) error {
-	if oi == "" {
-		return nil
-	}
-
-	url, err := url.Parse(oi)
-	if err != nil {
-		return errors.New("could not parse OI")
-	}
-	if url.Scheme != "https" || url.Host == "" || url.Opaque != "" || url.User != nil || url.RawPath != "" || url.RawQuery != "" || url.RawFragment != "" {
-		return errors.New("illegal OI")
-	}
-	return nil
-}
-
-// Validate claims shared by emblems and endorsements.
-
-func validateCommon(t jwt.JwtToken) jwt.ValidationError {
-	if err := jwt.Validate(t); err != nil {
-		return foo(err)
-	}
-
-	if ver, ok := t.Get(`ver`); !ok || ver.(string) != string(consts.V1) {
-		return ErrIllegalVersion
-	}
-
-	if validateOI(t.Issuer()) != nil {
-		return jwt.ErrInvalidIssuer()
-	}
-
-	return nil
-}
-
 // @ trusted
-func foo(err error) jwt.ValidationError {
+func castToValidationError(err error) jwt.ValidationError {
+	// FIXME: (lmeinen) Gobra throws a RuntimeException for this cast - it seems to assume the existence of a 'proof' clause somewhere
 	return err.(jwt.ValidationError)
 }
 
-func EmblemValidator(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
+// FIXME: (lmeinen) This function was originally inlined: Gobra doesn't appear to fully support function types
+func validateEmblem(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
 	if err := validateCommon(t); err != nil {
 		return err
 	}
@@ -228,9 +195,10 @@ func EmblemValidator(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
 }
 
 // Validation function for emblem tokens.
-// var EmblemValidator = jwt.ValidatorFunc(ValidateEmblem)
+var EmblemValidator = jwt.ValidatorFunc(validateEmblem)
 
-func EndorsementValidator(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
+// FIXME: (lmeinen) This function was originally inlined: Gobra doesn't appear to fully support function types
+func validateEndorsement(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
 	if err := validateCommon(t); err != nil {
 		return err
 	}
@@ -247,4 +215,37 @@ func EndorsementValidator(_ context.Context, t jwt.JwtToken) jwt.ValidationError
 }
 
 // Validation function for endorsement tokens.
-// var EndorsementValidator = jwt.ValidatorFunc(ValidateEndorsement)
+var EndorsementValidator = jwt.ValidatorFunc(validateEndorsement)
+
+// Validate that an OI has the form https://DOMAINNAME.
+func validateOI(oi string) error {
+	if oi == "" {
+		return nil
+	}
+
+	url, err := url.Parse(oi)
+	if err != nil {
+		return errors.New("could not parse OI")
+	}
+	if url.Scheme != "https" || url.Host == "" || url.Opaque != "" || url.User != nil || url.RawPath != "" || url.RawQuery != "" || url.RawFragment != "" {
+		return errors.New("illegal OI")
+	}
+	return nil
+}
+
+// Validate claims shared by emblems and endorsements.
+func validateCommon(t jwt.JwtToken) jwt.ValidationError {
+	if err := jwt.Validate(t); err != nil {
+		return castToValidationError(err)
+	}
+
+	if ver, ok := t.Get(`ver`); !ok || ver.(string) != string(consts.V1) {
+		return ErrIllegalVersion
+	}
+
+	if validateOI(t.Issuer()) != nil {
+		return jwt.ErrInvalidIssuer()
+	}
+
+	return nil
+}

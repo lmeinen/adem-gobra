@@ -1,5 +1,4 @@
 // +gobra
-
 package vfy
 
 import (

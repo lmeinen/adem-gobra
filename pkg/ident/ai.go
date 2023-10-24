@@ -143,13 +143,6 @@ func ParseAI(aiStr string) (*AI, error) {
 	return &ai, nil
 }
 
-// @ trusted
-func isIPv6(s string) bool {
-	// TODO: (lmeinen) is there any way I can reduce this trusted function?
-	// string indexing is currently not supported by Gobra
-	return s[0] == '['
-}
-
 func (ai *AI) String() string {
 	var port string
 	if ai.port != nil {
@@ -171,4 +164,11 @@ func (ai *AI) String() string {
 
 func (ai *AI) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ai.String())
+}
+
+// @ trusted
+func isIPv6(s string) bool {
+	// FIXME: (lmeinen) is there any way I can reduce this trusted function?
+	// string indexing is currently not supported by Gobra
+	return s[0] == '['
 }

@@ -1,5 +1,4 @@
 // +gobra
-
 package consts
 
 type CTY string
@@ -18,7 +17,7 @@ const TLS string = "tls"
 const Protective string = "protective"
 const Indicative string = "indicative"
 
-// (lmeinen) moved from vfy.go to allow concrete type instantiation of ContainsVerificationResult in slice.go
+// (lmeinen) --- moved from vfy.go to allow concrete type instantiation of ContainsVerificationResult in slice.go ---
 type VerificationResult byte
 
 func (vr VerificationResult) String() string {
@@ -52,3 +51,5 @@ const ENDORSED VerificationResult = 4
 const SIGNED_TRUSTED VerificationResult = 5
 const ORGANIZATIONAL_TRUSTED VerificationResult = 6
 const ENDORSED_TRUSTED VerificationResult = 7
+
+// ------------------------------------------------------------------------------------------------------------------

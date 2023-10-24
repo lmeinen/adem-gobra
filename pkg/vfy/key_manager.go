@@ -1,5 +1,4 @@
 // +gobra
-
 package vfy
 
 import (
@@ -88,12 +87,6 @@ func (km *keyManager) killListeners() {
 		}
 		doDelete(km.listeners, k)
 	}
-}
-
-// @ trusted
-// @ preserves acc(listeners)
-func doDelete(listeners map[string][]util.Promise, k string) {
-	delete(listeners, k)
 }
 
 // How many blocked threads are there that wait for a key promise to be resolved?
@@ -213,4 +206,11 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 
 	sink.Key(jwa.SignatureAlgorithm(verificationKey.Algorithm().String()), verificationKey)
 	return nil
+}
+
+// @ trusted
+// @ preserves acc(listeners)
+func doDelete(listeners map[string][]util.Promise, k string) {
+	// FIXME: (lmeinen) delete expression not supported in Gobra
+	delete(listeners, k)
 }

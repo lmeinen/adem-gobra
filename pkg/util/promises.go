@@ -1,50 +1,43 @@
 // +gobra
-
 package util
 
 import jwk "github.com/lestrrat-go/jwx/v2/jwk"
 
+// An interface to implement promises that can be created and fullfilled later.
 type Promise interface {
+	// Fullfil the promise. [Get] will unblock (when called already) or succeed
+	// (when called later).
 	Fulfill(jwk.Key)
-
+	// Cancel a promise. Subsequent calls to [Get] will return T's null value.
 	Reject()
-
+	// Return the value of the promise. Will only return the result the promise
+	// was fullfilled with exactly once. Afterwards, it will return the null
+	// value. Call will block on unfullfilled promise.
 	Get() (res jwk.Key)
 }
 
 type promise struct {
-	ch    chan jwk.Key
-	state int // Gobra doesn't yet support ghost struct members
+	ch chan jwk.Key
 }
 
 // Create a new promise.
-
 func NewPromise() (res Promise) {
-	newProm /*@@@*/ := promise{ch: make(chan jwk.Key, 1), state: 0}
-	// @ newProm.ch.Init(SendInvariant!<_!>, PredTrue!<!>)
-	// @ newProm.ch.CreateDebt(1, 2, PredTrue!<!>)
+	newProm /*@@@*/ := promise{ch: make(chan jwk.Key, 1)}
 	return &newProm
 }
 
 func (p *promise) Fulfill(val jwk.Key) {
-	// @ fold SendInvariant!<_!>(val)
 	p.ch <- val
-	// @ fold PredTrue!<!>()
 	close(p.ch /*@, 1, 2, PredTrue!<!> @*/)
-	p.state = 1
 
 }
 
 func (p *promise) Reject() {
-	// @ fold PredTrue!<!>()
 	close(p.ch /*@, 1, 2, PredTrue!<!> @*/)
-	p.state = 2
 }
 
 func (p *promise) Get() (res jwk.Key) {
-	// @ fold PredTrue!<!>()
 	e := <-p.ch
-	p.state = 3
 	return e
 }
 
@@ -59,9 +52,3 @@ func Rejected() (res Promise) {
 	p.Reject()
 	return p
 }
-
-/*@
-pred SendInvariant(val jwk.Key) {
-  true
-}
-@*/

@@ -47,7 +47,6 @@ func storeLogs(rawJson []byte) error {
 }
 
 // Get the log client associate to a CT log ID.
-
 func GetLogClient(id string) (*client.LogClient, error) {
 	logMapLock.Lock()
 	defer logMapLock.Unlock()
@@ -80,7 +79,6 @@ type LogKey struct {
 }
 
 // Decodes a base64-encoded JSON string into a CT log public key.
-
 func (k *LogKey) UnmarshalJSON(bs []byte) (err error) {
 	if raw, e := util.B64Dec(bytes.Trim(bs, `"`)); e != nil {
 		err = e
@@ -91,7 +89,6 @@ func (k *LogKey) UnmarshalJSON(bs []byte) (err error) {
 }
 
 // Load logs from a given log list.
-
 func fetchLogs(url string) error {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -108,13 +105,11 @@ func fetchLogs(url string) error {
 }
 
 // Load logs known to Google.
-
 func FetchGoogleKnownLogs() error {
 	return fetchLogs(log_list_google)
 }
 
 // Load logs known to Apple.
-
 func FetchAppleKnownLogs() error {
 	return fetchLogs(log_list_apple)
 }

@@ -105,7 +105,7 @@ func NewValidationError(err error) ValidationError
 // type ValidatorFunc func(context.Context, JwtToken) ValidationError
 // func (vf ValidatorFunc) Validate(ctx context.Context, tok JwtToken) ValidationError
 
-// FIXME: (lmeinen) This is the only way I could find to deal with Gobra's limited support for function types
+// FIXME: (lmeinen) Gobra doesn't appear to fully support function types
 func ValidatorFunc(f func(context.Context, JwtToken) ValidationError) Validator
 
 // RegisterCustomField allows users to specify that a private field

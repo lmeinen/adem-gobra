@@ -1,10 +1,11 @@
 // +gobra
-
 package util
 
 import (
 	"github.com/adem-wg/adem-proto/pkg/consts"
 )
+
+// FIXME: (lmeinen) Needed two separate concrete type instantiations for generic Contains function - maybe introduce a union type to ensure we only verify one function body?
 
 func ContainsVerificationResult(slice []consts.VerificationResult, v consts.VerificationResult) (res bool) {
 	for _, elem := range slice {

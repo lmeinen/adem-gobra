@@ -30,18 +30,6 @@ var ErrCertNotForIss = errors.New("certificate is not valid for issuer OI")
 var ErrCertNotForKey = errors.New("certificate is not valid for key")
 var ErrWrongEntryType = errors.New("do not recognize entry type")
 
-// @ trusted
-func doCancel(c func()) {
-	// (lmeinen) haven't been able to figure out how function types work in Gobra
-	c()
-}
-
-func toSlice(h [32]byte) []byte {
-	// (lmeinen) leaving the array to slice cast as-is (sth.SHA256RootHash[:]) causes a ClassCastException in SliceEncoding
-	// @ share h
-	return h[:]
-}
-
 // Verify that the rootKey is correctly bound to the issuer OI by the CT entry
 // identified by hash. Queries will be made to the given CT client.
 func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk.Key) error {
@@ -105,4 +93,16 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 		}
 	}
 	return nil
+}
+
+// @ trusted
+func doCancel(c func()) {
+	// FIXME: (lmeinen) Gobra doesn't appear to fully support function types
+	c()
+}
+
+func toSlice(h [32]byte) []byte {
+	// FIXME: (lmeinen) leaving the array to slice cast as-is (sth.SHA256RootHash[:]) causes a ClassCastException in SliceEncoding
+	// @ share h
+	return h[:]
 }
