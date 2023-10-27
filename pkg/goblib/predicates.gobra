@@ -1,6 +1,5 @@
 // +gobra
-
-package predicates
+package goblib
 
 pred BytesMem(bytes []byte) {
     forall i int :: 0 <= i && i < len(bytes) ==> acc(&bytes[i])

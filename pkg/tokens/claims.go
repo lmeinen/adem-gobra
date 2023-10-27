@@ -175,14 +175,11 @@ var ErrIllegalVersion = jwt.NewValidationError(errors.New("illegal version"))
 var ErrIllegalType = jwt.NewValidationError(errors.New("illegal claim type"))
 var ErrAssMissing = jwt.NewValidationError(errors.New("emblems require ass claim"))
 
-// @ trusted
-func castToValidationError(err error) jwt.ValidationError {
-	// FIXME: (lmeinen) Gobra throws a RuntimeException for this cast - it seems to assume the existence of a 'proof' clause somewhere
-	return err.(jwt.ValidationError)
-}
-
 // FIXME: (lmeinen) This function was originally inlined: Gobra doesn't appear to fully support function types
-func validateEmblem(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
+type EmblemValidatorS struct{}
+
+// Validation function for emblem tokens.
+func (EmblemValidatorS) Validate(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
 	if err := validateCommon(t); err != nil {
 		return err
 	}
@@ -194,11 +191,13 @@ func validateEmblem(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
 	return nil
 }
 
-// Validation function for emblem tokens.
-var EmblemValidator = jwt.ValidatorFunc(validateEmblem)
+var EmblemValidator = EmblemValidatorS{}
 
 // FIXME: (lmeinen) This function was originally inlined: Gobra doesn't appear to fully support function types
-func validateEndorsement(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
+type EndorsementValidatorS struct{}
+
+// Validation function for endorsement tokens.
+func (EndorsementValidatorS) Validate(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
 	if err := validateCommon(t); err != nil {
 		return err
 	}
@@ -214,8 +213,7 @@ func validateEndorsement(_ context.Context, t jwt.JwtToken) jwt.ValidationError 
 	return nil
 }
 
-// Validation function for endorsement tokens.
-var EndorsementValidator = jwt.ValidatorFunc(validateEndorsement)
+var EndorsementValidator = EndorsementValidatorS{}
 
 // Validate that an OI has the form https://DOMAINNAME.
 func validateOI(oi string) error {
@@ -236,7 +234,7 @@ func validateOI(oi string) error {
 // Validate claims shared by emblems and endorsements.
 func validateCommon(t jwt.JwtToken) jwt.ValidationError {
 	if err := jwt.Validate(t); err != nil {
-		return castToValidationError(err)
+		return jwt.NewValidationError(err)
 	}
 
 	if ver, ok := t.Get(`ver`); !ok || ver.(string) != string(consts.V1) {

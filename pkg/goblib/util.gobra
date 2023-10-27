@@ -1,0 +1,19 @@
+// +gobra
+package goblib
+
+import "github.com/adem-wg/adem-proto/pkg/consts"
+
+ghost
+requires acc(slice, _)
+pure func GhostContainsResult(slice []consts.VerificationResult, v consts.VerificationResult) bool { 
+  return v in toSeq(slice)
+}
+
+ghost
+requires acc(s, _)
+ensures len(res) == len(s)
+ensures forall j int :: {s[j]} {res[j]} 0 <= j && j < len(s) ==> s[j] == res[j]
+pure func toSeq(s []consts.VerificationResult) (res seq[consts.VerificationResult]) {
+  return (len(s) == 0 ? seq[consts.VerificationResult]{} :
+                        toSeq(s[:len(s)-1]) ++ seq[consts.VerificationResult]{s[len(s) - 1]})
+}

@@ -6,10 +6,15 @@ import (
 
 	"github.com/adem-wg/adem-proto/pkg/consts"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
+	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set) ([]consts.VerificationResult, *ADEMToken) {
+// @ trusted
+// @ ensures acc(vfyResults)
+// @ ensures forall i int :: { vfyResults[i] } 0 <= i && i < len(vfyResults) ==> acc(&vfyResults[i])
+// @ ensures !goblib.GhostContainsResult(vfyResults, consts.INVALID) ==> acc(t) && t.VerificationKey != nil && t.Headers != nil && t.Token != nil
+func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set) (vfyResults []consts.VerificationResult, t *ADEMToken) {
 	endorsedBy := make(map[string]*ADEMToken)
 	for _, endorsement := range endorsements {
 		kid, err := tokens.GetEndorsedKID(endorsement.Token)

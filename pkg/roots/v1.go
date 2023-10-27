@@ -47,7 +47,7 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute))
-	defer doCancel(cancel)
+	defer cancel() /*@ as context.CancelFunc @*/
 
 	if sth, err := cl.GetSTH(ctx); err != nil {
 		log.Print("could not fetch STH")
@@ -93,12 +93,6 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 		}
 	}
 	return nil
-}
-
-// @ trusted
-func doCancel(c func()) {
-	// FIXME: (lmeinen) Gobra doesn't appear to fully support function types
-	c()
 }
 
 func toSlice(h [32]byte) []byte {

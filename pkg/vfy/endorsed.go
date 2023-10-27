@@ -6,10 +6,16 @@ import (
 
 	"github.com/adem-wg/adem-proto/pkg/consts"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
+	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set) ([]consts.VerificationResult, []string) {
+// @ trusted
+// @ ensures endorsedResults != nil ==> (
+// @	acc(endorsedResults) &&
+// @	(!goblib.GhostContainsResult(endorsedResults, consts.INVALID) ==> endorsedBy != nil))
+// @ ensures endorsedBy != nil ==> acc(endorsedBy)
+func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set) (endorsedResults []consts.VerificationResult, endorsedBy []string) {
 	issuers := []string{}
 	trustedFound := false
 	existsEndorsement := false

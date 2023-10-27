@@ -53,5 +53,12 @@ func TODO() (res Context)
 // Background returns a non-nil, empty [Context].
 func Background() Context
 
+// A CancelFunc tells an operation to abandon its work.
+// A CancelFunc does not wait for the work to stop.
+// A CancelFunc may be called by multiple goroutines simultaneously.
+// After the first call, subsequent calls to a CancelFunc do nothing.
+// FIXME: (lmeinen) adapted from 'type CancelFunc func()' - which Gobra can't seem to deal with
+func CancelFunc()
+
 // WithTimeout returns WithDeadline(parent, time.Now().Add(timeout)).
 func WithTimeout(parent Context, timeout time.Duration) (Context, func())

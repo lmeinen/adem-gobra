@@ -32,7 +32,7 @@ type JwtToken interface {
 	// Get returns the value of the corresponding field in the token, such as
 	// `nbf`, `exp`, `iat`, and other user-defined fields. If the field does not
 	// exist in the token, the second return value will be `false`
-	Get(string) (interface{}, bool)
+	Get(key string) (res interface{}, _ bool)
 }
 
 type ValidationError interface {
@@ -100,14 +100,6 @@ type Validator interface {
 
 func NewValidationError(err error) ValidationError
 
-// ValidatorFunc is a type of Validator that does not have any
-// state, that is implemented as a function
-// type ValidatorFunc func(context.Context, JwtToken) ValidationError
-// func (vf ValidatorFunc) Validate(ctx context.Context, tok JwtToken) ValidationError
-
-// FIXME: (lmeinen) Gobra doesn't appear to fully support function types
-func ValidatorFunc(f func(context.Context, JwtToken) ValidationError) Validator
-
 // RegisterCustomField allows users to specify that a private field
 // be decoded as an instance of the specified type. This option has
 // a global effect.
@@ -130,6 +122,7 @@ func WithValidator(v Validator) ValidateOption
 
 // Parse parses the JWT token payload and creates a new `jwt.Token` object.
 // The token must be encoded in either JSON format or compact format.
+// TODO: Use type constraints set in claims.go init function to return type guarantees
 func Parse(s []byte, options ...ParseOption) (JwtToken, error)
 
 // WithKeyProvider allows users to specify an object to provide keys to

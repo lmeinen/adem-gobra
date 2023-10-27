@@ -29,6 +29,8 @@ type ParseOption interface {
 
 // Set represents JWKS object, a collection of jwk.Key objects.
 type Set interface {
+	// @ pred Mem()
+
 	// AddKey adds the specified key. If the key already exists in the set,
 	// an error is returned.
 	AddKey(Key) error

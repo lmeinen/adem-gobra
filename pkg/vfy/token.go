@@ -15,6 +15,7 @@ type ADEMToken struct {
 	Token           jwt.JwtToken
 }
 
+// @ trusted
 func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.JwtToken) (*ADEMToken, error) {
 	verifKey := km.getVerificationKey(sig).Get()
 	if verifKey == nil {
