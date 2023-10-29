@@ -33,21 +33,17 @@ type keyManager struct {
 	listeners map[string][]util.Promise
 }
 
-/*@
-pred WaitInv() {
-	true
-}
-@*/
-
 // Creates a new key manager to verify [numThreads]-many tokens asynchronously.
 // @ trusted
-// @ requires numThreads > 0
-// @ ensures acc(res) &&
-// @ 	acc(res.init.WaitGroupP(), 1/2) &&
+// @ requires numThreads >= 0
+// @ ensures acc(res)
+// @ ensures acc(res.init.WaitGroupP(), 1/2) &&
 // @ 	acc(res.init.WaitGroupStarted(), 1/2) &&
 // @ 	!res.init.WaitMode() &&
 // @ 	acc(res.init.UnitDebt(WaitInv!<!>), numThreads/1) &&
 // @ 	res.init.Token(WaitInv!<!>)
+// @ ensures acc(res.keys)
+// @ ensures acc(res.listeners)
 func NewKeyManager(numThreads int) (res *keyManager) {
 	var km /*@@@*/ keyManager
 	// @ km.init.Init()
@@ -79,6 +75,8 @@ func (km *keyManager) waitForInit() {
 
 // Cancel any further verification.
 // @ trusted
+// @ preserves acc(km)
+// @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km.listeners!>
 func (km *keyManager) killListeners() {
 	km.lock.Lock()
 	defer km.lock.Unlock()
@@ -93,7 +91,9 @@ func (km *keyManager) killListeners() {
 
 // How many blocked threads are there that wait for a key promise to be resolved?
 // @ trusted
-func (km *keyManager) waiting() int {
+// @ preserves acc(km)
+// @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km.listeners!>
+func (km *keyManager) waiting() (res int) {
 	km.lock.Lock()
 	defer km.lock.Unlock()
 
@@ -106,6 +106,10 @@ func (km *keyManager) waiting() int {
 
 // Store a verified key and notify listeners waiting for that key.
 // @ trusted
+// @ preserves acc(km)
+// @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km.listeners!>
+// @	forall j int :: 0 <= j && j < len(rawTokens[i]) ==> acc(&rawTokens[i][j]))
+// @ requires acc(k, _)
 func (km *keyManager) put(k jwk.Key) bool {
 	km.lock.Lock()
 	defer km.lock.Unlock()
@@ -221,3 +225,15 @@ func doDelete(listeners map[string][]util.Promise, k string) {
 	// FIXME: (lmeinen) delete expression not supported in Gobra
 	delete(listeners, k)
 }
+
+/*@
+pred WaitInv() {
+	true
+}
+@*/
+
+/*@
+pred LockInv(listeners map[string][]util.Promise) {
+	acc(listeners)
+}
+@*/

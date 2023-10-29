@@ -69,9 +69,7 @@ type TokenVerificationResult struct {
 // @ trusted
 func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult) {
 	result /*@@@*/ := TokenVerificationResult{}
-	// defer doSend(results, &result)
-	c := func /*@ f @*/ () { results <- &result }
-	defer c() /*@ as f @*/
+	defer func /*@ f @*/ () { results <- &result }() /*@ as f @*/
 
 	jwtT, err := jwt.Parse(rawToken, jwt.WithKeyProvider(km))
 	if err != nil {
@@ -95,11 +93,8 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 
 // Verify a slice of ADEM tokens.
 // @ requires acc(rawTokens)
-// @ requires forall i int :: 0 <= i && i < len(rawTokens) ==> (
-// @	acc(&rawTokens[i]) &&
-// @ 	acc(rawTokens[i]) &&
-// @	forall j int :: 0 <= j && j < len(rawTokens[i]) ==> acc(&rawTokens[i][j]))
-// @ requires trustedKeys.Mem()
+// @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
+// @ requires acc(trustedKeys.Mem(), _)
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
 func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResults) {
 
@@ -112,8 +107,20 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 	// (lmeinen) 0 - set up chain of promises from root keys to signing keys
 	// @ trusted
+	// @ requires acc(rawTokens)
+	// @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
+	// @ requires acc(trustedKeys.Mem(), _)
+	// @ ensures acc(km) &&
+	// @ 	acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km.listeners!>
 	// @ ensures threadCount >= 0
-	// @ ensures acc(km)
+	// @ ensures results.RecvChannel() &&
+	// @ 	acc(results.SendChannel(), 1 / (threadCount + 2)) &&
+	// @ 	results.SendGivenPerm() == resultsInvariant!<_!> &&
+	// @ 	results.SendGotPerm() == PredTrue!<!> &&
+	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
+	// @ 	results.RecvGotPerm() == resultsInvariant!<_!> &&
+	// @ 	results.Token(PredTrue!<!>) &&
+	// @ 	results.ClosureDebt(PredTrue!<!>, 1, threadCount + 2)
 	// @ outline (
 	// We maintain a thread count for termination purposes. It might be that we
 	// cannot verify all token's verification key and must cancel verification.
@@ -122,9 +129,11 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 	// Put trusted public keys into key manager. This allows for termination for
 	// tokens without issuer.
+	// TODO: (lmeinen) check on Context semantics and encode in lib stub
 	ctx := context.TODO()
 	iter := trustedKeys.Keys(ctx)
 	for iter.Next(ctx) {
+		// TODO: (lmeinen) how to do mem permissions with type casts like this? See protected below for second examplej
 		km.put(iter.Pair().Value.(jwk.Key))
 	}
 
@@ -139,15 +148,48 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	km.waitForInit()
 	// @ )
 
+	// TODO: (lmeinen) Capture intuition that a result in the results channel means a thread has (or is about to) finished (see defer stmt in vfyTokens func)
+	//			--> SendChannel perms need to be returned, too!
+	// TODO: (lmeinen) Capture intuition that the number of listeners in km was set in step 0, and is now only going to decrease continuously
+	//			--> write perm to km.listeners in preconditions (promises coming in handy) + suitable postconditions regarding no of listeners
+	// TODO: (lmeinen) Come up with suitable termination measure: threadCount decreases and (therefore) SendChannel perm increases --> result will be nil
 	// (lmeinen) 1 - verify the JWT tokens AND that the key chain results in a valid root key only verified keys are used to verify JWT signatures
-	// @ trusted
+	// @ requires threadCount >= 0
+	// @ requires results.RecvChannel() &&
+	// @ 	acc(results.SendChannel(), 1 / (threadCount + 2)) &&
+	// @ 	results.SendGivenPerm() == resultsInvariant!<_!> &&
+	// @ 	results.SendGotPerm() == PredTrue!<!> &&
+	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
+	// @ 	results.RecvGotPerm() == resultsInvariant!<_!> &&
+	// @ 	results.Token(PredTrue!<!>) &&
+	// @ 	results.ClosureDebt(PredTrue!<!>, 1, threadCount + 2)
+	// @ requires acc(km) &&
+	// @ 	acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km.listeners!>
 	// @ ensures acc(ts)
 	// @ ensures forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> acc(ts[i]) &&
 	// @ 	ts[i].VerificationKey != nil &&
 	// @ 	ts[i].Headers != nil &&
 	// @ 	ts[i].Token != nil
+	// @ trusted
 	// @ outline (
 	ts := []*ADEMToken{}
+	// @ invariant results.RecvChannel() &&
+	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
+	// @ 	results.RecvGotPerm() == resultsInvariant!<_!> &&
+	// @ 	results.Token(PredTrue!<!>) &&
+	// @ 	(threadCount > 0 ==> (
+	// @ 		acc(results.SendChannel(), 1 / (threadCount + 2)) &&
+	// @ 		results.SendGivenPerm() == resultsInvariant!<_!> &&
+	// @ 		results.SendGotPerm() == PredTrue!<!> &&
+	// @ 		results.ClosureDebt(PredTrue!<!>, 1, threadCount + 2))) &&
+	// @ 	(threadCount == 0 ==> results.Closed())
+	// @ invariant acc(km) &&
+	// @ 	acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km.listeners!>
+	// @ invariant acc(ts)
+	// @ invariant forall k int :: { ts[k] } 0 <= k && k < len(ts) ==> acc(ts[k]) &&
+	// @ 	ts[k].VerificationKey != nil &&
+	// @ 	ts[k].Headers != nil &&
+	// @ 	ts[k].Token != nil
 	for {
 		// [waiting] is the number of unresolved promises in the key manager, i.e.,
 		// blocked threads that wait for a verification key.
@@ -171,6 +213,8 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 				// close the [results] channel, when all threads have terminated.
 				close(results /*@, 1, 2, PredTrue!<!> @*/)
 			}
+
+			// @ unfold resultsInvariant!<result!>()
 
 			if result.err != nil {
 				log.Printf("discarding invalid token: %s", result.err)
@@ -259,3 +303,9 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 		protected:  protected,
 	}
 }
+
+/*@
+pred resultsInvariant(result *TokenVerificationResult) {
+	acc(result) && acc(result.token)
+}
+@*/

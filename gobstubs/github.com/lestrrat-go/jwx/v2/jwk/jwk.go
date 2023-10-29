@@ -8,7 +8,8 @@ import (
 )
 
 // NewSet creates and empty `jwk.Set` object
-func NewSet() Set
+// @ ensures s.Mem()
+func NewSet() (s Set)
 
 // ParseOption is a type of Option that can be passed to `jwk.Parse()`
 type ParseOption interface {
@@ -33,13 +34,16 @@ type Set interface {
 
 	// AddKey adds the specified key. If the key already exists in the set,
 	// an error is returned.
-	AddKey(Key) error
+	// @ preserves Mem() && acc(k.Mem(), _)
+	AddKey(k Key) error
 
 	// Keys creates an iterator to iterate through all keys in the set.
+	// @ preserves acc(Mem(), _)
 	Keys(context.Context) KeyIterator
 
 	// LookupKeyID returns the first key matching the given key id.
 	// The second return value is false if there are no keys matching the key id.
+	// @ preserves acc(Mem(), _)
 	LookupKeyID(string) (Key, bool)
 }
 
@@ -60,25 +64,34 @@ const (
 // Key defines the minimal interface for each of the
 // key types.
 type Key interface {
+	// @ pred Mem()
+
 	// Set sets the value of a single field. Note that certain fields,
 	// notably "kty", cannot be altered, but will not return an error
+	// @ preserves Mem()
 	Set(string, interface{}) error
 
 	// Remove removes the field associated with the specified key.
+	// @ preserves Mem()
 	Remove(string) error
 
 	// PublicKey creates the corresponding PublicKey type for this object.
 	// All fields are copied onto the new public key, except for those that are not allowed.
+	// @ preserves acc(Mem(), _)
 	PublicKey() (Key, error)
 
 	// Algorithm returns `alg` of a JWK
+	// @ preserves acc(Mem(), _)
 	Algorithm() jwa.KeyAlgorithm
 
 	// KeyID returns `kid` of a JWK
+	// @ preserves acc(Mem(), _)
 	KeyID() string
 }
 
 // ParseKey parses a single key JWK. Unlike `jwk.Parse` this method will
 // report failure if you attempt to pass a JWK set. Only use this function
 // when you know that the data is a single JWK.
-func ParseKey(data []byte, options ...ParseOption) (Key, error)
+// @ requires acc(data)
+// @ ensures err != nil ==> k.Mem()
+func ParseKey(data []byte, options ...ParseOption) (k Key, err error)
