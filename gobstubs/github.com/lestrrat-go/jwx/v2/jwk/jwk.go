@@ -39,7 +39,8 @@ type Set interface {
 
 	// Keys creates an iterator to iterate through all keys in the set.
 	// @ preserves acc(Mem(), _)
-	Keys(context.Context) KeyIterator
+	// @ ensures res != nil
+	Keys(context.Context) (res KeyIterator)
 
 	// LookupKeyID returns the first key matching the given key id.
 	// The second return value is false if there are no keys matching the key id.

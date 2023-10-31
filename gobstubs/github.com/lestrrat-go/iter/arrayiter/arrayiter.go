@@ -14,5 +14,7 @@ type Pair struct {
 // Iterator iterates through keys and values of a array
 type Iterator interface {
 	Next(context.Context) bool
-	Pair() *Pair
+
+	// @ ensures res != nil && acc(res, _)
+	Pair() (res *Pair)
 }

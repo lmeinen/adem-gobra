@@ -68,6 +68,11 @@ type TokenVerificationResult struct {
 // obtained from [km].
 // Every call to [vfyToken] will write to [results] exactly once.
 // @ trusted
+// @ requires 0 < threadCount
+// @ requires acc(results.SendChannel(), 1 / numSendFractions(threadCount)) &&
+// @ 	results.SendGivenPerm() == resultsInvariant!<_!> &&
+// @ 	results.SendGotPerm() == PredTrue!<!>
+// @ requires vfyWaitGroup.UnitDebt(resultsSendFraction!<results, threadCount!>)
 func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
 	result /*@@@*/ := TokenVerificationResult{}
 	defer func /*@ f @*/ () {
@@ -101,9 +106,12 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 // @ requires acc(rawTokens)
 // @ requires len(rawTokens) > 0
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
-// @ requires acc(trustedKeys.Mem(), _)
+// @ requires trustedKeys != nil && acc(trustedKeys.Mem(), _)
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
 func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResults) {
+
+	// TODO: (lmeinen) Handle case where rawTokens is empty
+	// TODO: (lmeinen) Handle case where trustedKeys is nil
 
 	/*
 		(lmeinen) Note the nuance in terminology:
@@ -113,10 +121,9 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	*/
 
 	// (lmeinen) 0 - set up chain of promises from root keys to signing keys
-	// @ trusted
 	// @ requires acc(rawTokens)
 	// @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
-	// @ requires acc(trustedKeys.Mem(), _)
+	// @ requires trustedKeys != nil && acc(trustedKeys.Mem(), _)
 	// @ ensures acc(km) &&
 	// @ 	acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km.listeners!>
 	// @ ensures threadCount > 0
@@ -144,10 +151,15 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	iter := trustedKeys.Keys(ctx)
 	for iter.Next(ctx) {
 		// TODO: (lmeinen) how to do mem permissions with type casts like this? See protected below for second examplej
-		km.put(iter.Pair().Value.(jwk.Key))
+		k := iter.Pair().Value
+		// @ assume typeOf(k) == type[jwk.Key]
+		// @ inhale acc(k.(jwk.Key).Mem(), _)
+		km.put(k.(jwk.Key))
 	}
 
 	results := make(chan *TokenVerificationResult)
+	// @ results.Init(resultsInvariant!<_!>, PredTrue!<!>)
+	// @ results.CreateDebt(1, 2, PredTrue!<!>)
 	// @ wg@ := sync.WaitGroup {}
 	// @ ghost vfyWaitGroup := &wg
 	// @ ghost fractionSeq := seq[pred()] {}
