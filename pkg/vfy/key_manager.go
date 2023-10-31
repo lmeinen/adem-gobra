@@ -108,8 +108,7 @@ func (km *keyManager) waiting() (res int) {
 // @ trusted
 // @ preserves acc(km)
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km.listeners!>
-// @	forall j int :: 0 <= j && j < len(rawTokens[i]) ==> acc(&rawTokens[i][j]))
-// @ requires acc(k, _)
+// @ requires acc(k.Mem(), _)
 func (km *keyManager) put(k jwk.Key) bool {
 	km.lock.Lock()
 	defer km.lock.Unlock()

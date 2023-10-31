@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	// @ "sync"
 
 	"github.com/adem-wg/adem-proto/pkg/consts"
 	"github.com/adem-wg/adem-proto/pkg/ident"
@@ -67,9 +68,14 @@ type TokenVerificationResult struct {
 // obtained from [km].
 // Every call to [vfyToken] will write to [results] exactly once.
 // @ trusted
-func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult) {
+func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
 	result /*@@@*/ := TokenVerificationResult{}
-	defer func /*@ f @*/ () { results <- &result }() /*@ as f @*/
+	defer func /*@ f @*/ () {
+		results <- &result
+		// @ fold resultsSendFraction!<results, threadCount!>()
+		// @ vfyWaitGroup.PayDebt(resultsSendFraction!<results, threadCount!>)
+		// @ vfyWaitGroup.Done()
+	}() /*@ as f @*/
 
 	jwtT, err := jwt.Parse(rawToken, jwt.WithKeyProvider(km))
 	if err != nil {
@@ -93,6 +99,7 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 
 // Verify a slice of ADEM tokens.
 // @ requires acc(rawTokens)
+// @ requires len(rawTokens) > 0
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 // @ requires acc(trustedKeys.Mem(), _)
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
@@ -112,15 +119,18 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ requires acc(trustedKeys.Mem(), _)
 	// @ ensures acc(km) &&
 	// @ 	acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km.listeners!>
-	// @ ensures threadCount >= 0
+	// @ ensures threadCount > 0
 	// @ ensures results.RecvChannel() &&
-	// @ 	acc(results.SendChannel(), 1 / (threadCount + 2)) &&
-	// @ 	results.SendGivenPerm() == resultsInvariant!<_!> &&
-	// @ 	results.SendGotPerm() == PredTrue!<!> &&
 	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
 	// @ 	results.RecvGotPerm() == resultsInvariant!<_!> &&
 	// @ 	results.Token(PredTrue!<!>) &&
-	// @ 	results.ClosureDebt(PredTrue!<!>, 1, threadCount + 2)
+	// @ 	results.ClosureDebt(PredTrue!<!>, 1, 2)
+	// @ ensures vfyWaitGroup.WaitGroupP() &&
+	// @ 	vfyWaitGroup.WaitMode() &&
+	// @ 	len(fractionSeq) == threadCount &&
+	// @ 	(forall i int :: 0 <= i && i < len(fractionSeq) ==> (
+	// @ 		fractionSeq[i] == resultsSendFraction!<results, threadCount!> &&
+	// @ 		vfyWaitGroup.TokenById(fractionSeq[i], i)))
 	// @ outline (
 	// We maintain a thread count for termination purposes. It might be that we
 	// cannot verify all token's verification key and must cancel verification.
@@ -138,51 +148,69 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	}
 
 	results := make(chan *TokenVerificationResult)
+	// @ wg@ := sync.WaitGroup {}
+	// @ ghost vfyWaitGroup := &wg
+	// @ ghost fractionSeq := seq[pred()] {}
+	// @ vfyWaitGroup.Init()
+	// @ vfyWaitGroup.Add(threadCount, perm(1), PredTrue!<!>)
 
 	// Start verification threads
 	for _, rawToken := range rawTokens {
-		go vfyToken(rawToken, km, results)
+		// @ ghost sendFraction := resultsSendFraction!<results, threadCount!>
+		// @ vfyWaitGroup.GenerateTokenAndDebt(sendFraction)
+		// @ fold vfyWaitGroup.TokenById(sendFraction, len(fractionSeq))
+		// @ fractionSeq = fractionSeq ++ seq[pred()] { sendFraction }
+		go vfyToken(rawToken, km, results /*@, threadCount, vfyWaitGroup @*/)
 	}
+
+	// @ vfyWaitGroup.Start(perm(1/2), PredTrue!<!>)
+	// @ vfyWaitGroup.SetWaitMode(perm(1/2), perm(1/2))
 
 	// Wait until all verification threads obtained a verification key promise.
 	km.waitForInit()
 	// @ )
 
-	// TODO: (lmeinen) Capture intuition that a result in the results channel means a thread has (or is about to) finished (see defer stmt in vfyTokens func)
-	//			--> SendChannel perms need to be returned, too!
 	// TODO: (lmeinen) Capture intuition that the number of listeners in km was set in step 0, and is now only going to decrease continuously
 	//			--> write perm to km.listeners in preconditions (promises coming in handy) + suitable postconditions regarding no of listeners
 	// TODO: (lmeinen) Come up with suitable termination measure: threadCount decreases and (therefore) SendChannel perm increases --> result will be nil
 	// (lmeinen) 1 - verify the JWT tokens AND that the key chain results in a valid root key only verified keys are used to verify JWT signatures
-	// @ requires threadCount >= 0
+	// @ ghost n := threadCount
+
+	// @ requires 0 < threadCount && threadCount == n
 	// @ requires results.RecvChannel() &&
-	// @ 	acc(results.SendChannel(), 1 / (threadCount + 2)) &&
-	// @ 	results.SendGivenPerm() == resultsInvariant!<_!> &&
-	// @ 	results.SendGotPerm() == PredTrue!<!> &&
 	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
 	// @ 	results.RecvGotPerm() == resultsInvariant!<_!> &&
 	// @ 	results.Token(PredTrue!<!>) &&
-	// @ 	results.ClosureDebt(PredTrue!<!>, 1, threadCount + 2)
+	// @ 	results.ClosureDebt(PredTrue!<!>, 1, 2)
 	// @ requires acc(km) &&
 	// @ 	acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km.listeners!>
+	// @ requires vfyWaitGroup.WaitGroupP() &&
+	// @ 	vfyWaitGroup.WaitMode() &&
+	// @ 	len(fractionSeq) == threadCount &&
+	// @ 	(forall i int :: 0 <= i && i < len(fractionSeq) ==> (
+	// @ 		fractionSeq[i] == resultsSendFraction!<results, threadCount!> &&
+	// @ 		vfyWaitGroup.TokenById(fractionSeq[i], i)))
 	// @ ensures acc(ts)
 	// @ ensures forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> acc(ts[i]) &&
 	// @ 	ts[i].VerificationKey != nil &&
 	// @ 	ts[i].Headers != nil &&
 	// @ 	ts[i].Token != nil
-	// @ trusted
 	// @ outline (
 	ts := []*ADEMToken{}
+	// @ invariant 0 < n && threadCount <= n
 	// @ invariant results.RecvChannel() &&
 	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
 	// @ 	results.RecvGotPerm() == resultsInvariant!<_!> &&
 	// @ 	results.Token(PredTrue!<!>) &&
 	// @ 	(threadCount > 0 ==> (
-	// @ 		acc(results.SendChannel(), 1 / (threadCount + 2)) &&
-	// @ 		results.SendGivenPerm() == resultsInvariant!<_!> &&
-	// @ 		results.SendGotPerm() == PredTrue!<!> &&
-	// @ 		results.ClosureDebt(PredTrue!<!>, 1, threadCount + 2))) &&
-	// @ 	(threadCount == 0 ==> results.Closed())
+	// @ 		results.ClosureDebt(PredTrue!<!>, 1, 2) &&
+	// @ 		vfyWaitGroup.WaitGroupP() &&
+	// @ 		vfyWaitGroup.WaitMode() &&
+	// @ 		len(fractionSeq) == n &&
+	// @ 		(forall i int :: 0 <= i && i < len(fractionSeq) ==> (
+	// @ 			fractionSeq[i] == resultsSendFraction!<results, n!> &&
+	// @ 			vfyWaitGroup.TokenById(fractionSeq[i], i))))) &&
+	// @ 	(threadCount <= 0 ==> results.Closed())
 	// @ invariant acc(km) &&
 	// @ 	acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km.listeners!>
 	// @ invariant acc(ts)
@@ -191,6 +219,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ 	ts[k].Headers != nil &&
 	// @ 	ts[k].Token != nil
 	for {
+		// @ fold PredTrue!<!>()
 		// [waiting] is the number of unresolved promises in the key manager, i.e.,
 		// blocked threads that wait for a verification key.
 		// [threadCount] is the number of threads that could still provide
@@ -201,26 +230,42 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 			// aborted.
 			km.killListeners()
 		} else if result := <-results; result == nil {
+			// TODO: (lmeinen) Prove termination - Gobra currently doesn't support proving that all subsequent receives will return nil
 			// All threads have terminated
 			break
 		} else {
+			// @ unfold resultsInvariant!<_!>(result)
+
 			// We got a new non-nil result from <-results, and hence, one thread must
 			// have terminated. Decrement the counter accordingly.
 			threadCount -= 1
 
 			if threadCount == 0 {
+				/*@
+				ghost {
+					vfyWaitGroup.Wait(perm(1), fractionSeq)
+					invariant 0 <= i && i <= n
+					invariant forall j int :: i <= j && j < n ==> sync.InjEval(fractionSeq[j], j)
+					invariant acc(results.SendChannel(), i / numSendFractions(n))
+					for i := 0; i < n; i++ {
+						unfold sync.InjEval(fractionSeq[i], i)
+						unfold resultsSendFraction!<results, n!>()
+					}
+				}
+				@*/
+				// @ fold PredTrue!<!>()
 				// Every call to [vfyToken] will write exactly one result. Hence, only
 				// close the [results] channel, when all threads have terminated.
-				close(results /*@, 1, 2, PredTrue!<!> @*/)
+				close(results /*@, 1, 2, PredTrue!<!>@*/)
 			}
-
-			// @ unfold resultsInvariant!<result!>()
 
 			if result.err != nil {
 				log.Printf("discarding invalid token: %s", result.err)
 			} else {
 				ts = append( /*@ perm(1/2), @*/ ts, result.token)
 				if k, ok := result.token.Token.Get("key"); ok {
+					// @ assume typeOf(k) == type[tokens.EmbeddedKey]
+					// @ inhale acc(k.(tokens.EmbeddedKey).Key.Mem(), _)
 					km.put(k.(tokens.EmbeddedKey).Key)
 				}
 			}
@@ -259,8 +304,8 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 			ass, _ := emblem.Token.Get("ass")
 			// this assumption comes from the successful return of the jwt.Parse function + the type constraints set in claims.go
 			// @ assume typeOf(ass) == type[[]*ident.AI]
+			// @ inhale acc(ass.([]*ident.AI))
 			protected = ass.([]*ident.AI)
-			// @ assume forall i int :: 0 <= i && i < len(protected) ==> acc(&protected[i])
 			if emblem.Headers.Algorithm() == jwa.NoSignature {
 				return VerificationResults{
 					results:   []consts.VerificationResult{consts.UNSIGNED},
@@ -305,7 +350,21 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 }
 
 /*@
+ghost
+ensures res == 2 * threadCount
+pure func numSendFractions(threadCount int) (res int)
+
 pred resultsInvariant(result *TokenVerificationResult) {
-	acc(result) && acc(result.token)
+	acc(result) &&
+			(result.err == nil ==> (
+				acc(result.token) &&
+				result.token.VerificationKey != nil &&
+				result.token.Headers != nil &&
+				result.token.Token != nil)) &&
+			(result.err != nil ==> result.token == nil)
+}
+
+pred resultsSendFraction(results chan *TokenVerificationResult, threadCount int) {
+	0 < threadCount && acc(results.SendChannel(), 1 / numSendFractions(threadCount))
 }
 @*/
