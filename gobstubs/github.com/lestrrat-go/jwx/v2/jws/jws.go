@@ -17,6 +17,9 @@ type KeySink interface {
 // KeyProvider is responsible for providing key(s) to sign or verify a payload.
 // Multiple `jws.KeyProvider`s can be passed to `jws.Verify()` or `jws.Sign()`
 type KeyProvider interface {
+	// @ pred Mem()
+
+	// @ preserves Mem()
 	FetchKeys(context.Context, KeySink, *Signature, *Message) error
 }
 
@@ -77,11 +80,28 @@ func (s Signature) ProtectedHeaders() Headers
 // Payload returns the decoded payload
 func (m Message) Payload() []byte
 
-func (m Message) Signatures() []*Signature
+// @ requires p > 0
+// @ requires acc(m.signatures, p)
+// @ requires forall i int :: 0 <= i && i < len(m.signatures) ==> acc(m.signatures[i], p)
+// @ ensures acc(s, p)
+// @ ensures forall i int :: 0 <= i && i < len(s) ==> acc(s[i], p)
+// @ ensures len(m.signatures) == old(len(m.signatures))
+// @ ensures len(s) == len(m.signatures)
+// @ ensures forall i int :: 0 <= i && i < len(s) ==> old(m.signatures[i]) == s[i]
+func (m Message) Signatures( /*@ ghost p perm @*/ ) (s []*Signature) {
+	return m.signatures
+}
 
 // Parse parses contents from the given source and creates a jws.Message
 // struct. The input can be in either compact or full JSON serialization.
 //
 // Parse() currently does not take any options, but the API accepts it
 // in anticipation of future addition.
-func Parse(src []byte, _ ...ParseOption) (*Message, error)
+// TODO: (lmeinen) Valid assumption w.r.t. len of msg.signatures?
+// @ ensures err == nil ==> (
+// @ 	acc(msg) &&
+// @ 	acc(msg.payload) &&
+// @ 	acc(msg.signatures) &&
+// @ 	len(msg.signatures) > 0 &&
+// @ 	forall i int :: 0 <= i && i < len(msg.signatures) ==> acc(msg.signatures[i]))
+func Parse(src []byte, _ ...ParseOption) (msg *Message, err error)

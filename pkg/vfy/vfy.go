@@ -56,7 +56,7 @@ func (res VerificationResults) Print() {
 	log.Print(strings.Join(lns, "\n"))
 }
 
-var ErrTokenNonCompact = errors.New("token is not in compact serialization")
+var ErrTokenNonCompact /*@@@*/ error = errors.New("token is not in compact serialization")
 
 type TokenVerificationResult struct {
 	token *ADEMToken
@@ -67,7 +67,7 @@ type TokenVerificationResult struct {
 // Results will be returned to the [results] channel. Verification keys will be
 // obtained from [km].
 // Every call to [vfyToken] will write to [results] exactly once.
-// @ trusted
+// @ preserves acc(&ErrTokenNonCompact, _) && ErrTokenNonCompact != nil
 // @ requires acc(rawToken, _)
 // @ requires acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ requires 0 < threadCount
@@ -77,17 +77,29 @@ type TokenVerificationResult struct {
 // @ requires acc(SingleUse(loc), 1 / threadCount)
 // @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
 func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
+	// @ share threadCount, loc, results, vfyWaitGroup
 	result /*@@@*/ := TokenVerificationResult{}
-	// TODO: Add preconditions for closure
-	defer func /*@ f @*/ () {
-		// @ fold ResultPerm(result)
-		// @ fold SendToken(loc, threadCount, result)
+	defer
+	// @ requires acc(&threadCount) && acc(&loc) && acc(&results) && acc(&vfyWaitGroup)
+	// @ requires threadCount > 0
+	// @ requires acc(&result) &&
+	// @ 			(result.err == nil ==> result.token.Mem()) &&
+	// @ 			(result.err != nil ==> result.token == nil)
+	// @ requires acc(results.SendChannel(), 1 / numSendFractions(threadCount)) &&
+	// @ 	results.SendGivenPerm() == SendToken!<loc, threadCount, _!> &&
+	// @ 	results.SendGotPerm() == PredTrue!<!>
+	// @ requires acc(SingleUse(loc), 1 / threadCount)
+	// @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
+	func /*@ f @*/ () {
+		// @ fold ResultPerm(&result)
+		// @ fold SendToken!<loc, threadCount, _!>(&result)
 		results <- &result
 		// @ fold SendFraction!<results, threadCount!>()
 		// @ vfyWaitGroup.PayDebt(SendFraction!<results, threadCount!>)
 		// @ vfyWaitGroup.Done()
 	}() /*@ as f @*/
 
+	// @ fold km.Mem()
 	jwtT, err := jwt.Parse(rawToken, jwt.WithKeyProvider(km))
 	if err != nil {
 		result.err = err
@@ -97,10 +109,10 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 	if msg, err := jws.Parse(rawToken); err != nil {
 		result.err = err
 		return
-	} else if len(msg.Signatures()) > 1 {
+	} else if len(msg.Signatures( /*@ 1/2 @*/ )) > 1 {
 		result.err = ErrTokenNonCompact
 		return
-	} else if ademT, err := MkADEMToken(km, msg.Signatures()[0], jwtT); err != nil {
+	} else if ademT, err := MkADEMToken(km, msg.Signatures( /*@ 1/2 @*/ )[0], jwtT); err != nil {
 		result.err = err
 		return
 	} else {
@@ -109,6 +121,7 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 }
 
 // Verify a slice of ADEM tokens.
+// @ preserves acc(&ErrTokenNonCompact, _) && ErrTokenNonCompact != nil
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
@@ -171,6 +184,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ vfyWaitGroup.Start(1/2, PredTrue!<!>)
 
 	// Start verification threads
+	// @ invariant acc(&ErrTokenNonCompact, _) && ErrTokenNonCompact != nil
 	// @ invariant acc(rawTokens, _)
 	// @ invariant forall i int :: { rawTokens[i] } i0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>

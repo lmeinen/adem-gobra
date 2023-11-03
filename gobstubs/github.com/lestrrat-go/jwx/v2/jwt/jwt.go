@@ -134,6 +134,7 @@ func Parse(s []byte, options ...ParseOption) (JwtToken, error)
 
 // WithKeyProvider allows users to specify an object to provide keys to
 // sign/verify tokens using arbitrary code.
+// @ requires v.Mem()
 func WithKeyProvider(v jws.KeyProvider) ParseOption
 
 // WithVerify is passed to `Parse()` method to denote that the

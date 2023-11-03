@@ -176,8 +176,10 @@ func (km *keyManager) getVerificationKey(sig *jws.Signature) util.Promise {
 // key will be used for verification. All other keys will register a listener
 // and wait for their verification key to be verified externally.
 // @ trusted
-// @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
+// @ preserves km.Mem()
 func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.Signature, m *jws.Message) error {
+	// @ unfold km.Mem()
+	// @ ghost defer fold km.Mem()
 	var promise util.Promise
 	var err error
 	if t, e := jwt.Parse(m.Payload(), jwt.WithVerify(false)); e != nil {
@@ -229,10 +231,15 @@ func doDelete(listeners map[string][]util.Promise, k string) {
 pred WaitInv() {
 	true
 }
-@*/
 
-/*@
 pred LockInv(km *keyManager) {
 	acc(&km.keys) && acc(&km.listeners)
 }
+
+pred (km *keyManager) Mem() {
+	acc(km.lock.LockP(), _) &&
+	km.lock.LockInv() == LockInv!<km!>
+}
+
+(*keyManager) implements jws.KeyProvider
 @*/
