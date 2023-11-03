@@ -110,14 +110,19 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 
 // Verify a slice of ADEM tokens.
 // @ requires acc(rawTokens)
-// @ requires len(rawTokens) > 0
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
-// @ requires trustedKeys != nil
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
 func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResults) {
 
-	// TODO: (lmeinen) Handle case where rawTokens is empty
-	// TODO: (lmeinen) Handle case where trustedKeys is nil
+	// Early termination for empty rawTokens slice
+	if len(rawTokens) == 0 {
+		return ResultInvalid()
+	}
+
+	// Ensure trustedKeys is non-nil
+	if trustedKeys == nil {
+		trustedKeys = jwk.NewSet()
+	}
 
 	/*
 		(lmeinen) Note the nuance in terminology:
