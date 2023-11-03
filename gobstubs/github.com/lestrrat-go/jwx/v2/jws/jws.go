@@ -22,9 +22,19 @@ type KeyProvider interface {
 
 // Headers describe a standard Header set.
 type Headers interface {
+	// pred Mem()
+
+	// preserves p > 0 && acc(Mem(), p)
 	Algorithm() jwa.SignatureAlgorithm
+
+	// preserves p > 0 && acc(Mem(), p)
 	ContentType() string
-	JWK() jwk.Key
+
+	// preserves p > 0 && acc(Mem(), p)
+	// ensures acc(res.Mem(), _)
+	JWK() (res jwk.Key)
+
+	// preserves p > 0 && acc(Mem(), p)
 	KeyID() string
 }
 

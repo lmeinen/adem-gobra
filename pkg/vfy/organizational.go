@@ -11,10 +11,11 @@ import (
 )
 
 // @ trusted
+// @ preserves acc(emblem.Mem(), _)
+// @ preserves p > 0 && acc(TokenList(endorsements), p)
 // @ ensures acc(vfyResults)
-// @ ensures forall i int :: { vfyResults[i] } 0 <= i && i < len(vfyResults) ==> acc(&vfyResults[i])
-// @ ensures !goblib.GhostContainsResult(vfyResults, consts.INVALID) ==> acc(t) && t.VerificationKey != nil && t.Headers != nil && t.Token != nil
-func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set) (vfyResults []consts.VerificationResult, t *ADEMToken) {
+// @ ensures !goblib.GhostContainsResult(vfyResults, consts.INVALID) ==> t.Mem()
+func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost p perm @*/) (vfyResults []consts.VerificationResult, t *ADEMToken) {
 	endorsedBy := make(map[string]*ADEMToken)
 	for _, endorsement := range endorsements {
 		kid, err := tokens.GetEndorsedKID(endorsement.Token)

@@ -184,7 +184,7 @@ func (EmblemValidatorS) Validate(_ context.Context, t jwt.JwtToken) jwt.Validati
 		return err
 	}
 
-	if _, ok := t.Get("ass"); !ok {
+	if _, ok := t.Get("ass" /*@, 1/2 @*/); !ok {
 		return ErrAssMissing
 	}
 
@@ -202,7 +202,7 @@ func (EndorsementValidatorS) Validate(_ context.Context, t jwt.JwtToken) jwt.Val
 		return err
 	}
 
-	end, ok := t.Get("end")
+	end, ok := t.Get("end" /*@, 1/2 @*/)
 	if ok {
 		_, check := end.(bool)
 		if !check {
@@ -237,7 +237,7 @@ func validateCommon(t jwt.JwtToken) jwt.ValidationError {
 		return jwt.NewValidationError(err)
 	}
 
-	if ver, ok := t.Get(`ver`); !ok || ver.(string) != string(consts.V1) {
+	if ver, ok := t.Get(`ver` /*@, 1/2 @*/); !ok || ver.(string) != string(consts.V1) {
 		return ErrIllegalVersion
 	}
 

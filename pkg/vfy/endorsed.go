@@ -11,11 +11,14 @@ import (
 )
 
 // @ trusted
+// @ preserves acc(emblem.Mem(), _)
+// @ preserves acc(root.Mem(), _)
+// @ preserves p > 0 && acc(TokenList(endorsements), p)
 // @ ensures endorsedResults != nil ==> (
 // @	acc(endorsedResults) &&
 // @	(!goblib.GhostContainsResult(endorsedResults, consts.INVALID) ==> endorsedBy != nil))
 // @ ensures endorsedBy != nil ==> acc(endorsedBy)
-func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set) (endorsedResults []consts.VerificationResult, endorsedBy []string) {
+func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost p perm @*/) (endorsedResults []consts.VerificationResult, endorsedBy []string) {
 	issuers := []string{}
 	trustedFound := false
 	existsEndorsement := false

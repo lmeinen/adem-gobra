@@ -22,7 +22,7 @@ var ErrAlgMissing = errors.New("input key misses algorithm")
 // Get the KID of a key endorsed in an emblem. If the endorsed key has no KID,
 // it will be calculated.
 func GetEndorsedKID(t jwt.JwtToken) (string, error) {
-	if jwKey, ok := t.Get("key"); !ok {
+	if jwKey, ok := t.Get("key" /*@, 1/2 @*/); !ok {
 		return "", ErrNoEndorsedKey
 	} else if kid, err := GetKID(jwKey.(EmbeddedKey).Key); err != nil {
 		return "", err

@@ -8,7 +8,7 @@ import (
 )
 
 // NewSet creates and empty `jwk.Set` object
-// @ ensures s.Mem()
+// @ ensures s != nil
 func NewSet() (s Set)
 
 // ParseOption is a type of Option that can be passed to `jwk.Parse()`
@@ -30,22 +30,23 @@ type ParseOption interface {
 
 // Set represents JWKS object, a collection of jwk.Key objects.
 type Set interface {
-	// @ pred Mem()
+	// pred Mem()
 
 	// AddKey adds the specified key. If the key already exists in the set,
 	// an error is returned.
-	// @ preserves Mem() && acc(k.Mem(), _)
+	// preserves Mem() && acc(k.Mem(), _)
 	AddKey(k Key) error
 
 	// Keys creates an iterator to iterate through all keys in the set.
-	// @ preserves acc(Mem(), _)
+	// preserves acc(Mem(), _)
 	// @ ensures res != nil
 	Keys(context.Context) (res KeyIterator)
 
 	// LookupKeyID returns the first key matching the given key id.
 	// The second return value is false if there are no keys matching the key id.
-	// @ preserves acc(Mem(), _)
-	LookupKeyID(string) (Key, bool)
+	// preserves acc(Mem(), _)
+	// @ ensures b ==> k != nil
+	LookupKeyID(string) (k Key, b bool)
 }
 
 type KeyIterator = arrayiter.Iterator
@@ -65,28 +66,28 @@ const (
 // Key defines the minimal interface for each of the
 // key types.
 type Key interface {
-	// @ pred Mem()
+	// pred Mem()
 
 	// Set sets the value of a single field. Note that certain fields,
 	// notably "kty", cannot be altered, but will not return an error
-	// @ preserves Mem()
+	// preserves Mem()
 	Set(string, interface{}) error
 
 	// Remove removes the field associated with the specified key.
-	// @ preserves Mem()
+	// preserves Mem()
 	Remove(string) error
 
 	// PublicKey creates the corresponding PublicKey type for this object.
 	// All fields are copied onto the new public key, except for those that are not allowed.
-	// @ preserves acc(Mem(), _)
+	// preserves acc(Mem(), _)
 	PublicKey() (Key, error)
 
 	// Algorithm returns `alg` of a JWK
-	// @ preserves acc(Mem(), _)
+	// preserves acc(Mem(), _)
 	Algorithm() jwa.KeyAlgorithm
 
 	// KeyID returns `kid` of a JWK
-	// @ preserves acc(Mem(), _)
+	// preserves acc(Mem(), _)
 	KeyID() string
 }
 
@@ -94,5 +95,5 @@ type Key interface {
 // report failure if you attempt to pass a JWK set. Only use this function
 // when you know that the data is a single JWK.
 // @ requires acc(data)
-// @ ensures err != nil ==> k.Mem()
+// @ ensures err != nil ==> k != nil
 func ParseKey(data []byte, options ...ParseOption) (k Key, err error)
