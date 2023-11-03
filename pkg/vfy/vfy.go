@@ -72,15 +72,19 @@ type TokenVerificationResult struct {
 // @ requires acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ requires 0 < threadCount
 // @ requires acc(results.SendChannel(), 1 / numSendFractions(threadCount)) &&
-// @ 	results.SendGivenPerm() == resultsInvariant!<_!> &&
+// @ 	results.SendGivenPerm() == SendToken!<loc, threadCount, _!> &&
 // @ 	results.SendGotPerm() == PredTrue!<!>
-// @ requires vfyWaitGroup.UnitDebt(resultsSendFraction!<results, threadCount!>)
-func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
+// @ requires acc(SingleUse(loc), 1 / threadCount)
+// @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
+func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
 	result /*@@@*/ := TokenVerificationResult{}
+	// TODO: Add preconditions for closure
 	defer func /*@ f @*/ () {
+		// @ fold ResultPerm(result)
+		// @ fold SendToken(loc, threadCount, result)
 		results <- &result
-		// @ fold resultsSendFraction!<results, threadCount!>()
-		// @ vfyWaitGroup.PayDebt(resultsSendFraction!<results, threadCount!>)
+		// @ fold SendFraction!<results, threadCount!>()
+		// @ vfyWaitGroup.PayDebt(SendFraction!<results, threadCount!>)
 		// @ vfyWaitGroup.Done()
 	}() /*@ as f @*/
 
@@ -137,14 +141,14 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ ensures threadCount > 0
 	// @ ensures results.RecvChannel() &&
 	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
-	// @ 	results.RecvGotPerm() == resultsInvariant!<_!> &&
+	// @ 	results.RecvGotPerm() == SendToken!<loc, threadCount, _!> &&
 	// @ 	results.Token(PredTrue!<!>) &&
 	// @ 	results.ClosureDebt(PredTrue!<!>, 1, 2)
 	// @ ensures vfyWaitGroup.WaitGroupP() &&
 	// @ 	vfyWaitGroup.WaitMode() &&
 	// @ 	len(fractionSeq) == threadCount &&
 	// @ 	(forall i int :: { fractionSeq[i] } 0 <= i && i < len(fractionSeq) ==> (
-	// @ 		fractionSeq[i] == resultsSendFraction!<results, threadCount!> &&
+	// @ 		fractionSeq[i] == SendFraction!<results, threadCount!> &&
 	// @ 		vfyWaitGroup.TokenById(fractionSeq[i], i)))
 	// @ outline (
 	// We maintain a thread count for termination purposes. It might be that we
@@ -165,8 +169,11 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 		km.put(k.(jwk.Key))
 	}
 
+	// @ x@ := 42
+	// @ ghost loc := &x
+	// @ fold SingleUse(loc)
 	results := make(chan *TokenVerificationResult)
-	// @ results.Init(resultsInvariant!<_!>, PredTrue!<!>)
+	// @ results.Init(SendToken!<loc, threadCount, _!>, PredTrue!<!>)
 	// @ results.CreateDebt(1, 2, PredTrue!<!>)
 
 	/* the waitgroup is required to later collect all results send fractions in order to be able to close the channel
@@ -188,18 +195,19 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ invariant acc(vfyWaitGroup.UnitDebt(PredTrue!<!>), threadCount - i0)
 	// @ invariant i0 < threadCount ==> (
 	// @ 	acc(results.SendChannel(), (threadCount - i0) / numSendFractions(threadCount)) &&
-	// @ 	results.SendGivenPerm() == resultsInvariant!<_!> &&
-	// @ 	results.SendGotPerm() == PredTrue!<!>)
+	// @ 	results.SendGivenPerm() == SendToken!<loc, threadCount, _!> &&
+	// @ 	results.SendGotPerm() == PredTrue!<!> &&
+	// @ 	acc(SingleUse(loc), (threadCount - i0) / threadCount))
 	// @ invariant len(fractionSeq) == i0 &&
 	// @ 	(forall i int :: { fractionSeq[i] } 0 <= i && i < i0 ==> (
-	// @ 		fractionSeq[i] == resultsSendFraction!<results, threadCount!> &&
+	// @ 		fractionSeq[i] == SendFraction!<results, threadCount!> &&
 	// @ 		vfyWaitGroup.TokenById(fractionSeq[i], i)))
 	for _, rawToken := range rawTokens /*@ with i0 @*/ {
-		// @ ghost sendFraction := resultsSendFraction!<results, threadCount!>
+		// @ ghost sendFraction := SendFraction!<results, threadCount!>
 		// @ vfyWaitGroup.GenerateTokenAndDebt(sendFraction)
 		// @ fold vfyWaitGroup.TokenById(sendFraction, len(fractionSeq))
 		// @ fractionSeq = fractionSeq ++ seq[pred()] { sendFraction }
-		go vfyToken(rawToken, km, results /*@, threadCount, vfyWaitGroup @*/)
+		go vfyToken(rawToken, km, results /*@, loc, threadCount, vfyWaitGroup @*/)
 	}
 
 	// @ vfyWaitGroup.SetWaitMode(1/2, 1/2)
@@ -225,7 +233,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ requires 0 < threadCount && threadCount == n
 	// @ requires results.RecvChannel() &&
 	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
-	// @ 	results.RecvGotPerm() == resultsInvariant!<_!> &&
+	// @ 	results.RecvGotPerm() == SendToken!<loc, n, _!> &&
 	// @ 	results.Token(PredTrue!<!>) &&
 	// @ 	results.ClosureDebt(PredTrue!<!>, 1, 2)
 	// @ requires acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
@@ -233,7 +241,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ 	vfyWaitGroup.WaitMode() &&
 	// @ 	len(fractionSeq) == threadCount &&
 	// @ 	(forall i int :: { fractionSeq[i] } 0 <= i && i < len(fractionSeq) ==> (
-	// @ 		fractionSeq[i] == resultsSendFraction!<results, threadCount!> &&
+	// @ 		fractionSeq[i] == SendFraction!<results, threadCount!> &&
 	// @ 		vfyWaitGroup.TokenById(fractionSeq[i], i)))
 	// @ ensures TokenList(ts)
 	// @ outline (
@@ -248,9 +256,11 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	- TokenList(ts) to current list of tokens (see (a)-(d) above)
 	*/
 	// @ invariant 0 < n && threadCount <= n
+	// @ invariant acc(loc, (n - threadCount) / n)
+	// @ invariant 0 <= threadCount
 	// @ invariant results.RecvChannel() &&
 	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
-	// @ 	results.RecvGotPerm() == resultsInvariant!<_!> &&
+	// @ 	results.RecvGotPerm() == SendToken!<loc, n, _!> &&
 	// @ 	(threadCount > 0 ==> (
 	// @ 		results.Token(PredTrue!<!>) &&
 	// @ 		results.ClosureDebt(PredTrue!<!>, 1, 2) &&
@@ -258,11 +268,12 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ 		vfyWaitGroup.WaitMode() &&
 	// @ 		len(fractionSeq) == n &&
 	// @ 		(forall i int :: { fractionSeq[i] } 0 <= i && i < len(fractionSeq) ==> (
-	// @ 			fractionSeq[i] == resultsSendFraction!<results, n!> &&
+	// @ 			fractionSeq[i] == SendFraction!<results, n!> &&
 	// @ 			vfyWaitGroup.TokenById(fractionSeq[i], i))))) &&
 	// @ 	(threadCount <= 0 ==> results.Closed())
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 	// @ invariant TokenList(ts)
+	// @ invariant len(ts) <= n - threadCount
 	for {
 		// @ fold PredTrue!<!>()
 		// [waiting] is the number of unresolved promises in the key manager, i.e.,
@@ -279,7 +290,9 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 			// All threads have terminated
 			break
 		} else {
-			// @ unfold resultsInvariant!<_!>(result)
+			// @ unfold SendToken!<loc, n, _!>(result)
+			// @ unfold acc(SingleUse(loc), 1 / n)
+			// @ unfold ResultPerm(result)
 
 			// We got a new non-nil result from <-results, and hence, one thread must
 			// have terminated. Decrement the counter accordingly.
@@ -294,7 +307,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 					invariant acc(results.SendChannel(), i / numSendFractions(n))
 					for i := 0; i < n; i++ {
 						unfold sync.InjEval(fractionSeq[i], i)
-						unfold resultsSendFraction!<results, n!>()
+						unfold SendFraction!<results, n!>()
 					}
 				}
 				@*/
@@ -420,13 +433,21 @@ ghost
 ensures res == 2 * threadCount
 pure func numSendFractions(threadCount int) (res int)
 
-pred resultsInvariant(result *TokenVerificationResult) {
+pred SendToken(loc *int, threadCount int, result *TokenVerificationResult) {
+	threadCount > 0 && acc(SingleUse(loc), 1 / threadCount) && ResultPerm(result)
+}
+
+pred SingleUse(loc *int) {
+	acc(loc)
+}
+
+pred ResultPerm(result *TokenVerificationResult) {
 	acc(result) &&
 			(result.err == nil ==> result.token.Mem()) &&
 			(result.err != nil ==> result.token == nil)
 }
 
-pred resultsSendFraction(results chan *TokenVerificationResult, threadCount int) {
+pred SendFraction(results chan *TokenVerificationResult, threadCount int) {
 	0 < threadCount && acc(results.SendChannel(), 1 / numSendFractions(threadCount))
 }
 @*/
