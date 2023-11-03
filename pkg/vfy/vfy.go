@@ -127,30 +127,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	*/
 
 	// (lmeinen) 0 - set up chain of promises from root keys to signing keys
-	/* ensures:
-	- key manager initialized
-	- results channel initialized: on receive permissions to result are granted
-	- vfyTokens goroutines started and channel send permission fractions distributed fully
-	- vfyWaitGroup as proof utility is initialized: allows collecting send fractions towards end
-	*/
-	// @ requires acc(rawTokens)
-	// @ requires len(rawTokens) > 0
-	// @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
-	// @ requires trustedKeys != nil
-	// @ ensures acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
-	// @ ensures threadCount > 0
-	// @ ensures results.RecvChannel() &&
-	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
-	// @ 	results.RecvGotPerm() == SendToken!<loc, threadCount, _!> &&
-	// @ 	results.Token(PredTrue!<!>) &&
-	// @ 	results.ClosureDebt(PredTrue!<!>, 1, 2)
-	// @ ensures vfyWaitGroup.WaitGroupP() &&
-	// @ 	vfyWaitGroup.WaitMode() &&
-	// @ 	len(fractionSeq) == threadCount &&
-	// @ 	(forall i int :: { fractionSeq[i] } 0 <= i && i < len(fractionSeq) ==> (
-	// @ 		fractionSeq[i] == SendFraction!<results, threadCount!> &&
-	// @ 		vfyWaitGroup.TokenById(fractionSeq[i], i)))
-	// @ outline (
+
 	// We maintain a thread count for termination purposes. It might be that we
 	// cannot verify all token's verification key and must cancel verification.
 	threadCount := len(rawTokens)
@@ -214,7 +191,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 	// Wait until all verification threads obtained a verification key promise.
 	km.waitForInit()
-	// @ )
+	//  )
 
 	// TODO: (lmeinen) Capture intuition that the number of listeners in km was set in step 0, and is now only going to decrease continuously
 	//			--> write perm to km.listeners in preconditions (promises coming in handy) + suitable postconditions regarding no of listeners
@@ -230,22 +207,6 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 		(c) every goroutine contributed at most one token
 		(d) there are at most as many tokens as there were rawTokens
 	*/
-	// @ requires 0 < threadCount && threadCount == n
-	// @ requires results.RecvChannel() &&
-	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
-	// @ 	results.RecvGotPerm() == SendToken!<loc, n, _!> &&
-	// @ 	results.Token(PredTrue!<!>) &&
-	// @ 	results.ClosureDebt(PredTrue!<!>, 1, 2)
-	// @ requires acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
-	// @ requires vfyWaitGroup.WaitGroupP() &&
-	// @ 	vfyWaitGroup.WaitMode() &&
-	// @ 	len(fractionSeq) == threadCount &&
-	// @ 	(forall i int :: { fractionSeq[i] } 0 <= i && i < len(fractionSeq) ==> (
-	// @ 		fractionSeq[i] == SendFraction!<results, threadCount!> &&
-	// @ 		vfyWaitGroup.TokenById(fractionSeq[i], i)))
-	// @ ensures TokenList(ts)
-	// @ outline (
-
 	ts := []*ADEMToken{}
 	// @ fold TokenList(ts)
 
@@ -333,7 +294,6 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 			}
 		}
 	}
-	// @ )
 
 	// (lmeinen) 2 - validate the JWT tokens AND that the required fields are present and valid
 	var emblem *ADEMToken
