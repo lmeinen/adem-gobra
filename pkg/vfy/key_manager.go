@@ -38,29 +38,6 @@ type keyManager struct {
 // TODO: (lmeinen) Investigate necessity of adding a proper wg token - can maybe be used to make claims of type "method m2 is only called after m1"
 // TODO: (lmeinen) Find way to make claims about waiting number of threads - would allow proving termination of main thread
 
-/* TODO: (lmeinen) Consider the following (informal) properties for verification:
-(a) The number of listeners is non-negative
-(b) Once waitForInit has been called, the number of listeners decreases monotonically
-(c) A listener is waiting for exactly one key
-(d) Taking the statement "Token A claims(*) that it is signed by the key embedded in token B" to be the relation Veri(A) = B,
-	we consider the graph G constructed by the set of all relations Veri(X) = Y for all tokens X in the tokenset S.
-	Note that Y is not necessarily in S.
-	The following properties arise:
-	(1) num listeners <= |S| and |S| = |G|
-	(2) if Veri(X) = nil and fails to specify a signing key or the signing key is not listed in the CT logs, an error is returned
-	(3) the out-degree for any node is 1 - note that Veri is not injective and therefore the in-degree can be arbitrary
-	(4) for every disjoint subgraph Gi of G: Gi is either a DAG (with a single self-signed root with out-degree 0), or is cyclic.
-	(5) for all Veri(X) = Y where X in S, Y != nil and Y in S: the underlying promise will be resolved
-	(6) for all Veri(X) = Y where X in S, Y != nil and Y not in S: the underlying promise can only be rejected
-	(7) for all Veri(X) = nil and the specified signing key is listed in the CT logs: the underlying promise will be resolved
-(*) The claim arises from the "kid" resp. "jwk" (for root token) headers
-
---> waitForInit can return the described forest: a node consists of a 'promise state' and a reference to its parent
---> define ghost functions that validate certain properties: e.g. that all resolvable promises have been resolved or
-	that a specific promise has been resolved (maybe a function that returns the set of resolved promises?)
---> is the aux datastructure part of the km? Does it require thread-safe access?
-*/
-
 // Creates a new key manager to verify [numThreads]-many tokens asynchronously.
 // @ requires numThreads > 0
 // @ ensures res.lock.LockP() &&

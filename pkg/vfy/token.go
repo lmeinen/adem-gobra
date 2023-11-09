@@ -15,9 +15,9 @@ type ADEMToken struct {
 	Token           jwt.JwtToken
 }
 
-// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(sig, _)
+// @ requires t != nil
 // @ ensures err == nil ==> res.Mem()
 // @ ensures err != nil ==> res == nil
 func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.JwtToken) (res *ADEMToken, err error) {
@@ -25,7 +25,9 @@ func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.JwtToken) (res *ADEMT
 	if verifKey == nil {
 		return nil, errors.New("no verification key")
 	}
-	return &ADEMToken{verifKey, sig.ProtectedHeaders(), t}, nil
+	token := &ADEMToken{verifKey, sig.ProtectedHeaders(), t}
+	// @ fold token.Mem()
+	return token, nil
 }
 
 /*@
