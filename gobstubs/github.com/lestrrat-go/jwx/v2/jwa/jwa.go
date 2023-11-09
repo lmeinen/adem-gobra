@@ -4,7 +4,7 @@ package jwa
 // KeyAlgorithm is a workaround for jwk.Key being able to contain different
 // types of algorithms in its `alg` field.
 type KeyAlgorithm interface {
-	String() string
+	String() (s string)
 }
 
 // SignatureAlgorithm represents the various signature algorithms as described in https://tools.ietf.org/html/rfc7518#section-3.1

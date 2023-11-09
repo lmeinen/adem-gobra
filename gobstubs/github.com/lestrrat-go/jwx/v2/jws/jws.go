@@ -19,8 +19,8 @@ type KeySink interface {
 type KeyProvider interface {
 	// @ pred Mem()
 
-	// @ preserves Mem()
-	FetchKeys(context.Context, KeySink, *Signature, *Message) error
+	// @ requires Mem() && c != nil && sink != nil && acc(sig, _) && acc(m, _)
+	FetchKeys(c context.Context, sink KeySink, sig *Signature, m *Message) error
 }
 
 // Headers describe a standard Header set.
@@ -35,6 +35,7 @@ type Headers interface {
 
 	// preserves p > 0 && acc(Mem(), p)
 	// ensures acc(res.Mem(), _)
+	// @ ensures res != nil
 	JWK() (res jwk.Key)
 
 	// preserves p > 0 && acc(Mem(), p)
@@ -75,10 +76,12 @@ type Message struct {
 	b64        bool // true if payload should be base64 encoded
 }
 
-func (s Signature) ProtectedHeaders() Headers
+// @ ensures h != nil
+func (s Signature) ProtectedHeaders() (h Headers)
 
 // Payload returns the decoded payload
-func (m Message) Payload() []byte
+// @ ensures acc(r)
+func (m Message) Payload() (r []byte)
 
 // @ requires p > 0
 // @ requires acc(m.signatures, p)

@@ -19,8 +19,11 @@ type VerificationResult struct {
 
 // Verify that the given key was correctly committed to the Certificate
 // Transparency infrastructure for the given issuer.
-
-func VerifyBindingCerts(iss string, key jwk.Key, logs []*tokens.LogConfig) []VerificationResult {
+// @ requires key != nil
+// @ requires acc(logs)
+// @ requires forall i int :: 0 <= i && i < len(logs) ==> acc(logs[i])
+// @ ensures acc(r)
+func VerifyBindingCerts(iss string, key jwk.Key, logs []*tokens.LogConfig) (r []VerificationResult) {
 	verified := []VerificationResult{}
 	for _, logConfig := range logs {
 		result := VerificationResult{LogID: logConfig.Id}

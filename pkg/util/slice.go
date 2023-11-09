@@ -15,10 +15,10 @@ func ContainsVerificationResult(slice []consts.VerificationResult, v consts.Veri
 	//@ invariant acc(slice, p)
 	for _, elem := range slice /*@ with i @*/ {
 		if elem == v {
-			return true //@ with: i
+			return true
 		}
 	}
-	return false //@ with: 0 - 1
+	return false
 }
 
 // @ preserves p > 0

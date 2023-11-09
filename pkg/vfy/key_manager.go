@@ -33,81 +33,142 @@ type keyManager struct {
 	listeners map[string][]util.Promise
 }
 
+// TODO: (lmeinen) Add auxiliary datastructure to allow proving properties about promise graph (!)
+// TODO: (lmeinen) Basic memory verification
+// TODO: (lmeinen) Investigate necessity of adding a proper wg token - can maybe be used to make claims of type "method m2 is only called after m1"
+// TODO: (lmeinen) Find way to make claims about waiting number of threads - would allow proving termination of main thread
+
+/* TODO: (lmeinen) Consider the following (informal) properties for verification:
+(a) The number of listeners is non-negative
+(b) Once waitForInit has been called, the number of listeners decreases monotonically
+(c) A listener is waiting for exactly one key
+(d) Taking the statement "Token A claims(*) that it is signed by the key embedded in token B" to be the relation Veri(A) = B,
+	we consider the graph G constructed by the set of all relations Veri(X) = Y for all tokens X in the tokenset S.
+	Note that Y is not necessarily in S.
+	The following properties arise:
+	(1) num listeners <= |S| and |S| = |G|
+	(2) if Veri(X) = nil and fails to specify a signing key or the signing key is not listed in the CT logs, an error is returned
+	(3) the out-degree for any node is 1 - note that Veri is not injective and therefore the in-degree can be arbitrary
+	(4) for every disjoint subgraph Gi of G: Gi is either a DAG (with a single self-signed root with out-degree 0), or is cyclic.
+	(5) for all Veri(X) = Y where X in S, Y != nil and Y in S: the underlying promise will be resolved
+	(6) for all Veri(X) = Y where X in S, Y != nil and Y not in S: the underlying promise can only be rejected
+	(7) for all Veri(X) = nil and the specified signing key is listed in the CT logs: the underlying promise will be resolved
+(*) The claim arises from the "kid" resp. "jwk" (for root token) headers
+
+--> waitForInit can return the described forest: a node consists of a 'promise state' and a reference to its parent
+--> define ghost functions that validate certain properties: e.g. that all resolvable promises have been resolved or
+	that a specific promise has been resolved (maybe a function that returns the set of resolved promises?)
+--> is the aux datastructure part of the km? Does it require thread-safe access?
+*/
+
 // Creates a new key manager to verify [numThreads]-many tokens asynchronously.
-// @ trusted
 // @ requires numThreads > 0
 // @ ensures res.lock.LockP() &&
 // @ 	res.lock.LockInv() == LockInv!<res!>
 // @ ensures res.init.WaitGroupP() &&
 // @ 	res.init.WaitMode() &&
-// @ 	acc(res.init.UnitDebt(WaitInv!<!>), numThreads/1) &&
+// @ 	acc(res.init.UnitDebt(WaitInv!<!>), perm(numThreads)) &&
 // @ 	res.init.Token(WaitInv!<!>)
 func NewKeyManager(numThreads int) (res *keyManager) {
 	var km /*@@@*/ keyManager
+
 	// @ km.init.Init()
 	km.init.Add(numThreads /*@, 1/2, PredTrue!<!> @*/)
 	/*@
-	invariant acc(km.init.WaitGroupP(), 1/2) && !km.init.WaitMode()
-	invariant acc(km.init.UnitDebt(PredTrue!<!>), numThreads - i)
-	invariant acc(km.init.UnitDebt(WaitInv!<!>), i/1) && acc(km.init.Token(WaitInv!<!>), i/1)
-	for i := 0; i < numThreads; i++ {
-		km.init.GenerateTokenAndDebt(WaitInv!<!>)
+	ghost {
+		invariant 0 <= i && i <= numThreads
+		invariant acc(km.init.WaitGroupP(), 1/2) && !km.init.WaitMode()
+		invariant acc(km.init.UnitDebt(PredTrue!<!>), numThreads - i)
+		invariant acc(km.init.UnitDebt(WaitInv!<!>), perm(i)) && acc(km.init.Token(WaitInv!<!>), perm(i))
+		for i := 0; i < numThreads; i++ {
+			km.init.GenerateTokenAndDebt(WaitInv!<!>)
+		}
+		km.init.Start(1/2, WaitInv!<!>)
+		km.init.SetWaitMode(1/2, 1/2)
 	}
-	km.init.Start(1/2, WaitInv!<!>)
-	km.init.SetWaitMode(1/2, 1/2)
 	@*/
 
 	km.keys = make(map[string]jwk.Key)
 	km.listeners = make(map[string][]util.Promise)
+
+	/*@
+	ghost var pLock = &km.lock
+	fold LockInv!<&km!>()
+	pLock.SetInv(LockInv!<&km!>)
+	@*/
+
 	return &km
 }
 
 // Wait until all verification threads obtained a promise for their verification
 // key.
-// @ trusted
-// @ requires acc(km.init.WaitGroupP(), 1/2)
+// @ requires km.init.WaitGroupP()
 // @ requires km.init.WaitMode()
-// @ preserves acc(km.init.WaitGroupP(), 1/2)
+// @ ensures km.init.WaitGroupP()
 func (km *keyManager) waitForInit() {
-	// TODO: (lmeinen) come up with sensible functional properties
 	km.init.Wait( /*@ 1/2, seq[pred()]{ } @*/ )
 }
 
 // Cancel any further verification.
-// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 func (km *keyManager) killListeners() {
 	km.lock.Lock()
 	defer km.lock.Unlock()
+	// @ unfold LockInv!<km!>()
+	// @ ghost defer fold LockInv!<km!>()
 
-	for k, listeners := range km.listeners {
-		for _, promise := range listeners {
+	l := km.listeners
+
+	// @ invariant acc(l)
+	// @ invariant forall key string :: key in domain(l) ==> (
+	// @ 	acc(l[key]) &&
+	// @ 	let llist, _ := l[key] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], key, i))
+	for k, listeners := range l /*@ with visited @*/ {
+		// @ invariant acc(listeners, 1/2)
+		// @ invariant forall i int :: 0 <= i && i < len(listeners) ==> PromiseInv(listeners[i], k, i)
+		for _, promise := range listeners /*@ with i0 @*/ {
+			// @ unfold PromiseInv(promise, k, i0)
 			promise.Reject()
+			// @ fold PromiseInv(promise, k, i0)
 		}
-		doDelete(km.listeners, k)
+
+		// FIXME: (lmeinen) Don't have access to km.listeners here --> rewrite?
+		// doDelete(km.listeners, k)
 	}
 }
 
 // How many blocked threads are there that wait for a key promise to be resolved?
-// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
+// @ ensures 0 <= res
 func (km *keyManager) waiting() (res int) {
 	km.lock.Lock()
 	defer km.lock.Unlock()
+	// @ unfold LockInv!<km!>()
+	// @ ghost defer fold LockInv!<km!>()
 
 	sum := 0
-	for _, listeners := range km.listeners {
+	// FIXME: (lmeinen) for whatever reason, there seems to be no configuration of loop invariants that allows ranging over km.listeners
+	l := km.listeners
+	// @ invariant acc(l)
+	// @ invariant forall key string :: key in domain(l) ==> (
+	// @ 	acc(l[key]) &&
+	// @ 	let llist, _ := l[key] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], key, i))
+	// @ invariant 0 <= sum
+	for _, listeners := range l /*@ with visited @*/ {
 		sum += len(listeners)
 	}
+
 	return sum
 }
 
 // Store a verified key and notify listeners waiting for that key.
-// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
+// @ requires k != nil
 func (km *keyManager) put(k jwk.Key) bool {
 	km.lock.Lock()
 	defer km.lock.Unlock()
+	// @ unfold LockInv!<km!>()
+	// @ ghost defer fold LockInv!<km!>()
 
 	kid, err := tokens.GetKID(k)
 	if err != nil {
@@ -126,26 +187,33 @@ func (km *keyManager) put(k jwk.Key) bool {
 	}
 
 	km.keys[kid] = k
-	promises := km.listeners[kid]
-	if len(promises) == 0 {
+	// FIXME: (lmeinen) added ok flag here; add as bug commit
+	promises, ok := km.listeners[kid]
+	if !ok {
 		return false
 	}
 
+	// @ invariant acc(promises, 1/2)
+	// @ invariant forall i int :: 0 <= i && i < len(promises) ==> PromiseInv(promises[i], kid, i)
 	for _, promise := range promises {
 		if promise != nil {
 			promise.Fulfill(k)
 		}
 	}
+
 	doDelete(km.listeners, kid)
+
 	return true
 }
 
-// Get a key based on its [kid]. Returns a promise that may already be resolved.
-// @ trusted
+// // Get a key based on its [kid]. Returns a promise that may already be resolved.
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
-func (km *keyManager) getKey(kid string) util.Promise {
+// @ ensures p != nil
+func (km *keyManager) getKey(kid string) (p util.Promise) {
 	km.lock.Lock()
 	defer km.lock.Unlock()
+	// @ unfold LockInv!<km!>()
+	// @ ghost defer fold LockInv!<km!>()
 
 	c := util.NewPromise()
 	k, ok := km.keys[kid]
@@ -153,15 +221,16 @@ func (km *keyManager) getKey(kid string) util.Promise {
 		c.Fulfill(k)
 	} else {
 		listenersForKid := km.listeners[kid]
+		// @ fold PromiseInv(c, kid, len(listenersForKid))
 		km.listeners[kid] = append( /*@ perm(1/2), @*/ listenersForKid, c)
 	}
 	return c
 }
 
-// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(sig, _)
-func (km *keyManager) getVerificationKey(sig *jws.Signature) util.Promise {
+// @ ensures p != nil
+func (km *keyManager) getVerificationKey(sig *jws.Signature) (p util.Promise) {
 	if headerKID := sig.ProtectedHeaders().KeyID(); headerKID != "" {
 		return km.getKey(headerKID)
 	} else if sig.ProtectedHeaders().JWK().KeyID() != "" {
@@ -175,19 +244,22 @@ func (km *keyManager) getVerificationKey(sig *jws.Signature) util.Promise {
 // the root key commitment will be verified, and when this succeeds, the root
 // key will be used for verification. All other keys will register a listener
 // and wait for their verification key to be verified externally.
-// @ trusted
-// @ preserves km.Mem()
+// @ requires km.Mem() && ctx != nil && sink != nil && acc(sig, _) && acc(m, _)
 func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.Signature, m *jws.Message) error {
 	// @ unfold km.Mem()
-	// @ ghost defer fold km.Mem()
 	var promise util.Promise
 	var err error
 	if t, e := jwt.Parse(m.Payload(), jwt.WithVerify(false)); e != nil {
 		log.Printf("could not decode payload: %s", e)
 		err = e
-	} else if logs, ok := t.Get("log" /*@, 1/2 @*/); ok {
+	} else if logs, ok := t.Get("log"); ok {
 		headerKey := sig.ProtectedHeaders().JWK()
-		for _, r := range roots.VerifyBindingCerts(t.Issuer(), headerKey, logs.([]*tokens.LogConfig)) {
+		// @ assume typeOf(logs) == type[[]*tokens.LogConfig]
+		logsCast := logs.([]*tokens.LogConfig)
+		// @ inhale acc(logsCast) && forall i int :: 0 <= i && i < len(logsCast) ==> acc(logsCast[i])
+		results := roots.VerifyBindingCerts(t.Issuer(), headerKey, logsCast)
+		// @ invariant acc(results)
+		for _, r := range results {
 			if !r.Ok {
 				log.Printf("could not verify root key commitment for log ID %s", r.LogID)
 				err = ErrRootKeyUnbound
@@ -200,7 +272,8 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 	}
 
 	promise = km.getVerificationKey(sig)
-	// @ fold PredTrue!<!>()
+	// @ fold WaitInv!<!>()
+	// @ km.init.PayDebt(WaitInv!<!>)
 	km.init.Done()
 	if err != nil {
 		log.Printf("err: %s", err)
@@ -221,10 +294,18 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 }
 
 // @ trusted
-// @ preserves acc(listeners)
-func doDelete(listeners map[string][]util.Promise, k string) {
+// @ requires acc(listeners)
+// @ requires forall k string :: k in domain(listeners) ==> (
+// @ 	acc(listeners[k]) &&
+// @ 	let llist, _ := listeners[k] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], k, i))
+// @ ensures acc(listeners)
+// @ ensures domain(listeners) == domain(old(listeners)) setminus set[string] { key }
+// @ ensures forall k string :: k in domain(listeners) ==> (
+// @ 	acc(listeners[k]) &&
+// @ 	let llist, _ := listeners[k] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], k, i))
+func doDelete(listeners map[string][]util.Promise, key string) {
 	// FIXME: (lmeinen) delete expression not supported in Gobra
-	delete(listeners, k)
+	delete(listeners, key)
 }
 
 /*@
@@ -232,11 +313,45 @@ pred WaitInv() {
 	true
 }
 
-pred LockInv(km *keyManager) {
-	acc(&km.keys) && acc(&km.listeners)
+pred PromiseInv(p util.Promise, ghost k string, ghost i int) {
+	p != nil
 }
 
+pred ListenersInv(l []util.Promise) {
+	true
+}
+
+pred LockInv(km *keyManager) {
+	acc(&km.keys) &&
+	acc(km.keys) &&
+	acc(&km.listeners) &&
+	acc(km.listeners) &&
+	(forall k string :: k in domain(km.listeners) ==> (
+		acc(km.listeners[k]) &&
+		let llist, _ := km.listeners[k] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], k, i)))
+}
+
+ghost
+requires acc(l1)
+requires acc(l2)
+ensures r ==> (forall i, j int :: 0 <= i && i < len(l1) && 0 <= j && j < len(l2) ==> &l1[i] != &l2[j])
+pure func sliceNeq(l1 []util.Promise, l2 []util.Promise) (r bool) {
+	return true
+}
+
+ghost
+requires forall i int :: 0 <= i && i < len(s) ==> acc(&s[i], _) && isComparable(s[i])
+ensures len(res) == len(s)
+ensures forall i int :: 0 <= i && i < len(res) ==> isComparable(res[i])
+ensures forall i int :: {s[i]} {res[i]} 0 <= i && i < len(s) ==> s[i] == res[i]
+pure func toSeq(s []util.Promise) (res seq[util.Promise]) {
+  return (len(s) == 0 ? seq[util.Promise]{} :
+                        toSeq(s[:len(s)-1]) ++ seq[util.Promise]{s[len(s) - 1]})
+}
+
+// required to capture preconditions in jwt.KeyProvider interface
 pred (km *keyManager) Mem() {
+	km.init.UnitDebt(WaitInv!<!>) &&
 	acc(km.lock.LockP(), _) &&
 	km.lock.LockInv() == LockInv!<km!>
 }

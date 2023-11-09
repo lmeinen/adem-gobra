@@ -18,3 +18,12 @@ const StdEncoding Encoding = 0
 // EncodeToString returns the base32 encoding of src.
 // @ preserves forall i int :: 0 <= i && i < len(src) ==> acc(&src[i])
 func (enc Encoding) EncodeToString(src []byte) string
+
+// EncodedLen returns the length in bytes of the base32 encoding
+// of an input buffer of length n.
+// @ ghost
+// @ requires n >= 0
+// @ pure
+func EncodedLen(n int) int {
+	return (n + 4) / 5 * 8
+}

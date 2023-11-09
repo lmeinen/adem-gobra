@@ -32,7 +32,8 @@ func GetEndorsedKID(t jwt.JwtToken) (string, error) {
 }
 
 // Get a key's KID. If it has no KID, it will be calculated.
-func GetKID(key jwk.Key) (string, error) {
+// @ ensures err != nil ==> len(kid) > 0
+func GetKID(key jwk.Key) (kid string, err error) {
 	if key.KeyID() != "" {
 		return key.KeyID(), nil
 	}
@@ -42,7 +43,9 @@ func GetKID(key jwk.Key) (string, error) {
 
 // Calculate a key's KID by hashing it using a canonical JSON representation and
 // SHA256. This function will drop any private-key parameters.
-func CalcKID(key jwk.Key) (string, error) {
+// @ ensures err != nil ==> kid == ""
+// @ ensures err == nil ==> len(kid) > 0
+func CalcKID(key jwk.Key) (kid string, err error) {
 	if pk, err := key.PublicKey(); err != nil {
 		return "", err
 	} else if key.Algorithm() == nil || key.Algorithm().String() == "" {

@@ -69,7 +69,9 @@ type TokenVerificationResult struct {
 // Every call to [vfyToken] will write to [results] exactly once.
 // @ preserves acc(&ErrTokenNonCompact, _) && ErrTokenNonCompact != nil
 // @ requires acc(rawToken, _)
-// @ requires acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
+// @ requires km.init.UnitDebt(WaitInv!<!>) &&
+// @ 	acc(km.lock.LockP(), _) &&
+// @ 	km.lock.LockInv() == LockInv!<km!>
 // @ requires 0 < threadCount
 // @ requires acc(results.SendChannel(), 1 / numSendFractions(threadCount)) &&
 // @ 	results.SendGivenPerm() == SendToken!<loc, threadCount, _!> &&
@@ -153,7 +155,6 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 	// Put trusted public keys into key manager. This allows for termination for
 	// tokens without issuer.
-	// TODO: (lmeinen) check on Context semantics and encode in lib stub
 	ctx := context.TODO()
 	iter := trustedKeys.Keys(ctx)
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
@@ -187,7 +188,9 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ invariant acc(&ErrTokenNonCompact, _) && ErrTokenNonCompact != nil
 	// @ invariant acc(rawTokens, _)
 	// @ invariant forall i int :: { rawTokens[i] } i0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
-	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
+	// @ invariant acc(km.init.UnitDebt(WaitInv!<!>), (threadCount - i0)) &&
+	// @ 	acc(km.lock.LockP(), _) &&
+	// @ 	km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(vfyWaitGroup.UnitDebt(PredTrue!<!>), threadCount - i0)
 	// @ invariant i0 < threadCount ==> (
 	// @ 	acc(results.SendChannel(), (threadCount - i0) / numSendFractions(threadCount)) &&
@@ -305,7 +308,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 				// @ assert forall k int :: { ts[k] } 0 <= k && k < len(ts) ==> unfolding ts[k].Mem() in ts[k] != result.token
 				ts = append( /*@ perm(1/2), @*/ ts, result.token)
 				if k, ok := result.token.Token.Get("key"); ok {
-					// @ assume typeOf(k) == type[tokens.EmbeddedKey]
+					// @ assume typeOf(k) == type[tokens.EmbeddedKey] && k.(tokens.EmbeddedKey).Key != nil
 					km.put(k.(tokens.EmbeddedKey).Key)
 				}
 				// @ fold result.token.Mem()
