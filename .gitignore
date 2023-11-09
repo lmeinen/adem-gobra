@@ -4,3 +4,6 @@
 /cmd/**/__debug_bin
 /.vscode
 **/tmp
+pkg/main
+**/builtin
+**/stubs
