@@ -38,6 +38,9 @@ var ErrWndConstraint = errors.New("emblem does not satisfy wnd constraint")
 
 // Verify that the given emblem complies with the given endorsement's
 // constraints.
+// @ trusted
+// @ requires emblem != nil
+// @ requires endorsement != nil
 func VerifyConstraints(emblem jwt.JwtToken, endorsement jwt.JwtToken) error {
 	if endCnstrs, ok := endorsement.Get("emb" /*@, 1/2 @*/); !ok {
 		return nil

@@ -85,10 +85,12 @@ type Key interface {
 	// Algorithm returns `alg` of a JWK
 	// preserves acc(Mem(), _)
 	// @ ensures a != nil
+	// @ pure
 	Algorithm() (a jwa.KeyAlgorithm)
 
 	// KeyID returns `kid` of a JWK
 	// preserves acc(Mem(), _)
+	// @ pure
 	KeyID() string
 }
 

@@ -10,24 +10,42 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-// @ trusted
-// @ preserves acc(emblem.Mem(), _)
-// @ preserves p > 0 && acc(TokenList(endorsements), p)
+// @ requires p > 0
+// @ requires acc(emblem.Mem(), p)
+// @ requires acc(TokenList(endorsements), p)
+// @ requires trustedKeys != nil
+// @ ensures acc(emblem.Mem(), p / 2)
+// @ ensures acc(TokenList(endorsements), p / 2)
 // @ ensures acc(vfyResults)
-// @ ensures !goblib.GhostContainsResult(vfyResults, consts.INVALID) ==> t.Mem()
+// @ ensures !goblib.GhostContainsResult(vfyResults, consts.INVALID) ==> acc(t.Mem(), p / 2)
 func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost p perm @*/) (vfyResults []consts.VerificationResult, t *ADEMToken) {
+	// @ unfold acc(TokenList(endorsements), p)
+	// @ ghost defer fold acc(TokenList(endorsements), p / 2)
+
 	endorsedBy := make(map[string]*ADEMToken)
-	for _, endorsement := range endorsements {
+
+	// @ invariant acc(emblem.Mem(), p)
+	// @ invariant acc(endorsedBy)
+	// @ invariant acc(endorsements, p) &&
+	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p)) &&
+	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i0 <= i && i < len(endorsements) ==> !(endorsements[i] in range(endorsedBy)))
+	// @ invariant forall k string :: k in domain(endorsedBy) ==> (
+	// @ 	exists i int :: 0 <= i && i < len(endorsements) &&
+	// @ 	let t, _ := endorsedBy[k] in t == endorsements[i])
+	for _, endorsement := range endorsements /*@ with i0 @*/ {
+		// @ unfold acc(endorsement.Mem(), p)
 		kid, err := tokens.GetEndorsedKID(endorsement.Token)
 		end, _ := endorsement.Token.Get("end")
+		// @ fold acc(endorsement.Mem(), p)
+		// @ assume typeOf(end) == type[bool]
 		if err != nil {
 			log.Printf("could not get endorsed kid: %s\n", err)
 			continue
-		} else if emblem.Token.Issuer() != endorsement.Token.Issuer() {
+		} else if /*@ unfolding acc(emblem.Mem(), p) in unfolding acc(endorsement.Mem(), p) in @*/ emblem.Token.Issuer() != endorsement.Token.Issuer() {
 			continue
-		} else if emblem.Token.Issuer() != endorsement.Token.Subject() {
+		} else if /*@ unfolding acc(emblem.Mem(), p) in unfolding acc(endorsement.Mem(), p) in @*/ emblem.Token.Issuer() != endorsement.Token.Subject() {
 			continue
-		} else if kid != emblem.VerificationKey.KeyID() && !end.(bool) {
+		} else if /*@ unfolding acc(emblem.Mem(), p) in @*/ kid != emblem.VerificationKey.KeyID() && !end.(bool) {
 			continue
 		} else if _, ok := endorsedBy[kid]; ok {
 			log.Println("illegal branch in endorsements")
@@ -40,12 +58,23 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	var root *ADEMToken
 	trustedFound := false
 	last := emblem
+	// @ invariant acc(emblem.Mem(), p)
+	// @ invariant acc(endorsements, p) &&
+	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p))
+	// @ invariant acc(endorsedBy)
+	// @ invariant last == emblem || last in range(endorsedBy)
+	// @ invariant root != nil ==> root == last
+	// @ invariant forall k string :: k in domain(endorsedBy) ==> (
+	// @ 	exists i int :: 0 <= i && i < len(endorsements) &&
+	// @ 	let t, _ := endorsedBy[k] in t == endorsements[i])
 	for root == nil {
-		_, ok := trustedKeys.LookupKeyID(last.VerificationKey.KeyID())
+		_, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(last.Mem(), p) in @*/ last.VerificationKey.KeyID())
 		trustedFound = trustedFound || ok
 
-		if endorsing := endorsedBy[last.VerificationKey.KeyID()]; endorsing != nil {
-			if err := tokens.VerifyConstraints(emblem.Token, endorsing.Token); err != nil {
+		if endorsing := endorsedBy[ /*@ unfolding acc(last.Mem(), p) in @*/ last.VerificationKey.KeyID()]; endorsing != nil {
+			if err := tokens.VerifyConstraints(
+				/*@ unfolding acc(emblem.Mem(), p) in @*/ emblem.Token,
+				/*@ unfolding acc(endorsing.Mem(), p) in @*/ endorsing.Token); err != nil {
 				log.Printf("emblem does not comply with endorsement constraints: %s", err)
 				return []consts.VerificationResult{consts.INVALID}, nil
 			} else {
@@ -61,14 +90,17 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		results = append( /*@ perm(1/2), @*/ results, consts.SIGNED_TRUSTED)
 	}
 
+	// @ unfold acc(root.Mem(), p)
 	_, rootLogged := root.Token.Get("log")
-	if emblem.Token.Issuer() != "" && !rootLogged {
+	// @ fold acc(root.Mem(), p)
+	if /*@ unfolding acc(emblem.Mem(), p) in @*/ emblem.Token.Issuer() != "" && !rootLogged {
 		return []consts.VerificationResult{consts.INVALID}, nil
 	} else if rootLogged {
 		results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL)
-		if _, ok := trustedKeys.LookupKeyID(root.VerificationKey.KeyID()); ok {
+		if _, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(root.Mem(), p) in @*/ root.VerificationKey.KeyID()); ok {
 			results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL_TRUSTED)
 		}
 	}
+
 	return results, root
 }

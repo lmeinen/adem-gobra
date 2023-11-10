@@ -40,7 +40,6 @@ pred (t *ADEMToken) Mem() {
 
 pred TokenList(ts []*ADEMToken) {
 	acc(ts) &&
-	(forall k int :: { ts[k] } 0 <= k && k < len(ts) ==> ts[k] != nil && ts[k].Mem()) &&
-	(forall i, j int :: { ts[i], ts[j] } 0 <= i && i < j && j < len(ts) ==> ts[i] != ts[j])
+	(forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> ts[i] != nil && ts[i].Mem())
 }
 @*/

@@ -186,6 +186,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 	// Start verification threads
 	// @ invariant acc(&ErrTokenNonCompact, _) && ErrTokenNonCompact != nil
+	// @ invariant 0 < threadCount
 	// @ invariant acc(rawTokens, _)
 	// @ invariant forall i int :: { rawTokens[i] } i0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 	// @ invariant acc(km.init.UnitDebt(WaitInv!<!>), (threadCount - i0)) &&
@@ -388,13 +389,20 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 		return ResultInvalid()
 	}
 
+	// @ assert acc(emblem.Mem(), 1/2)
+	// @ assert acc(TokenList(endorsements), 1/2)
+
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
 	vfyResults, root := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, perm(1/2) @*/)
 	if util.ContainsVerificationResult(vfyResults, consts.INVALID /*@, perm(1/2) @*/) {
 		return ResultInvalid()
 	}
 
-	endorsedResults, endorsedBy := verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, perm(1/2) @*/)
+	// @ assert acc(TokenList(endorsements), 1/4)
+	// @ assert acc(emblem.Mem(), 1/4)
+	// @ assert acc(root.Mem(), 1/4)
+
+	endorsedResults, endorsedBy := verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, perm(1/4) @*/)
 	if util.ContainsVerificationResult(endorsedResults, consts.INVALID /*@, perm(1/2) @*/) {
 		return ResultInvalid()
 	}
@@ -412,8 +420,9 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 /*@
 ghost
-ensures res == 2 * threadCount
-pure func numSendFractions(threadCount int) (res int)
+pure func numSendFractions(threadCount int) (res int) {
+	return 2 * threadCount
+}
 
 pred SendToken(loc *int, threadCount int, result *TokenVerificationResult) {
 	threadCount > 0 && acc(SingleUse(loc), 1 / threadCount) && ResultPerm(result)

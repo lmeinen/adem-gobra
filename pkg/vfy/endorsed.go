@@ -10,38 +10,61 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-// @ trusted
-// @ preserves acc(emblem.Mem(), _)
-// @ preserves acc(root.Mem(), _)
-// @ preserves p > 0 && acc(TokenList(endorsements), p)
+// @ preserves p > 0
+// @ preserves acc(emblem.Mem(), p)
+// @ preserves acc(root.Mem(), p)
+// @ preserves acc(TokenList(endorsements), p)
+// @ requires trustedKeys != nil
 // @ ensures endorsedResults != nil ==> (
 // @	acc(endorsedResults) &&
 // @	(!goblib.GhostContainsResult(endorsedResults, consts.INVALID) ==> endorsedBy != nil))
 // @ ensures endorsedBy != nil ==> acc(endorsedBy)
 func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost p perm @*/) (endorsedResults []consts.VerificationResult, endorsedBy []string) {
+	// @ unfold acc(TokenList(endorsements), p)
+	// @ ghost defer fold acc(TokenList(endorsements), p)
+
 	issuers := []string{}
 	trustedFound := false
 	existsEndorsement := false
+	// @ invariant acc(emblem.Mem(), p)
+	// @ invariant acc(root.Mem(), p)
+	// @ invariant acc(endorsements, p) &&
+	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p))
+	// @ invariant issuers != nil && acc(issuers)
 	for _, endorsement := range endorsements {
+		// @ unfold acc(endorsement.Mem(), p)
 		if endorsedKID, err := tokens.GetEndorsedKID(endorsement.Token); err != nil {
 			log.Printf("could not not get endorsed kid: %s", err)
+			// @ fold acc(endorsement.Mem(), p)
 			continue
-		} else if root.Token.Issuer() != endorsement.Token.Subject() {
+		} else if /*@ unfolding acc(root.Mem(), p) in @*/ root.Token.Issuer() != endorsement.Token.Subject() {
+			// @ fold acc(endorsement.Mem(), p)
 			continue
 		} else if endorsement.Token.Issuer() == "" {
+			// @ fold acc(endorsement.Mem(), p)
 			continue
-		} else if end, _ := endorsement.Token.Get("end"); !end.(bool) {
-			continue
-		} else if root.VerificationKey.KeyID() != endorsedKID {
-			continue
-		} else if err := tokens.VerifyConstraints(emblem.Token, endorsement.Token); err != nil {
-			log.Printf("emblem does not comply with endorsement constraints: %s", err)
-			return []consts.VerificationResult{consts.INVALID}, nil
 		} else {
-			existsEndorsement = true
-			issuers = append( /*@ perm(1/2), @*/ issuers, endorsement.Token.Issuer())
-			_, ok := trustedKeys.LookupKeyID(endorsement.VerificationKey.KeyID())
-			trustedFound = trustedFound || ok
+			end, _ := endorsement.Token.Get("end")
+			// FIXME: (lmeinen) remove type assumption with better specification of Get (and return if chain to previous format)
+			// @ assume typeOf(end) == type[bool]
+			if !end.(bool) {
+				// @ fold acc(endorsement.Mem(), p)
+				continue
+			} else if /*@ unfolding acc(root.Mem(), p) in @*/ root.VerificationKey.KeyID() != endorsedKID {
+				// @ fold acc(endorsement.Mem(), p)
+				continue
+			} else if err := tokens.VerifyConstraints( /*@ unfolding acc(emblem.Mem(), p) in @*/ emblem.Token, endorsement.Token); err != nil {
+				log.Printf("emblem does not comply with endorsement constraints: %s", err)
+				// @ fold acc(endorsement.Mem(), p)
+				x := []consts.VerificationResult{consts.INVALID}
+				return x, nil
+			} else {
+				existsEndorsement = true
+				issuers = append( /*@ perm(1/2), @*/ issuers, endorsement.Token.Issuer())
+				_, ok := trustedKeys.LookupKeyID(endorsement.VerificationKey.KeyID())
+				trustedFound = trustedFound || ok
+				// @ fold acc(endorsement.Mem(), p)
+			}
 		}
 	}
 
