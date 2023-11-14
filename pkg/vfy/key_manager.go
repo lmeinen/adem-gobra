@@ -10,6 +10,7 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/roots"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	"github.com/adem-wg/adem-proto/pkg/util"
+	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -97,21 +98,22 @@ func (km *keyManager) killListeners() {
 	l := km.listeners
 
 	// @ invariant acc(l)
-	// @ invariant forall key string :: key in domain(l) ==> (
+	// @ invariant forall key string :: key in domain(l) && !(key in visited) ==> (
 	// @ 	acc(l[key]) &&
 	// @ 	let llist, _ := l[key] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], key, i))
 	for k, listeners := range l /*@ with visited @*/ {
 		// @ invariant acc(listeners, 1/2)
-		// @ invariant forall i int :: 0 <= i && i < len(listeners) ==> PromiseInv(listeners[i], k, i)
+		// @ invariant forall i int :: 0 <= i && i0 <= i && i < len(listeners) ==> PromiseInv(listeners[i], k, i)
 		for _, promise := range listeners /*@ with i0 @*/ {
 			// @ unfold PromiseInv(promise, k, i0)
 			promise.Reject()
-			// @ fold PromiseInv(promise, k, i0)
 		}
 
-		// FIXME: (lmeinen) Don't have access to km.listeners here --> rewrite?
+		// FIXME: (lmeinen) Don't have access to km.listeners here --> delete all after completion of loop
 		// doDelete(km.listeners, k)
 	}
+
+	km.listeners = make(map[string][]util.Promise)
 }
 
 // How many blocked threads are there that wait for a key promise to be resolved?
@@ -171,8 +173,9 @@ func (km *keyManager) put(k jwk.Key) bool {
 	}
 
 	// @ invariant acc(promises, 1/2)
-	// @ invariant forall i int :: 0 <= i && i < len(promises) ==> PromiseInv(promises[i], kid, i)
-	for _, promise := range promises {
+	// @ invariant forall i int :: 0 <= i && i0 <= i && i < len(promises) ==> PromiseInv(promises[i], kid, i)
+	for _, promise := range promises /*@ with i0 @*/ {
+		// @ unfold PromiseInv(promise, kid, i0)
 		if promise != nil {
 			promise.Fulfill(k)
 		}
@@ -185,7 +188,7 @@ func (km *keyManager) put(k jwk.Key) bool {
 
 // // Get a key based on its [kid]. Returns a promise that may already be resolved.
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
-// @ ensures p != nil
+// @ ensures p != nil && p.ConsumerToken()
 func (km *keyManager) getKey(kid string) (p util.Promise) {
 	km.lock.Lock()
 	defer km.lock.Unlock()
@@ -206,7 +209,7 @@ func (km *keyManager) getKey(kid string) (p util.Promise) {
 
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(sig, _)
-// @ ensures p != nil
+// @ ensures p != nil && p.ConsumerToken()
 func (km *keyManager) getVerificationKey(sig *jws.Signature) (p util.Promise) {
 	if headerKID := sig.ProtectedHeaders().KeyID(); headerKID != "" {
 		return km.getKey(headerKID)
@@ -272,12 +275,14 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 
 // @ trusted
 // @ requires acc(listeners)
-// @ requires forall k string :: k in domain(listeners) ==> (
+// @ requires forall k string :: k in listeners && k != key ==> (
 // @ 	acc(listeners[k]) &&
-// @ 	let llist, _ := listeners[k] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], k, i))
+// @ 	let llist, _ := listeners[k] in forall i int :: { llist[i] } 0 <= i && i < len(llist) ==> PromiseInv(llist[i], k, i))
 // @ ensures acc(listeners)
-// @ ensures domain(listeners) == domain(old(listeners)) setminus set[string] { key }
-// @ ensures forall k string :: k in domain(listeners) ==> (
+// @ ensures len(old(listeners)) - 1 <= len(listeners) && len(listeners) <= len(old(listeners))
+// @ ensures forall k string :: k in listeners ==> (
+// @ 	k != key &&
+// @ 	k in old(listeners) &&
 // @ 	acc(listeners[k]) &&
 // @ 	let llist, _ := listeners[k] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], k, i))
 func doDelete(listeners map[string][]util.Promise, key string) {
@@ -291,11 +296,18 @@ pred WaitInv() {
 }
 
 pred PromiseInv(p util.Promise, ghost k string, ghost i int) {
-	p != nil
+	p != nil && p.ProducerToken()
 }
 
-pred ListenersInv(l []util.Promise) {
-	true
+ghost
+requires LockInv(km)
+requires unfolding LockInv(km) in k in km.listeners
+func (km *keyManager) test(k string) {
+	unfold LockInv(km)
+	assert k in km.listeners
+	doDelete(km.listeners, k)
+	assert !(k in km.listeners)
+	fold LockInv(km)
 }
 
 pred LockInv(km *keyManager) {
@@ -308,29 +320,21 @@ pred LockInv(km *keyManager) {
 		let llist, _ := km.listeners[k] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], k, i)))
 }
 
-ghost
-requires acc(l1)
-requires acc(l2)
-ensures r ==> (forall i, j int :: 0 <= i && i < len(l1) && 0 <= j && j < len(l2) ==> &l1[i] != &l2[j])
-pure func sliceNeq(l1 []util.Promise, l2 []util.Promise) (r bool) {
-	return true
-}
-
-ghost
-requires forall i int :: 0 <= i && i < len(s) ==> acc(&s[i], _) && isComparable(s[i])
-ensures len(res) == len(s)
-ensures forall i int :: 0 <= i && i < len(res) ==> isComparable(res[i])
-ensures forall i int :: {s[i]} {res[i]} 0 <= i && i < len(s) ==> s[i] == res[i]
-pure func toSeq(s []util.Promise) (res seq[util.Promise]) {
-  return (len(s) == 0 ? seq[util.Promise]{} :
-                        toSeq(s[:len(s)-1]) ++ seq[util.Promise]{s[len(s) - 1]})
-}
-
 // required to capture preconditions in jwt.KeyProvider interface
 pred (km *keyManager) Mem() {
 	km.init.UnitDebt(WaitInv!<!>) &&
 	acc(km.lock.LockP(), _) &&
 	km.lock.LockInv() == LockInv!<km!>
+}
+
+ghost
+trusted
+requires acc(s)
+ensures forall i int :: 0 <= i && i < len(s) ==> s[i] in r
+ensures forall k string :: k in r ==> exists i int :: 0 <= i && i < len(s) && s[i] == k
+pure func toSet(s []string) (r set[string]) {
+	return (len(s) == 0 ? set[string]{} :
+                        toSet(s[:len(s)-1]) union set[string]{s[len(s) - 1]})
 }
 
 (*keyManager) implements jws.KeyProvider

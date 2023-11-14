@@ -171,6 +171,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	results := make(chan *TokenVerificationResult)
 	// @ results.Init(SendToken!<loc, threadCount, _!>, PredTrue!<!>)
 	// @ results.CreateDebt(1, 2, PredTrue!<!>)
+	// @ assert results.ClosureDebt(PredTrue!<!>, 1, 2) && results.Token(PredTrue!<!>)
 
 	/* the waitgroup is required to later collect all results send fractions in order to be able to close the channel
 	--> note that a single send to the results channel is the last thing a goroutine does, and that the main thread only
@@ -186,15 +187,15 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 	// Start verification threads
 	// @ invariant acc(&ErrTokenNonCompact, _) && ErrTokenNonCompact != nil
-	// @ invariant 0 < threadCount
 	// @ invariant acc(rawTokens, _)
 	// @ invariant forall i int :: { rawTokens[i] } i0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
+	// @ invariant threadCount == len(rawTokens)
 	// @ invariant acc(km.init.UnitDebt(WaitInv!<!>), (threadCount - i0)) &&
 	// @ 	acc(km.lock.LockP(), _) &&
 	// @ 	km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(vfyWaitGroup.UnitDebt(PredTrue!<!>), threadCount - i0)
 	// @ invariant i0 < threadCount ==> (
-	// @ 	acc(results.SendChannel(), (threadCount - i0) / numSendFractions(threadCount)) &&
+	// @ 	acc(results.SendChannel(), ((numSendFractions(threadCount) / 2) - i0) / numSendFractions(threadCount)) &&
 	// @ 	results.SendGivenPerm() == SendToken!<loc, threadCount, _!> &&
 	// @ 	results.SendGotPerm() == PredTrue!<!> &&
 	// @ 	acc(SingleUse(loc), (threadCount - i0) / threadCount))

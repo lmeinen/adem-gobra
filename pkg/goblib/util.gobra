@@ -6,14 +6,29 @@ import "github.com/adem-wg/adem-proto/pkg/consts"
 ghost
 requires acc(slice, _)
 pure func GhostContainsResult(slice []consts.VerificationResult, v consts.VerificationResult) bool { 
-  return v in toSeq(slice)
+  return v in toSeqResult(slice)
 }
 
 ghost
 requires acc(s, _)
 ensures len(res) == len(s)
 ensures forall j int :: {s[j]} {res[j]} 0 <= j && j < len(s) ==> s[j] == res[j]
-pure func toSeq(s []consts.VerificationResult) (res seq[consts.VerificationResult]) {
+pure func toSeqResult(s []consts.VerificationResult) (res seq[consts.VerificationResult]) {
   return (len(s) == 0 ? seq[consts.VerificationResult]{} :
-                        toSeq(s[:len(s)-1]) ++ seq[consts.VerificationResult]{s[len(s) - 1]})
+                        toSeqResult(s[:len(s)-1]) ++ seq[consts.VerificationResult]{s[len(s) - 1]})
+}
+
+ghost
+requires acc(slice, _)
+pure func GhostContainsString(slice []string, v string) bool { 
+  return v in toSeqString(slice)
+}
+
+ghost
+requires acc(s, _)
+ensures len(res) == len(s)
+ensures forall j int :: {s[j]} {res[j]} 0 <= j && j < len(s) ==> s[j] == res[j]
+pure func toSeqString(s []string) (res seq[string]) {
+  return (len(s) == 0 ? seq[string]{} :
+                        toSeqString(s[:len(s)-1]) ++ seq[string]{s[len(s) - 1]})
 }

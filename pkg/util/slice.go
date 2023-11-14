@@ -6,13 +6,14 @@ import (
 	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
 )
 
-// FIXME: (lmeinen) Needed two separate concrete type instantiations for generic Contains function - maybe introduce a union type to ensure we only verify one function body?
+// FIXME: (lmeinen) Needed two separate concrete type instantiations for generic Contains function
 
 // @ preserves p > 0
 // @ preserves acc(slice, p)
 // @ ensures res == goblib.GhostContainsResult(slice, v)
 func ContainsVerificationResult(slice []consts.VerificationResult, v consts.VerificationResult /*@, ghost p perm @*/) (res bool) {
-	//@ invariant acc(slice, p)
+	// @ invariant acc(slice, p)
+	// @ invariant forall j int :: 0 <= j && j < i && j < len(slice) ==> slice[j] != v
 	for _, elem := range slice /*@ with i @*/ {
 		if elem == v {
 			return true
@@ -23,13 +24,14 @@ func ContainsVerificationResult(slice []consts.VerificationResult, v consts.Veri
 
 // @ preserves p > 0
 // @ preserves acc(slice, p)
-// @ ensures res ==> 0 <= idx && idx < len(slice) && slice[idx] == v
-func ContainsString(slice []string, v string /*@, ghost p perm @*/) (res bool /*@, ghost idx int @*/) {
+// @ ensures res == goblib.GhostContainsString(slice, v)
+func ContainsString(slice []string, v string /*@, ghost p perm @*/) (res bool) {
 	// @ invariant acc(slice, p)
+	// @ invariant forall j int :: 0 <= j && j < i && j < len(slice) ==> slice[j] != v
 	for _, elem := range slice /*@ with i @*/ {
 		if elem == v {
-			return true //@ with: i
+			return true
 		}
 	}
-	return false //@ with: 0 - 1
+	return false
 }
