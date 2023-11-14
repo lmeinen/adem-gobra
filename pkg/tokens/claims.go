@@ -198,7 +198,7 @@ type EmblemValidatorS struct{}
 
 // Validation function for emblem tokens.
 // @ requires t != nil
-func (EmblemValidatorS) Validate(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
+func (EmblemValidatorS) Validate(_ context.Context, t jwt.Token) jwt.ValidationError {
 	if err := validateCommon(t); err != nil {
 		return err
 	}
@@ -217,7 +217,7 @@ type EndorsementValidatorS struct{}
 
 // Validation function for endorsement tokens.
 // @ requires t != nil
-func (EndorsementValidatorS) Validate(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
+func (EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) jwt.ValidationError {
 	if err := validateCommon(t); err != nil {
 		return err
 	}
@@ -254,7 +254,7 @@ func validateOI(oi string) error {
 
 // Validate claims shared by emblems and endorsements.
 // @ requires t != nil
-func validateCommon(t jwt.JwtToken) jwt.ValidationError {
+func validateCommon(t jwt.Token) jwt.ValidationError {
 	if err := jwt.Validate(t); err != nil {
 		return jwt.NewValidationError(err)
 	}

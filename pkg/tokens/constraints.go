@@ -1,5 +1,4 @@
 // +gobra
-
 package tokens
 
 import (
@@ -13,7 +12,7 @@ import (
 // constraints.
 // @ requires emblem != nil
 // @ requires acc(constraints.Assets)
-func checkAssetConstraint(emblem jwt.JwtToken, constraints EmblemConstraints) bool {
+func checkAssetConstraint(emblem jwt.Token, constraints EmblemConstraints) bool {
 	ass, _ := emblem.Get("ass")
 	// @ assume typeOf(ass) == type[[]*ident.AI]
 	// @ inhale acc(ass.([]*ident.AI))
@@ -47,7 +46,7 @@ var ErrWndConstraint = errors.New("emblem does not satisfy wnd constraint")
 // constraints.
 // @ requires emblem != nil
 // @ requires endorsement != nil
-func VerifyConstraints(emblem jwt.JwtToken, endorsement jwt.JwtToken) error {
+func VerifyConstraints(emblem jwt.Token, endorsement jwt.Token) error {
 	endCnstrs, ok := endorsement.Get("emb")
 	// @ inhale ok ==> typeOf(endCnstrs) == type[EmblemConstraints] &&
 	// @ 	let constraints := endCnstrs.(EmblemConstraints) in
