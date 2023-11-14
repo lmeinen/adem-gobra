@@ -17,7 +17,8 @@ const StdEncoding Encoding = 0
 
 // EncodeToString returns the base32 encoding of src.
 // @ preserves forall i int :: 0 <= i && i < len(src) ==> acc(&src[i])
-func (enc Encoding) EncodeToString(src []byte) string
+// @ ensures len(r) == EncodedLen(len(src))
+func (enc Encoding) EncodeToString(src []byte) (r string)
 
 // EncodedLen returns the length in bytes of the base32 encoding
 // of an input buffer of length n.

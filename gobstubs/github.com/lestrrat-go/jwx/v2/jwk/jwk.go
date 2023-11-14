@@ -80,7 +80,8 @@ type Key interface {
 	// PublicKey creates the corresponding PublicKey type for this object.
 	// All fields are copied onto the new public key, except for those that are not allowed.
 	// preserves acc(Mem(), _)
-	PublicKey() (Key, error)
+	// @ ensures pk != nil
+	PublicKey() (pk Key, err error)
 
 	// Algorithm returns `alg` of a JWK
 	// preserves acc(Mem(), _)

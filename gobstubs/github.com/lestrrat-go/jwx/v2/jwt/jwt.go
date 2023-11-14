@@ -107,14 +107,17 @@ type ValidateOption interface {
 // Validator describes interface to validate a Token.
 type Validator interface {
 	// Validate should return an error if a required conditions is not met.
+	// @ requires t != nil
 	Validate(c context.Context, t JwtToken) ValidationError
 }
 
+// @ decreases
 func NewValidationError(err error) ValidationError
 
 // RegisterCustomField allows users to specify that a private field
 // be decoded as an instance of the specified type. This option has
 // a global effect.
+// @ decreases
 func RegisterCustomField(name string, object interface{})
 
 // ErrInvalidIssuer returns the immutable error used when `iss` claim

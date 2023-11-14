@@ -15,6 +15,6 @@ func Equal(a, b []byte) bool {
 
 // Trim returns a subslice of s by slicing off all leading and
 // trailing UTF-8-encoded code points contained in cutset.
-// @ preserves forall i int :: 0 <= i && i < len(s) ==> acc(&s[i], _)
-// @ ensures forall i int :: 0 <= i && i < len(res) ==> acc(&res[i], _)
+// @ preserves acc(s)
+// @ ensures acc(res)
 func Trim(s []byte, cutset string) (res []byte)

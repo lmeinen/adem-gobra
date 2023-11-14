@@ -18,13 +18,16 @@ import (
 
 // Register JWT fields of emblems for easier parsing.
 func init() {
+	// TODO: (lmeinen) Implement parsing interface in jwt library
+	// 	- type guarantees and mem permissions for Get method
+	//	- type constraints for JSON parsing interface implementation
 	jwt.RegisterCustomField("log", []*LogConfig{})
 	jwt.RegisterCustomField("key", EmbeddedKey{})
 	jwt.RegisterCustomField("ass", []*ident.AI{})
 	jwt.RegisterCustomField("emb", EmblemConstraints{})
 }
 
-var ErrIllegalConst = errors.New("json element is illegal constant")
+var ErrIllegalConst /*@@@*/ error = errors.New("json element is illegal constant")
 
 type PurposeMask byte
 
@@ -35,12 +38,15 @@ const Protective PurposeMask = 0x01
 // const Indicative PurposeMask = 0b0000_0010
 const Indicative PurposeMask = 0x02
 
+// @ preserves acc(pm)
+// @ requires acc(bs)
 func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
 	var prps /*@@@*/ []string
 	var mask PurposeMask
 	if err := json.Unmarshal(bs, &prps); err != nil {
 		return err
 	} else {
+		// @ invariant acc(prps)
 		for _, prp := range prps {
 			switch prp {
 			case consts.Protective:
@@ -56,7 +62,9 @@ func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
 	return nil
 }
 
-func (pm *PurposeMask) MarshalJSON() ([]byte, error) {
+// @ preserves acc(pm)
+// @ ensures err == nil ==> acc(bs)
+func (pm *PurposeMask) MarshalJSON() (bs []byte, err error) {
 	var purposes []string
 	if *pm&Protective != 0 {
 		purposes = append( /*@perm(1/2), @*/ purposes, consts.Protective)
@@ -79,6 +87,8 @@ const TLS ChannelMask = 0x02
 // const UDP ChannelMask = 0b0000_0100
 const UDP ChannelMask = 0x04
 
+// @ preserves acc(cm)
+// @ requires acc(bs)
 func (cm *ChannelMask) UnmarshalJSON(bs []byte) error {
 	var dsts /*@@@*/ []string
 	var mask ChannelMask
@@ -102,7 +112,9 @@ func (cm *ChannelMask) UnmarshalJSON(bs []byte) error {
 	return nil
 }
 
-func (cm *ChannelMask) MarshalJSON() ([]byte, error) {
+// @ preserves acc(cm)
+// @ ensures err == nil ==> acc(bs)
+func (cm *ChannelMask) MarshalJSON() (bs []byte, err error) {
 	var dsts []string
 	if *cm&DNS != 0 {
 		dsts = append( /*@ perm(1/2), @*/ dsts, consts.DNS)
@@ -139,6 +151,8 @@ type LeafHash struct {
 
 // Attempt to parse a JSON value as string that contains a base64-encoded leaf
 // hash.
+// @ preserves acc(h)
+// @ requires acc(bs)
 func (h *LeafHash) UnmarshalJSON(bs []byte) (err error) {
 	trimmed := bytes.Trim(bs, `"`)
 	if raw, e := util.B64Dec(trimmed); e != nil {
@@ -150,7 +164,9 @@ func (h *LeafHash) UnmarshalJSON(bs []byte) (err error) {
 	return
 }
 
-func (h *LeafHash) MarshalJSON() ([]byte, error) {
+// @ preserves acc(h)
+// @ ensures err == nil ==> acc(bs)
+func (h *LeafHash) MarshalJSON() (bs []byte, err error) {
 	return json.Marshal(h.B64)
 }
 
@@ -161,6 +177,8 @@ type EmbeddedKey struct {
 
 // Attempt to parse a JSON value as string that contains a single JWK in JSON
 // encoding.
+// @ preserves acc(ek)
+// @ requires acc(bs)
 func (ek *EmbeddedKey) UnmarshalJSON(bs []byte) (err error) {
 	trimmed := bytes.Trim(bs, `"`)
 	if k, e := jwk.ParseKey(trimmed); e != nil {
@@ -179,12 +197,13 @@ var ErrAssMissing = jwt.NewValidationError(errors.New("emblems require ass claim
 type EmblemValidatorS struct{}
 
 // Validation function for emblem tokens.
+// @ requires t != nil
 func (EmblemValidatorS) Validate(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
 	if err := validateCommon(t); err != nil {
 		return err
 	}
 
-	if _, ok := t.Get("ass" /*@, 1/2 @*/); !ok {
+	if _, ok := t.Get("ass"); !ok {
 		return ErrAssMissing
 	}
 
@@ -197,12 +216,14 @@ var EmblemValidator = EmblemValidatorS{}
 type EndorsementValidatorS struct{}
 
 // Validation function for endorsement tokens.
+// @ requires t != nil
 func (EndorsementValidatorS) Validate(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
 	if err := validateCommon(t); err != nil {
 		return err
 	}
 
-	end, ok := t.Get("end" /*@, 1/2 @*/)
+	end, ok := t.Get("end")
+	// @ assume ok ==> typeOf(end) == type[bool]
 	if ok {
 		_, check := end.(bool)
 		if !check {
@@ -232,12 +253,14 @@ func validateOI(oi string) error {
 }
 
 // Validate claims shared by emblems and endorsements.
+// @ requires t != nil
 func validateCommon(t jwt.JwtToken) jwt.ValidationError {
 	if err := jwt.Validate(t); err != nil {
 		return jwt.NewValidationError(err)
 	}
-
-	if ver, ok := t.Get(`ver` /*@, 1/2 @*/); !ok || ver.(string) != string(consts.V1) {
+	ver, ok := t.Get(`ver`)
+	// @ assume ok ==> typeOf(ver) == type[string]
+	if !ok || ver.(string) != string(consts.V1) {
 		return ErrIllegalVersion
 	}
 
@@ -247,3 +270,10 @@ func validateCommon(t jwt.JwtToken) jwt.ValidationError {
 
 	return nil
 }
+
+/*@
+
+(EndorsementValidatorS) implements jwt.Validator
+(EmblemValidatorS) implements jwt.Validator
+
+@*/

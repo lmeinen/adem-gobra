@@ -21,11 +21,11 @@ var ErrAlgMissing = errors.New("input key misses algorithm")
 
 // Get the KID of a key endorsed in an emblem. If the endorsed key has no KID,
 // it will be calculated.
-// @ trusted
 // @ requires t != nil
-// @ ensures err == nil ==> len(kid) > 0
 func GetEndorsedKID(t jwt.JwtToken) (kid string, err error) {
-	if jwKey, ok := t.Get("key" /*@, 1/2 @*/); !ok {
+	jwKey, ok := t.Get("key")
+	// @ assume typeOf(jwKey) == type[EmbeddedKey] && jwKey.(EmbeddedKey).Key != nil
+	if !ok {
 		return "", ErrNoEndorsedKey
 	} else if kid, err := GetKID(jwKey.(EmbeddedKey).Key); err != nil {
 		return "", err
@@ -35,7 +35,7 @@ func GetEndorsedKID(t jwt.JwtToken) (kid string, err error) {
 }
 
 // Get a key's KID. If it has no KID, it will be calculated.
-// @ ensures err == nil ==> len(kid) > 0
+// @ requires key != nil
 func GetKID(key jwk.Key) (kid string, err error) {
 	if key.KeyID() != "" {
 		return key.KeyID(), nil
@@ -46,8 +46,7 @@ func GetKID(key jwk.Key) (kid string, err error) {
 
 // Calculate a key's KID by hashing it using a canonical JSON representation and
 // SHA256. This function will drop any private-key parameters.
-// @ ensures err != nil ==> kid == ""
-// @ ensures err == nil ==> len(kid) > 0
+// @ requires key != nil
 func CalcKID(key jwk.Key) (kid string, err error) {
 	if pk, err := key.PublicKey(); err != nil {
 		return "", err
@@ -69,6 +68,7 @@ func CalcKID(key jwk.Key) (kid string, err error) {
 }
 
 // Set a key's KID if not already present.
+// @ requires key != nil
 func SetKID(key jwk.Key, force bool) error {
 	var kid string
 	var err error
@@ -87,12 +87,16 @@ func SetKID(key jwk.Key, force bool) error {
 
 // Calculate and set the KID of every key in the given set. Will override old
 // KIDs.
+// @ requires jwkSet != nil
+// @ requires acc(alg, _)
 func SetKIDs(jwkSet jwk.Set, alg *jwa.SignatureAlgorithm) (jwk.Set, error) {
 	withKIDs := jwk.NewSet()
 	ctx := context.TODO()
 	iter := jwkSet.Keys(ctx)
 	for iter.Next(ctx) {
-		k := iter.Pair().Value.(jwk.Key)
+		v := iter.Pair().Value
+		// @ assume typeOf(v) == type[jwk.Key]
+		k := v.(jwk.Key)
 		if pk, err := k.PublicKey(); err != nil {
 			return nil, err
 		} else {

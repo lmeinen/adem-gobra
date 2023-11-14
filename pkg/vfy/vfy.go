@@ -1,4 +1,6 @@
 // +gobra
+
+// @ initEnsures ErrTokenNonCompact != nil
 package vfy
 
 import (
@@ -19,6 +21,8 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
+
+func init() {}
 
 type VerificationResults struct {
 	results    []consts.VerificationResult
@@ -56,7 +60,7 @@ func (res VerificationResults) Print() {
 	log.Print(strings.Join(lns, "\n"))
 }
 
-var ErrTokenNonCompact /*@@@*/ error = errors.New("token is not in compact serialization")
+var ErrTokenNonCompact = errors.New("token is not in compact serialization")
 
 type TokenVerificationResult struct {
 	token *ADEMToken
@@ -67,7 +71,7 @@ type TokenVerificationResult struct {
 // Results will be returned to the [results] channel. Verification keys will be
 // obtained from [km].
 // Every call to [vfyToken] will write to [results] exactly once.
-// @ preserves acc(&ErrTokenNonCompact, _) && ErrTokenNonCompact != nil
+// @ requires ErrTokenNonCompact != nil
 // @ requires acc(rawToken, _)
 // @ requires km.init.UnitDebt(WaitInv!<!>) &&
 // @ 	acc(km.lock.LockP(), _) &&
@@ -112,6 +116,7 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 		result.err = err
 		return
 	} else if len(msg.Signatures( /*@ 1/2 @*/ )) > 1 {
+		// @ assert ErrTokenNonCompact != nil
 		result.err = ErrTokenNonCompact
 		return
 	} else if ademT, err := MkADEMToken(km, msg.Signatures( /*@ 1/2 @*/ )[0], jwtT); err != nil {
@@ -123,7 +128,7 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 }
 
 // Verify a slice of ADEM tokens.
-// @ preserves acc(&ErrTokenNonCompact, _) && ErrTokenNonCompact != nil
+// @ requires ErrTokenNonCompact != nil
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
@@ -186,7 +191,6 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ vfyWaitGroup.Start(1/2, PredTrue!<!>)
 
 	// Start verification threads
-	// @ invariant acc(&ErrTokenNonCompact, _) && ErrTokenNonCompact != nil
 	// @ invariant acc(rawTokens, _)
 	// @ invariant forall i int :: { rawTokens[i] } i0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 	// @ invariant threadCount == len(rawTokens)
@@ -442,4 +446,5 @@ pred ResultPerm(result *TokenVerificationResult) {
 pred SendFraction(results chan *TokenVerificationResult, threadCount int) {
 	0 < threadCount && acc(results.SendChannel(), 1 / numSendFractions(threadCount))
 }
+
 @*/

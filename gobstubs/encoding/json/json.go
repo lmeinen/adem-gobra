@@ -7,4 +7,5 @@ package json
 func Unmarshal(data []byte, v any) (err error)
 
 // Marshal returns the JSON encoding of v.
+// @ ensures err == nil ==> acc(res)
 func Marshal(v any) (res []byte, err error)
