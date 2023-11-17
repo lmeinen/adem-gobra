@@ -11,19 +11,26 @@ import (
 // Check that the given emblem's ass claim complies with the given ass
 // constraints.
 // @ requires emblem != nil
-// @ requires acc(constraints.Assets)
+// @ requires acc(constraints.Assets) &&
+// @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> constraints.Assets[i].Mem()
 func checkAssetConstraint(emblem jwt.Token, constraints EmblemConstraints) bool {
 	ass, _ := emblem.Get("ass")
 	// @ assume typeOf(ass) == type[[]*ident.AI]
-	// @ inhale acc(ass.([]*ident.AI))
+	// @ inhale let casted := ass.([]*ident.AI) in
+	// @ 	acc(casted) &&
+	// @ 	forall i int :: 0 <= i && i < len(casted) ==> casted[i].Mem()
 	// FIXME: (lmeinen) Gobra can't parse the range expression properly when the type cast is inlined
 	casted := ass.([]*ident.AI)
-	// @ invariant acc(casted)
-	// @ invariant acc(constraints.Assets)
+	// @ invariant acc(casted) &&
+	// @ 	forall i int :: 0 <= i && i < len(casted) ==> casted[i].Mem()
+	// @ invariant acc(constraints.Assets) &&
+	// @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> constraints.Assets[i].Mem()
 	for _, ai := range casted {
 		// FIXME: (lmeinen) Gobra parses unannotated Go code for reserved keywords - had to rename match variable to constraintFound
 		constraintFound := false
-		// @ invariant acc(constraints.Assets)
+		// @ invariant ai.Mem()
+		// @ invariant acc(constraints.Assets) &&
+		// @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> constraints.Assets[i].Mem()
 		for _, constraint := range constraints.Assets {
 			if constraint.MoreGeneral(ai) {
 				constraintFound = true
@@ -53,6 +60,7 @@ func VerifyConstraints(emblem jwt.Token, endorsement jwt.Token) error {
 	// @ 	acc(constraints.Purpose) &&
 	// @ 	acc(constraints.Distribution) &&
 	// @ 	acc(constraints.Assets) &&
+	// @ 		(forall i int :: 0 <= i && i < len(constraints.Assets) ==> constraints.Assets[i].Mem()) &&
 	// @ 	acc(constraints.Window)
 	if !ok {
 		return nil

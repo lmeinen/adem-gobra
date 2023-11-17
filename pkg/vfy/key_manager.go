@@ -315,7 +315,7 @@ pred (km *keyManager) Mem() {
 	km.init.UnitDebt(WaitInv!<!>) &&
 	acc(km.lock.LockP(), _) &&
 	km.lock.LockInv() == LockInv!<km!> &&
-	acc(roots.RootsMem(), _)
+	acc(roots.PkgMem(), _)
 }
 
 ghost

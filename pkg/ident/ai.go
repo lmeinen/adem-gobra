@@ -1,5 +1,5 @@
 // +gobra
-
+// @ initEnsures PkgMem()
 package ident
 
 import (
@@ -14,6 +14,10 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/util"
 )
 
+func init() {
+	// @ fold PkgMem()
+}
+
 var ErrIllegalAI = errors.New("illegal asset identifier")
 var ErrNoAddress = errors.New("no address component")
 var ErrIllegalAddress = errors.New("illegal address component")
@@ -26,17 +30,29 @@ type AI struct {
 	port       *uint16
 }
 
+// @ preserves acc(labels, 1/2)
 func joinDomain(labels []string) string {
 	if len(labels) == 1 && labels[0] == "*" {
 		return ""
 	} else if len(labels) > 1 && labels[0] == "*" {
+		// @ assert let subslice := labels[1:] in
+		// @ 	forall i int :: 0 <= i && i < len(subslice) ==> &subslice[i] == &labels[i + 1]
 		return "." + strings.Join(labels[1:], ".")
 	} else {
 		return strings.Join(labels, ".")
 	}
 }
 
+// @ preserves ai.Mem()
+// @ preserves than.Mem()
 func (ai *AI) MoreGeneral(than *AI) bool {
+	// @ unfold ai.Mem()
+	// @ ghost defer fold ai.Mem()
+	// @ unfold than.Mem()
+	// @ ghost defer fold than.Mem()
+
+	// TODO: (lmeinen) remove the below assumption - it is not valid in general and should instead result in a bugfix
+	// @ assume than.port != nil
 	if ai.port != nil && *ai.port != *than.port {
 		return false
 	}
@@ -49,6 +65,8 @@ func (ai *AI) MoreGeneral(than *AI) bool {
 		aiJoined := joinDomain(ai.domainName)
 		thanJoined := joinDomain(than.domainName)
 		if ai.domainName[0] == "*" {
+			// @ assert let subslice := ai.domainName[1:] in
+			// @ 	forall i int :: 0 <= i && i < len(subslice) ==> &subslice[i] == &ai.domainName[i + 1]
 			return thanJoined == joinDomain(ai.domainName[1:]) || strings.HasSuffix(thanJoined, aiJoined)
 		} else {
 			return thanJoined == aiJoined
@@ -61,7 +79,7 @@ func (ai *AI) MoreGeneral(than *AI) bool {
 		} else if than.ipPrefix != nil {
 			// TODO: Can something weird happen if than.IPPrefix.IP is actual shorter
 			// than ai.IPPrefix but has matching leading bytes?
-			return ai.ipPrefix.Contains(than.ipPrefix.IP)
+			return /*@ unfolding than.ipPrefix.Mem() in @*/ ai.ipPrefix.Contains(than.ipPrefix.IP)
 		} else {
 			return false
 		}
@@ -70,25 +88,43 @@ func (ai *AI) MoreGeneral(than *AI) bool {
 	}
 }
 
+// @ preserves ai.Mem()
+// @ preserves PkgMem()
+// @ requires acc(bs)
 func (ai *AI) UnmarshalJSON(bs []byte) error {
 	var str /*@@@*/ string
-	if err := json.Unmarshal(bs, &str); err != nil {
+	// @ fold PredTrue!<!>()
+	err := json.Unmarshal(bs, &str /*@, PredTrue!<!> @*/)
+	// @ unfold PredTrue!<!>()
+	if err != nil {
 		return err
 	} else if parsed, err := ParseAI(str); err != nil {
 		return err
 	} else {
+		// @ unfold parsed.Mem()
+		// @ unfold ai.Mem()
 		ai.domainName = parsed.domainName
 		ai.ipAddr = parsed.ipAddr
 		ai.ipPrefix = parsed.ipPrefix
 		ai.port = parsed.port
+		// @ fold ai.Mem()
 		return nil
 	}
 }
 
 var portReg *regexp.Regexp = regexp.MustCompile(`:(\d+)$`)
 
-func ParseAI(aiStr string) (*AI, error) {
+/* (lmeinen) AIs follow the below syntax:
+asset-identifier = address [ ":" port ]
+address = domain-name | "[" IPv6 "]"
+port = DIGIT+
+*/
+// @ preserves PkgMem()
+// @ ensures err == nil ==> r.Mem()
+func ParseAI(aiStr string) (r *AI, err error) {
 	var addr, port string
+	// @ unfold PkgMem()
+	// @ ghost defer fold PkgMem()
 	matches := portReg.FindStringSubmatch(aiStr)
 	if len(matches) == 2 {
 		addr = aiStr[:len(aiStr)-len(matches[0])]
@@ -97,6 +133,9 @@ func ParseAI(aiStr string) (*AI, error) {
 		addr = aiStr
 	}
 
+	// TODO: (lmeinen) Would be cool if we could drop this assumption
+	// 	--> encode into Gobra?
+	// @ assume forall s string :: s != "" ==> len(s) > 0
 	if addr == "" {
 		return nil, ErrIllegalAI
 	}
@@ -104,6 +143,8 @@ func ParseAI(aiStr string) (*AI, error) {
 	ai /*@@@*/ := AI{}
 	if isIPv6(addr) {
 		// must be IPv6
+		// TODO: (lmeinen) introduce bugfix
+		// @ assume len(addr) > 1
 		trimmed := addr[1 : len(addr)-1] // drop [...]
 		if ip := net.ParseIP(trimmed); ip != nil {
 			ai.ipAddr = ip
@@ -120,7 +161,7 @@ func ParseAI(aiStr string) (*AI, error) {
 		} else if labels := strings.Split(addr, "."); len(labels) <= 0 {
 			// This should not be possible according to strings.Split docs
 			panic("illegal state")
-		} else if util.ContainsString(labels, "") {
+		} else if util.ContainsString(labels, "" /*@, perm(1/2) @*/) {
 			// No empty labels allowed
 			return nil, ErrIllegalAI
 		} else if strings.Contains(labels[0], "*") && len(labels[0]) > 1 {
@@ -140,10 +181,15 @@ func ParseAI(aiStr string) (*AI, error) {
 		}
 	}
 
+	// @ fold ai.Mem()
 	return &ai, nil
 }
 
+// @ preserves ai.Mem()
 func (ai *AI) String() string {
+	// @ unfold ai.Mem()
+	// @ ghost defer fold ai.Mem()
+
 	var port string
 	if ai.port != nil {
 		port = fmt.Sprintf(":%d", *ai.port)
@@ -162,13 +208,39 @@ func (ai *AI) String() string {
 	return addr + port
 }
 
-func (ai *AI) MarshalJSON() ([]byte, error) {
+// @ preserves ai.Mem()
+// @ preserves PkgMem()
+// @ ensures err == nil ==> acc(bs)
+func (ai *AI) MarshalJSON() (bs []byte, err error) {
 	return json.Marshal(ai.String())
 }
 
 // @ trusted
+// @ requires len(s) > 0
 func isIPv6(s string) bool {
 	// FIXME: (lmeinen) is there any way I can reduce this trusted function?
 	// string indexing is currently not supported by Gobra
 	return s[0] == '['
 }
+
+/*@
+pred PkgMem() {
+	acc(portReg) &&
+		ErrIllegalAI != nil &&
+		ErrNoAddress != nil &&
+		ErrIllegalAddress != nil &&
+		ErrWildcard != nil
+}
+
+pred (ai *AI) Mem() {
+	acc(ai) &&
+		(ai.domainName != nil || ai.ipAddr != nil || ai.ipPrefix != nil) &&
+		(ai.domainName != nil ==> acc(ai.domainName) &&
+			len(ai.domainName) > 0 &&
+			forall i int :: 0 <= i && i < len(ai.domainName) ==> len(ai.domainName[i]) > 0) &&
+		(ai.ipAddr != nil ==> ai.ipAddr.Mem()) &&
+		(ai.ipPrefix != nil ==> ai.ipPrefix.Mem()) &&
+		(ai.port != nil ==> acc(ai.port))
+
+}
+@*/

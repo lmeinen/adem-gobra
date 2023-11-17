@@ -19,14 +19,14 @@ type VerificationResult struct {
 
 // Verify that the given key was correctly committed to the Certificate
 // Transparency infrastructure for the given issuer.
-// @ preserves acc(RootsMem(), _)
+// @ preserves acc(PkgMem(), _)
 // @ requires key != nil
 // @ requires acc(logs) &&
 // @ 	forall i int :: 0 <= i && i < len(logs) ==> acc(logs[i]) && acc(logs[i].Hash.Raw)
 // @ ensures acc(r) && forall i int :: 0 <= i && i < len(r) ==> acc(r[i])
 func VerifyBindingCerts(iss string, key jwk.Key, logs []*tokens.LogConfig) (r []*VerificationResult) {
-	// @ unfold acc(RootsMem(), _)
-	// @ ghost defer fold acc(RootsMem(), _)
+	// @ unfold acc(PkgMem(), _)
+	// @ ghost defer fold acc(PkgMem(), _)
 	// FIXME: (lmeinen) Gobra doesn't support slices of structs - refactored to pointers
 	verified := []*VerificationResult{}
 	// @ invariant acc(logMapLock.LockP(), _) && logMapLock.LockInv() == LockInv!<&ctLogs!>
@@ -53,11 +53,3 @@ func VerifyBindingCerts(iss string, key jwk.Key, logs []*tokens.LogConfig) (r []
 	}
 	return verified
 }
-
-/*@
-pred RootsMem() {
-	logMapLock.LockP() &&
-	logMapLock.LockInv() == LockInv!<&ctLogs!> &&
-	ErrUnknownLog != nil
-}
-@*/

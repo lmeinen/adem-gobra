@@ -10,6 +10,8 @@ type Regexp struct {
 
 // MustCompile is like Compile but panics if the expression cannot be parsed.
 // @ ensures acc(res)
+// @ ensures res.expr == str
+// @ decreases
 func MustCompile(str string) (res *Regexp)
 
 // FindStringSubmatch returns a slice of strings holding the text of the
@@ -17,5 +19,6 @@ func MustCompile(str string) (res *Regexp)
 // its subexpressions, as defined by the 'Submatch' description in the
 // package comment.
 // @ preserves acc(re)
-// @ ensures forall i int :: 0 <= i && i < len(res) ==> acc(&res[i])
+// @ ensures acc(res)
+// @ ensures forall i int :: 0 <= i && i < len(res) ==> len(res[i]) <= len(s)
 func (re *Regexp) FindStringSubmatch(s string) (res []string)

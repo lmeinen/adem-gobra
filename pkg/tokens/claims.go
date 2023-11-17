@@ -34,11 +34,9 @@ type PurposeMask byte
 type StringSlice []string
 
 /*@
-pred (s *StringSlice) Mem() {
-	acc(s) && acc(*s)
+pred StringSliceMem(s []string) {
+	acc(s)
 }
-
-(*StringSlice) implements json.Parseable
 @*/
 
 // FIXME: (lmeinen) Gobra throws a NumberFormatException for the below binary literals
@@ -51,15 +49,13 @@ const Indicative PurposeMask = 0x02
 // @ preserves acc(pm)
 // @ requires acc(bs)
 func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
-	var prps []string
-	var prpsWrapper /*@@@*/ StringSlice
+	var prps /*@@@*/ []string
 	var mask PurposeMask
-	// @ fold prpsWrapper.Mem()
-	if err := json.Unmarshal(bs, &prpsWrapper); err != nil {
+	// @ fold StringSliceMem!<prps!>()
+	if err := json.Unmarshal(bs, &prps /*@, StringSliceMem!<prps!> @*/); err != nil {
 		return err
 	} else {
-		// @ unfold prpsWrapper.Mem()
-		prps = prpsWrapper
+		// @ unfold StringSliceMem!<prps!>()
 		// @ invariant acc(prps)
 		for _, prp := range prps {
 			switch prp {
@@ -104,17 +100,15 @@ const UDP ChannelMask = 0x04
 // @ preserves acc(cm)
 // @ requires acc(bs)
 func (cm *ChannelMask) UnmarshalJSON(bs []byte) error {
-	var dsts []string
-	var dstsWrapper /*@@@*/ StringSlice
+	var dsts /*@@@*/ []string
 	var mask ChannelMask
-	// @ fold dstsWrapper.Mem()
-	if err := json.Unmarshal(bs, &dstsWrapper); err != nil {
+	// @ fold StringSliceMem!<dsts!>()
+	if err := json.Unmarshal(bs, &dsts /*@, StringSliceMem!<dsts!> @*/); err != nil {
 		return err
 	} else {
-		// @ unfold dstsWrapper.Mem()
-		dsts = dstsWrapper
+		// @ unfold StringSliceMem!<dsts!>()
 		// @ invariant acc(dsts)
-		for _, dst := range dstsWrapper {
+		for _, dst := range dsts {
 			switch dst {
 			case consts.DNS:
 				mask |= DNS

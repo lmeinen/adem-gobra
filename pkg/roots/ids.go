@@ -1,5 +1,5 @@
 // +gobra
-// @ initEnsures logMapLock.LockP() && logMapLock.LockInv() == LockInv!<&ctLogs!>
+// @ initEnsures PkgMem()
 package roots
 
 import (
@@ -31,6 +31,7 @@ var logMapLock /*@@@*/ sync.Mutex = sync.Mutex{}
 func init() {
 	// @ fold LockInv!<&ctLogs!>()
 	// @ logMapLock.SetInv(LockInv!<&ctLogs!>)
+	// @ fold PkgMem()
 }
 
 // @ preserves acc(logMapLock.LockP(), _) && logMapLock.LockInv() == LockInv!<&ctLogs!>
@@ -42,14 +43,14 @@ func storeLogs(rawJson []byte) error {
 	// @ defer fold LockInv!<&ctLogs!>()
 
 	logs /*@@@*/ := KnownLogs{}
-	// @ fold logs.Mem()
-	err := json.Unmarshal(rawJson, &logs)
+	// @ fold LogsMem!<&logs!>()
+	err := json.Unmarshal(rawJson, &logs /*@, LogsMem!<&logs!> @*/)
 
 	if err != nil {
 		return err
 	}
 
-	// @ unfold logs.Mem()
+	// @ unfold LogsMem!<&logs!>()
 
 	s := logs.Operators
 	// @ invariant acc(&ctLogs) && acc(ctLogs)
@@ -171,12 +172,15 @@ pred LockInv(ctLogs *map[string]CTLog) {
 	acc(ctLogs) && acc(*ctLogs)
 }
 
-pred (logs *KnownLogs) Mem() {
+pred LogsMem(logs *KnownLogs) {
 	acc(logs) &&
 		acc(logs.Operators) &&
 		forall i int :: 0 <= i && i < len(logs.Operators) ==> acc(logs.Operators[i].Logs)
 }
 
-(*KnownLogs) implements json.Parseable
-
+pred PkgMem() {
+	logMapLock.LockP() &&
+	logMapLock.LockInv() == LockInv!<&ctLogs!> &&
+	ErrUnknownLog != nil
+}
 @*/

@@ -81,7 +81,7 @@ type TokenVerificationResult struct {
 // @ 	results.SendGotPerm() == PredTrue!<!>
 // @ requires acc(SingleUse(loc), 1 / threadCount)
 // @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
-// @ requires acc(roots.RootsMem(), 1 / threadCount)
+// @ requires acc(roots.PkgMem(), 1 / threadCount)
 func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
 	// @ share threadCount, loc, results, vfyWaitGroup
 	result /*@@@*/ := TokenVerificationResult{}
@@ -116,7 +116,6 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 		result.err = err
 		return
 	} else if len(msg.Signatures( /*@ 1/2 @*/ )) > 1 {
-		// @ assert ErrTokenNonCompact != nil
 		result.err = ErrTokenNonCompact
 		return
 	} else if ademT, err := MkADEMToken(km, msg.Signatures( /*@ 1/2 @*/ )[0], jwtT); err != nil {
@@ -129,8 +128,7 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 
 // Verify a slice of ADEM tokens.
 // @ requires ErrTokenNonCompact != nil
-// @ requires roots.logMapLock.LockP() && roots.logMapLock.LockInv() == roots.LockInv!<&roots.ctLogs!> && // can be acquired using importRequires
-// @ 	roots.ErrUnknownLog != nil
+// @ requires ident.PkgMem() && roots.PkgMem()
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
@@ -154,8 +152,6 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	*/
 
 	// (lmeinen) 0 - set up chain of promises from root keys to signing keys
-
-	// @ fold roots.RootsMem()
 
 	// We maintain a thread count for termination purposes. It might be that we
 	// cannot verify all token's verification key and must cancel verification.
@@ -201,7 +197,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 	// Start verification threads
 	// @ invariant threadCount == len(rawTokens)
-	// @ invariant acc(roots.RootsMem(), (threadCount - i0) / threadCount)
+	// @ invariant acc(roots.PkgMem(), (threadCount - i0) / threadCount)
 	// @ invariant acc(rawTokens, _)
 	// @ invariant forall i int :: { rawTokens[i] } i0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 	// @ invariant acc(km.init.UnitDebt(WaitInv!<!>), (threadCount - i0)) &&
