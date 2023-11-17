@@ -1,4 +1,5 @@
 // +gobra
+// @ initEnsures logMapLock.LockP() && logMapLock.LockInv() == LockInv!<&ctLogs!>
 package roots
 
 import (
@@ -27,18 +28,38 @@ var ctLogs /*@@@*/ map[string]CTLog = make(map[string]CTLog)
 // [ctLogs] access lock.
 var logMapLock /*@@@*/ sync.Mutex = sync.Mutex{}
 
+func init() {
+	// @ fold LockInv!<&ctLogs!>()
+	// @ logMapLock.SetInv(LockInv!<&ctLogs!>)
+}
+
+// @ preserves acc(logMapLock.LockP(), _) && logMapLock.LockInv() == LockInv!<&ctLogs!>
+// @ requires acc(rawJson)
 func storeLogs(rawJson []byte) error {
 	logMapLock.Lock()
 	defer logMapLock.Unlock()
+	// @ unfold LockInv!<&ctLogs!>()
+	// @ defer fold LockInv!<&ctLogs!>()
 
 	logs /*@@@*/ := KnownLogs{}
+	// @ fold logs.Mem()
 	err := json.Unmarshal(rawJson, &logs)
+
 	if err != nil {
 		return err
 	}
 
-	for _, operator := range logs.Operators {
-		for _, l := range operator.Logs {
+	// @ unfold logs.Mem()
+
+	s := logs.Operators
+	// @ invariant acc(&ctLogs) && acc(ctLogs)
+	// @ invariant acc(s) &&
+	// @ 	forall i int :: 0 <= i && i0 <= i && i < len(s) ==> acc(s[i].Logs)
+	for _, operator := range s /*@ with i0 @*/ {
+		ls := operator.Logs
+		// @ invariant acc(&ctLogs) && acc(ctLogs)
+		// @ invariant acc(ls)
+		for _, l := range ls /*@ with j0 @*/ {
 			ctLogs[l.Id] = l
 		}
 	}
@@ -47,9 +68,14 @@ func storeLogs(rawJson []byte) error {
 }
 
 // Get the log client associate to a CT log ID.
-func GetLogClient(id string) (*client.LogClient, error) {
+// @ preserves acc(logMapLock.LockP(), _) && logMapLock.LockInv() == LockInv!<&ctLogs!>
+// @ requires ErrUnknownLog != nil
+// @ ensures err == nil ==> acc(cl) && acc(cl.jsonClient)
+func GetLogClient(id string) (cl *client.LogClient, err error) {
 	logMapLock.Lock()
 	defer logMapLock.Unlock()
+	// @ unfold LockInv!<&ctLogs!>()
+	// @ defer fold LockInv!<&ctLogs!>()
 	log, ok := ctLogs[id]
 	if !ok {
 		return nil, ErrUnknownLog
@@ -79,6 +105,8 @@ type LogKey struct {
 }
 
 // Decodes a base64-encoded JSON string into a CT log public key.
+// @ preserves acc(k) && acc(k.raw)
+// @ requires acc(bs)
 func (k *LogKey) UnmarshalJSON(bs []byte) (err error) {
 	if raw, e := util.B64Dec(bytes.Trim(bs, `"`)); e != nil {
 		err = e
@@ -89,6 +117,7 @@ func (k *LogKey) UnmarshalJSON(bs []byte) (err error) {
 }
 
 // Load logs from a given log list.
+// @ preserves acc(logMapLock.LockP(), _) && logMapLock.LockInv() == LockInv!<&ctLogs!>
 func fetchLogs(url string) error {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -105,21 +134,26 @@ func fetchLogs(url string) error {
 }
 
 // Load logs known to Google.
+// @ preserves acc(logMapLock.LockP(), _) && logMapLock.LockInv() == LockInv!<&ctLogs!>
 func FetchGoogleKnownLogs() error {
 	return fetchLogs(log_list_google)
 }
 
 // Load logs known to Apple.
+// @ preserves acc(logMapLock.LockP(), _) && logMapLock.LockInv() == LockInv!<&ctLogs!>
 func FetchAppleKnownLogs() error {
 	return fetchLogs(log_list_apple)
 }
 
+// @ preserves acc(logMapLock.LockP(), _) && logMapLock.LockInv() == LockInv!<&ctLogs!>
 func ReadKnownLogs(pattern string) error {
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		return err
 	}
 
+	// @ invariant acc(logMapLock.LockP(), _) && logMapLock.LockInv() == LockInv!<&ctLogs!>
+	// @ invariant acc(matches)
 	for _, path := range matches {
 		if bs, err := os.ReadFile(path); err != nil {
 			return err
@@ -130,3 +164,19 @@ func ReadKnownLogs(pattern string) error {
 
 	return nil
 }
+
+/*@
+
+pred LockInv(ctLogs *map[string]CTLog) {
+	acc(ctLogs) && acc(*ctLogs)
+}
+
+pred (logs *KnownLogs) Mem() {
+	acc(logs) &&
+		acc(logs.Operators) &&
+		forall i int :: 0 <= i && i < len(logs.Operators) ==> acc(logs.Operators[i].Logs)
+}
+
+(*KnownLogs) implements json.Parseable
+
+@*/

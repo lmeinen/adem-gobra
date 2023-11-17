@@ -13,4 +13,5 @@ type Reader interface {
 }
 
 // ReadAll reads from r until an error or EOF and returns the data it read.
-func ReadAll(r Reader) ([]byte, error)
+// @ ensures acc(bs)
+func ReadAll(r Reader) (bs []byte, err error)

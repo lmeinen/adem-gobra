@@ -32,6 +32,9 @@ var ErrWrongEntryType = errors.New("do not recognize entry type")
 
 // Verify that the rootKey is correctly bound to the issuer OI by the CT entry
 // identified by hash. Queries will be made to the given CT client.
+// @ preserves acc(hash)
+// @ preserves acc(cl) && acc(cl.jsonClient)
+// @ requires rootKey != nil
 func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk.Key) error {
 	kid, err := tokens.CalcKID(rootKey)
 	if err != nil {
@@ -47,6 +50,7 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute))
+	// @ assert cancel implements context.CancelFunc
 	defer cancel() /*@ as context.CancelFunc @*/
 
 	if sth, err := cl.GetSTH(ctx); err != nil {
@@ -70,6 +74,7 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 			log.Print("could not parse certificate timestamp")
 			return err
 		} else {
+			// @ unfold certT.Mem()
 			var cert *x509.Certificate
 			var err error
 			if certT.EntryType == ct.PrecertLogEntryType {
@@ -84,9 +89,9 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 				return err
 			} else {
 				subjects := append( /*@ perm(1/2), @*/ cert.DNSNames, cert.Subject.CommonName)
-				if !util.ContainsString(subjects, issuerUrl.Hostname()) {
+				if !util.ContainsString(subjects, issuerUrl.Hostname() /*@, perm(1/2) @*/) {
 					return ErrCertNotForIss
-				} else if !util.ContainsString(subjects, fmt.Sprintf("%s.adem-configuration.%s", kid, issuerUrl.Hostname())) {
+				} else if !util.ContainsString(subjects, fmt.Sprintf("%s.adem-configuration.%s", kid, issuerUrl.Hostname()) /*@, perm(1/2) @*/) {
 					return ErrCertNotForKey
 				}
 			}
@@ -95,7 +100,8 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 	return nil
 }
 
-func toSlice(h [32]byte) []byte {
+// @ ensures acc(r)
+func toSlice(h [32]byte) (r []byte) {
 	// FIXME: (lmeinen) leaving the array to slice cast as-is (sth.SHA256RootHash[:]) causes a ClassCastException in SliceEncoding
 	// @ share h
 	return h[:]

@@ -15,9 +15,13 @@ type Certificate struct {
 
 // ParseTBSCertificate parses a single TBSCertificate from the given ASN.1 DER data.
 // The parsed data is returned in a Certificate struct for ease of access.
-func ParseTBSCertificate(asn1Data []byte) (*Certificate, error)
+// @ requires acc(asn1Data)
+// @ ensures c != nil ==> acc(c)
+func ParseTBSCertificate(asn1Data []byte) (c *Certificate, err error)
 
 // ParseCertificate parses a single certificate from the given ASN.1 DER data.
 // This function can return both a Certificate and an error (in which case the
 // error will be of type NonFatalErrors).
-func ParseCertificate(asn1Data []byte) (*Certificate, error)
+// @ requires acc(asn1Data)
+// @ ensures c != nil ==> acc(c)
+func ParseCertificate(asn1Data []byte) (c *Certificate, err error)

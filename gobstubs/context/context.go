@@ -61,4 +61,5 @@ func Background() Context
 func CancelFunc()
 
 // WithTimeout returns WithDeadline(parent, time.Now().Add(timeout)).
-func WithTimeout(parent Context, timeout time.Duration) (Context, func())
+// @ ensures cancel implements CancelFunc
+func WithTimeout(parent Context, timeout time.Duration) (c Context, cancel func())

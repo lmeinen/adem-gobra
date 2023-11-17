@@ -16,4 +16,5 @@ type Options struct {
 }
 
 // BaseURI returns the base URI that the JSONClient makes queries to.
+// @ preserves acc(c)
 func (c *JSONClient) BaseURI() string

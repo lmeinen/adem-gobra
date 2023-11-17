@@ -236,9 +236,10 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 		headerKey := sig.ProtectedHeaders().JWK()
 		// @ assume typeOf(logs) == type[[]*tokens.LogConfig]
 		logsCast := logs.([]*tokens.LogConfig)
-		// @ inhale acc(logsCast) && forall i int :: 0 <= i && i < len(logsCast) ==> acc(logsCast[i])
+		// @ inhale acc(logsCast) &&
+		// @ 	forall i int :: 0 <= i && i < len(logsCast) ==> acc(logsCast[i]) && acc(logsCast[i].Hash.Raw)
 		results := roots.VerifyBindingCerts(t.Issuer(), headerKey, logsCast)
-		// @ invariant acc(results)
+		// @ invariant acc(results) && forall i int :: 0 <= i && i < len(results) ==> acc(results[i])
 		for _, r := range results {
 			if !r.Ok {
 				log.Printf("could not verify root key commitment for log ID %s", r.LogID)
@@ -299,17 +300,6 @@ pred PromiseInv(p util.Promise, ghost k string, ghost i int) {
 	p != nil && p.ProducerToken()
 }
 
-ghost
-requires LockInv(km)
-requires unfolding LockInv(km) in k in km.listeners
-func (km *keyManager) test(k string) {
-	unfold LockInv(km)
-	assert k in km.listeners
-	doDelete(km.listeners, k)
-	assert !(k in km.listeners)
-	fold LockInv(km)
-}
-
 pred LockInv(km *keyManager) {
 	acc(&km.keys) &&
 	acc(km.keys) &&
@@ -324,7 +314,8 @@ pred LockInv(km *keyManager) {
 pred (km *keyManager) Mem() {
 	km.init.UnitDebt(WaitInv!<!>) &&
 	acc(km.lock.LockP(), _) &&
-	km.lock.LockInv() == LockInv!<km!>
+	km.lock.LockInv() == LockInv!<km!> &&
+	acc(roots.RootsMem(), _)
 }
 
 ghost

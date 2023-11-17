@@ -49,6 +49,18 @@ type CertificateTimestamp struct {
 	PrecertEntry *PreCert     `tls:"selector:EntryType,val:1"`
 }
 
+/*@
+pred (certT *CertificateTimestamp) Mem() {
+	acc(certT) &&
+	acc(certT.X509Entry) &&
+		acc(certT.X509Entry.Data) &&
+	acc(certT.PrecertEntry) &&
+		acc(certT.PrecertEntry.TBSCertificate)
+}
+
+(*CertificateTimestamp) implements tls.Parseable
+@*/
+
 // SignedTreeHead represents the structure returned by the get-sth CT method
 // after base64 decoding; see sections 3.5 and 4.3.
 type SignedTreeHead struct {

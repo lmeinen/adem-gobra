@@ -27,9 +27,19 @@ func init() {
 	jwt.RegisterCustomField("emb", EmblemConstraints{})
 }
 
-var ErrIllegalConst /*@@@*/ error = errors.New("json element is illegal constant")
+var ErrIllegalConst error = errors.New("json element is illegal constant")
 
 type PurposeMask byte
+
+type StringSlice []string
+
+/*@
+pred (s *StringSlice) Mem() {
+	acc(s) && acc(*s)
+}
+
+(*StringSlice) implements json.Parseable
+@*/
 
 // FIXME: (lmeinen) Gobra throws a NumberFormatException for the below binary literals
 // const Protective PurposeMask = 0b0000_0001
@@ -41,11 +51,15 @@ const Indicative PurposeMask = 0x02
 // @ preserves acc(pm)
 // @ requires acc(bs)
 func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
-	var prps /*@@@*/ []string
+	var prps []string
+	var prpsWrapper /*@@@*/ StringSlice
 	var mask PurposeMask
-	if err := json.Unmarshal(bs, &prps); err != nil {
+	// @ fold prpsWrapper.Mem()
+	if err := json.Unmarshal(bs, &prpsWrapper); err != nil {
 		return err
 	} else {
+		// @ unfold prpsWrapper.Mem()
+		prps = prpsWrapper
 		// @ invariant acc(prps)
 		for _, prp := range prps {
 			switch prp {
@@ -90,12 +104,17 @@ const UDP ChannelMask = 0x04
 // @ preserves acc(cm)
 // @ requires acc(bs)
 func (cm *ChannelMask) UnmarshalJSON(bs []byte) error {
-	var dsts /*@@@*/ []string
+	var dsts []string
+	var dstsWrapper /*@@@*/ StringSlice
 	var mask ChannelMask
-	if err := json.Unmarshal(bs, &dsts); err != nil {
+	// @ fold dstsWrapper.Mem()
+	if err := json.Unmarshal(bs, &dstsWrapper); err != nil {
 		return err
 	} else {
-		for _, dst := range dsts {
+		// @ unfold dstsWrapper.Mem()
+		dsts = dstsWrapper
+		// @ invariant acc(dsts)
+		for _, dst := range dstsWrapper {
 			switch dst {
 			case consts.DNS:
 				mask |= DNS

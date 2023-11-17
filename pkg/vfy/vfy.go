@@ -16,13 +16,12 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	"github.com/adem-wg/adem-proto/pkg/util"
 	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
+	// @ "github.com/adem-wg/adem-proto/pkg/roots"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
-
-func init() {}
 
 type VerificationResults struct {
 	results    []consts.VerificationResult
@@ -82,6 +81,7 @@ type TokenVerificationResult struct {
 // @ 	results.SendGotPerm() == PredTrue!<!>
 // @ requires acc(SingleUse(loc), 1 / threadCount)
 // @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
+// @ requires acc(roots.RootsMem(), 1 / threadCount)
 func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
 	// @ share threadCount, loc, results, vfyWaitGroup
 	result /*@@@*/ := TokenVerificationResult{}
@@ -129,6 +129,8 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 
 // Verify a slice of ADEM tokens.
 // @ requires ErrTokenNonCompact != nil
+// @ requires roots.logMapLock.LockP() && roots.logMapLock.LockInv() == roots.LockInv!<&roots.ctLogs!> && // can be acquired using importRequires
+// @ 	roots.ErrUnknownLog != nil
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
@@ -153,6 +155,8 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 	// (lmeinen) 0 - set up chain of promises from root keys to signing keys
 
+	// @ fold roots.RootsMem()
+
 	// We maintain a thread count for termination purposes. It might be that we
 	// cannot verify all token's verification key and must cancel verification.
 	threadCount := len(rawTokens)
@@ -175,8 +179,13 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ fold SingleUse(loc)
 	results := make(chan *TokenVerificationResult)
 	// @ results.Init(SendToken!<loc, threadCount, _!>, PredTrue!<!>)
-	// @ results.CreateDebt(1, 2, PredTrue!<!>)
-	// @ assert results.ClosureDebt(PredTrue!<!>, 1, 2) && results.Token(PredTrue!<!>)
+	// @ assert results.SendChannel()
+	// @ ghost p, q := 1, 2
+	// @ ghost sendp := perm(p/q)
+	// @ results.CreateDebt(p, q, PredTrue!<!>)
+	// @ assert sendp == threadCount / numSendFractions(threadCount)
+	// @ assert acc(results.SendChannel(), sendp)
+	// @ assert results.ClosureDebt(PredTrue!<!>, p, q) && results.Token(PredTrue!<!>)
 
 	/* the waitgroup is required to later collect all results send fractions in order to be able to close the channel
 	--> note that a single send to the results channel is the last thing a goroutine does, and that the main thread only
@@ -191,15 +200,18 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ vfyWaitGroup.Start(1/2, PredTrue!<!>)
 
 	// Start verification threads
+	// @ invariant threadCount == len(rawTokens)
+	// @ invariant acc(roots.RootsMem(), (threadCount - i0) / threadCount)
 	// @ invariant acc(rawTokens, _)
 	// @ invariant forall i int :: { rawTokens[i] } i0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
-	// @ invariant threadCount == len(rawTokens)
 	// @ invariant acc(km.init.UnitDebt(WaitInv!<!>), (threadCount - i0)) &&
 	// @ 	acc(km.lock.LockP(), _) &&
 	// @ 	km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(vfyWaitGroup.UnitDebt(PredTrue!<!>), threadCount - i0)
-	// @ invariant i0 < threadCount ==> (
-	// @ 	acc(results.SendChannel(), ((numSendFractions(threadCount) / 2) - i0) / numSendFractions(threadCount)) &&
+	// @ invariant i0 < len(rawTokens) ==> (
+	// @ 	sendp > 0 &&
+	// @ 	sendp == (threadCount - i0) / numSendFractions(threadCount) &&
+	// @ 	acc(results.SendChannel(), sendp) &&
 	// @ 	results.SendGivenPerm() == SendToken!<loc, threadCount, _!> &&
 	// @ 	results.SendGotPerm() == PredTrue!<!> &&
 	// @ 	acc(SingleUse(loc), (threadCount - i0) / threadCount))
@@ -213,6 +225,10 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 		// @ fold vfyWaitGroup.TokenById(sendFraction, len(fractionSeq))
 		// @ fractionSeq = fractionSeq ++ seq[pred()] { sendFraction }
 		go vfyToken(rawToken, km, results /*@, loc, threadCount, vfyWaitGroup @*/)
+		// @ sendp = sendp - perm(1 / numSendFractions(threadCount))
+
+		// @ assert sendp == (threadCount - i0 - 1) / numSendFractions(threadCount)
+		// @ assert i0 < len(rawTokens) - 1 ? sendp > 0 : sendp == 0
 	}
 
 	// @ vfyWaitGroup.SetWaitMode(1/2, 1/2)
@@ -425,6 +441,8 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 /*@
 ghost
+requires threadCount > 0
+ensures res == 2 * threadCount
 pure func numSendFractions(threadCount int) (res int) {
 	return 2 * threadCount
 }
