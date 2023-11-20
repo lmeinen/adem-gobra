@@ -140,9 +140,14 @@ func ParseAI(aiStr string) (r *AI, err error) {
 	ai /*@@@*/ := AI{}
 	if isIPv6(addr) {
 		// must be IPv6
-		// TODO: (lmeinen) bugfix
-		// @ assume len(addr) > 1
-		trimmed := addr[1 : len(addr)-1] // drop [...]
+		var trimmed string
+		if len(addr) > 1 {
+			// avoid access of the form addr[1:0] if addr only consists of '['
+			trimmed = addr[1 : len(addr)-1] // drop [...]
+		} else {
+			trimmed = ""
+		}
+
 		if ip := net.ParseIP(trimmed); ip != nil {
 			ai.ipAddr = ip
 		} else if _, net, err := net.ParseCIDR(trimmed); err == nil {
