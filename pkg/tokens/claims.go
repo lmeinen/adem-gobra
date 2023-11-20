@@ -1,5 +1,5 @@
 // +gobra
-
+// @ initEnsures PkgMem()
 package tokens
 
 import (
@@ -21,10 +21,24 @@ func init() {
 	// TODO: (lmeinen) Implement parsing interface in jwt library
 	// 	- type guarantees and mem permissions for Get method
 	//	- type constraints for JSON parsing interface implementation
+	//  - PkgMem permissions for custom unmarshalling methods
 	jwt.RegisterCustomField("log", []*LogConfig{})
 	jwt.RegisterCustomField("key", EmbeddedKey{})
 	jwt.RegisterCustomField("ass", []*ident.AI{})
 	jwt.RegisterCustomField("emb", EmblemConstraints{})
+
+	// TODO: (lmeinen) Gobra doesn't handle init order properly yet - really these assumptions should already hold
+	// @ assume ErrAssetConstraint != nil &&
+	// @ 	ErrPrpConstraint != nil &&
+	// @ 	ErrDstConstraint != nil &&
+	// @ 	ErrWndConstraint != nil &&
+	// @ 	ErrIllegalConst != nil &&
+	// @ 	ErrIllegalVersion != nil &&
+	// @ 	ErrIllegalType != nil &&
+	// @ 	ErrAssMissing != nil &&
+	// @ 	ErrNoEndorsedKey != nil &&
+	// @ 	ErrAlgMissing != nil
+	// @ fold PkgMem()
 }
 
 var ErrIllegalConst error = errors.New("json element is illegal constant")
@@ -47,6 +61,7 @@ const Protective PurposeMask = 0x01
 const Indicative PurposeMask = 0x02
 
 // @ preserves acc(pm)
+// @ preserves acc(PkgMem(), _)
 // @ requires acc(bs)
 func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
 	var prps /*@@@*/ []string
@@ -64,7 +79,7 @@ func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
 			case consts.Indicative:
 				mask |= Indicative
 			default:
-				return ErrIllegalConst
+				return /*@ unfolding acc(PkgMem(), _) in @*/ ErrIllegalConst
 			}
 		}
 	}
@@ -73,6 +88,7 @@ func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
 }
 
 // @ preserves acc(pm)
+// @ preserves acc(PkgMem(), _)
 // @ ensures err == nil ==> acc(bs)
 func (pm *PurposeMask) MarshalJSON() (bs []byte, err error) {
 	var purposes []string
@@ -98,6 +114,7 @@ const TLS ChannelMask = 0x02
 const UDP ChannelMask = 0x04
 
 // @ preserves acc(cm)
+// @ preserves acc(PkgMem(), _)
 // @ requires acc(bs)
 func (cm *ChannelMask) UnmarshalJSON(bs []byte) error {
 	var dsts /*@@@*/ []string
@@ -117,7 +134,7 @@ func (cm *ChannelMask) UnmarshalJSON(bs []byte) error {
 			case consts.UDP:
 				mask |= UDP
 			default:
-				return ErrIllegalConst
+				return /*@ unfolding acc(PkgMem(), _) in @*/ ErrIllegalConst
 			}
 		}
 	}
@@ -126,6 +143,7 @@ func (cm *ChannelMask) UnmarshalJSON(bs []byte) error {
 }
 
 // @ preserves acc(cm)
+// @ preserves acc(PkgMem(), _)
 // @ ensures err == nil ==> acc(bs)
 func (cm *ChannelMask) MarshalJSON() (bs []byte, err error) {
 	var dsts []string
@@ -165,6 +183,7 @@ type LeafHash struct {
 // Attempt to parse a JSON value as string that contains a base64-encoded leaf
 // hash.
 // @ preserves acc(h)
+// @ preserves acc(PkgMem(), _)
 // @ requires acc(bs)
 func (h *LeafHash) UnmarshalJSON(bs []byte) (err error) {
 	trimmed := bytes.Trim(bs, `"`)
@@ -178,6 +197,7 @@ func (h *LeafHash) UnmarshalJSON(bs []byte) (err error) {
 }
 
 // @ preserves acc(h)
+// @ preserves acc(PkgMem(), _)
 // @ ensures err == nil ==> acc(bs)
 func (h *LeafHash) MarshalJSON() (bs []byte, err error) {
 	return json.Marshal(h.B64)
@@ -191,6 +211,7 @@ type EmbeddedKey struct {
 // Attempt to parse a JSON value as string that contains a single JWK in JSON
 // encoding.
 // @ preserves acc(ek)
+// @ preserves acc(PkgMem(), _)
 // @ requires acc(bs)
 func (ek *EmbeddedKey) UnmarshalJSON(bs []byte) (err error) {
 	trimmed := bytes.Trim(bs, `"`)
@@ -210,14 +231,18 @@ var ErrAssMissing = jwt.NewValidationError(errors.New("emblems require ass claim
 type EmblemValidatorS struct{}
 
 // Validation function for emblem tokens.
+// @ preserves acc(v.Mem(), _)
 // @ requires t != nil
-func (EmblemValidatorS) Validate(_ context.Context, t jwt.Token) jwt.ValidationError {
+func (v EmblemValidatorS) Validate(_ context.Context, t jwt.Token) jwt.ValidationError {
+	// @ unfold acc(v.Mem(), _)
+	// @ ghost defer fold acc(v.Mem(), _)
+
 	if err := validateCommon(t); err != nil {
 		return err
 	}
 
 	if _, ok := t.Get("ass"); !ok {
-		return ErrAssMissing
+		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrAssMissing
 	}
 
 	return nil
@@ -229,8 +254,12 @@ var EmblemValidator = EmblemValidatorS{}
 type EndorsementValidatorS struct{}
 
 // Validation function for endorsement tokens.
+// @ preserves acc(v.Mem(), _)
 // @ requires t != nil
-func (EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) jwt.ValidationError {
+func (v EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) jwt.ValidationError {
+	// @ unfold acc(v.Mem(), _)
+	// @ ghost defer fold acc(v.Mem(), _)
+
 	if err := validateCommon(t); err != nil {
 		return err
 	}
@@ -240,7 +269,7 @@ func (EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) jwt.Valida
 	if ok {
 		_, check := end.(bool)
 		if !check {
-			return ErrIllegalType
+			return /*@ unfolding acc(PkgMem(), _) in @*/ ErrIllegalType
 		}
 	}
 
@@ -266,6 +295,7 @@ func validateOI(oi string) error {
 }
 
 // Validate claims shared by emblems and endorsements.
+// @ preserves acc(PkgMem(), _)
 // @ requires t != nil
 func validateCommon(t jwt.Token) jwt.ValidationError {
 	if err := jwt.Validate(t); err != nil {
@@ -274,7 +304,7 @@ func validateCommon(t jwt.Token) jwt.ValidationError {
 	ver, ok := t.Get(`ver`)
 	// @ assume ok ==> typeOf(ver) == type[string]
 	if !ok || ver.(string) != string(consts.V1) {
-		return ErrIllegalVersion
+		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrIllegalVersion
 	}
 
 	if validateOI(t.Issuer()) != nil {
@@ -288,5 +318,26 @@ func validateCommon(t jwt.Token) jwt.ValidationError {
 
 (EndorsementValidatorS) implements jwt.Validator
 (EmblemValidatorS) implements jwt.Validator
+
+pred (EndorsementValidatorS) Mem() {
+	PkgMem()
+}
+
+pred (EmblemValidatorS) Mem() {
+	PkgMem()
+}
+
+pred PkgMem() {
+	ErrAssetConstraint != nil &&
+	ErrPrpConstraint != nil &&
+	ErrDstConstraint != nil &&
+	ErrWndConstraint != nil &&
+	ErrIllegalConst != nil &&
+	ErrIllegalVersion != nil &&
+	ErrIllegalType != nil &&
+	ErrAssMissing != nil &&
+	ErrNoEndorsedKey != nil &&
+	ErrAlgMissing != nil
+}
 
 @*/

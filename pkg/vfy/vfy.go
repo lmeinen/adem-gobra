@@ -1,6 +1,5 @@
 // +gobra
-
-// @ initEnsures ErrTokenNonCompact != nil
+// @ initEnsures PkgMem()
 package vfy
 
 import (
@@ -22,6 +21,14 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
+
+func init() {
+	// TODO: (lmeinen) Gobra doesn't handle init order properly yet - really these assumptions should already hold
+	// @ assume ErrNoKeyFound != nil &&
+	// @ 	ErrRootKeyUnbound != nil &&
+	// @ 	ErrAlgsDiffer != nil
+	// @ fold PkgMem()
+}
 
 type VerificationResults struct {
 	results    []consts.VerificationResult
@@ -70,18 +77,19 @@ type TokenVerificationResult struct {
 // Results will be returned to the [results] channel. Verification keys will be
 // obtained from [km].
 // Every call to [vfyToken] will write to [results] exactly once.
-// @ requires ErrTokenNonCompact != nil
+// @ requires threadCount > 0
+// @ requires acc(PkgMem(), 1 / threadCount)
+// @ requires acc(roots.PkgMem(), 1 / threadCount)
+// @ requires acc(tokens.PkgMem(), _)
 // @ requires acc(rawToken, _)
 // @ requires km.init.UnitDebt(WaitInv!<!>) &&
 // @ 	acc(km.lock.LockP(), _) &&
 // @ 	km.lock.LockInv() == LockInv!<km!>
-// @ requires 0 < threadCount
 // @ requires acc(results.SendChannel(), 1 / numSendFractions(threadCount)) &&
 // @ 	results.SendGivenPerm() == SendToken!<loc, threadCount, _!> &&
 // @ 	results.SendGotPerm() == PredTrue!<!>
 // @ requires acc(SingleUse(loc), 1 / threadCount)
 // @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
-// @ requires acc(roots.PkgMem(), 1 / threadCount)
 func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
 	// @ share threadCount, loc, results, vfyWaitGroup
 	result /*@@@*/ := TokenVerificationResult{}
@@ -116,7 +124,7 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 		result.err = err
 		return
 	} else if len(msg.Signatures( /*@ 1/2 @*/ )) > 1 {
-		result.err = ErrTokenNonCompact
+		result.err = /*@ unfolding acc(PkgMem(), _) in @*/ ErrTokenNonCompact
 		return
 	} else if ademT, err := MkADEMToken(km, msg.Signatures( /*@ 1/2 @*/ )[0], jwtT); err != nil {
 		result.err = err
@@ -127,8 +135,7 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 }
 
 // Verify a slice of ADEM tokens.
-// @ requires ErrTokenNonCompact != nil
-// @ requires ident.PkgMem() && roots.PkgMem()
+// @ requires PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem()
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
@@ -163,6 +170,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	ctx := context.TODO()
 	iter := trustedKeys.Keys(ctx)
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
+	// @ invariant acc(tokens.PkgMem(), _)
 	for iter.Next(ctx) {
 		// TODO: (lmeinen) how to do mem permissions with type casts like this? See protected below for second examplej
 		k := iter.Pair().Value
@@ -197,7 +205,9 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 	// Start verification threads
 	// @ invariant threadCount == len(rawTokens)
+	// @ invariant acc(PkgMem(), (threadCount - i0) / threadCount)
 	// @ invariant acc(roots.PkgMem(), (threadCount - i0) / threadCount)
+	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(rawTokens, _)
 	// @ invariant forall i int :: { rawTokens[i] } i0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 	// @ invariant acc(km.init.UnitDebt(WaitInv!<!>), (threadCount - i0)) &&
@@ -273,6 +283,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ 			vfyWaitGroup.TokenById(fractionSeq[i], i))))) &&
 	// @ 	(threadCount <= 0 ==> results.Closed())
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
+	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant TokenList(ts)
 	// @ invariant len(ts) <= n - threadCount
 	for {
@@ -459,6 +470,13 @@ pred ResultPerm(result *TokenVerificationResult) {
 
 pred SendFraction(results chan *TokenVerificationResult, threadCount int) {
 	0 < threadCount && acc(results.SendChannel(), 1 / numSendFractions(threadCount))
+}
+
+pred PkgMem() {
+	ErrTokenNonCompact != nil &&
+	ErrNoKeyFound != nil &&
+	ErrRootKeyUnbound != nil &&
+	ErrAlgsDiffer != nil
 }
 
 @*/

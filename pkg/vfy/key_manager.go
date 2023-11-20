@@ -10,6 +10,7 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/roots"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	"github.com/adem-wg/adem-proto/pkg/util"
+
 	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -142,6 +143,7 @@ func (km *keyManager) waiting() (res int) {
 
 // Store a verified key and notify listeners waiting for that key.
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
+// @ preserves acc(tokens.PkgMem(), _)
 // @ requires k != nil
 func (km *keyManager) put(k jwk.Key) bool {
 	km.lock.Lock()
@@ -239,11 +241,12 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 		// @ inhale acc(logsCast) &&
 		// @ 	forall i int :: 0 <= i && i < len(logsCast) ==> acc(logsCast[i]) && acc(logsCast[i].Hash.Raw)
 		results := roots.VerifyBindingCerts(t.Issuer(), headerKey, logsCast)
+		// @ invariant acc(PkgMem(), _)
 		// @ invariant acc(results) && forall i int :: 0 <= i && i < len(results) ==> acc(results[i])
 		for _, r := range results {
 			if !r.Ok {
 				log.Printf("could not verify root key commitment for log ID %s", r.LogID)
-				err = ErrRootKeyUnbound
+				err = /*@ unfolding acc(PkgMem(), _) in @*/ ErrRootKeyUnbound
 				break
 			}
 		}
@@ -263,11 +266,11 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 
 	verificationKey := promise.Get()
 	if verificationKey == nil {
-		return ErrNoKeyFound
+		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrNoKeyFound
 	}
 
 	if verificationKey.Algorithm() != sig.ProtectedHeaders().Algorithm() {
-		return ErrAlgsDiffer
+		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrAlgsDiffer
 	}
 
 	sink.Key(jwa.SignatureAlgorithm(verificationKey.Algorithm().String()), verificationKey)
@@ -315,7 +318,9 @@ pred (km *keyManager) Mem() {
 	km.init.UnitDebt(WaitInv!<!>) &&
 	acc(km.lock.LockP(), _) &&
 	km.lock.LockInv() == LockInv!<km!> &&
-	acc(roots.PkgMem(), _)
+	acc(PkgMem(), _) &&
+	acc(roots.PkgMem(), _) &&
+	acc(tokens.PkgMem(), _)
 }
 
 ghost

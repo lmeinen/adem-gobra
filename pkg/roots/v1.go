@@ -32,6 +32,8 @@ var ErrWrongEntryType = errors.New("do not recognize entry type")
 
 // Verify that the rootKey is correctly bound to the issuer OI by the CT entry
 // identified by hash. Queries will be made to the given CT client.
+// @ preserves acc(PkgMem(), _)
+// @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(hash)
 // @ preserves acc(cl) && acc(cl.jsonClient)
 // @ requires rootKey != nil
@@ -46,7 +48,7 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 		log.Print("could not parse issuer")
 		return err
 	} else if issuerUrl.Hostname() == "" {
-		return ErrIssNoHostName
+		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrIssNoHostName
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(time.Minute))
@@ -82,7 +84,7 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 			} else if certT.EntryType == ct.X509LogEntryType {
 				cert, err = x509.ParseCertificate(certT.X509Entry.Data)
 			} else {
-				err = ErrWrongEntryType
+				err = /*@ unfolding acc(PkgMem(), _) in @*/ ErrWrongEntryType
 			}
 			if err != nil {
 				log.Print("could not parse certificate")
@@ -90,9 +92,9 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 			} else {
 				subjects := append( /*@ perm(1/2), @*/ cert.DNSNames, cert.Subject.CommonName)
 				if !util.ContainsString(subjects, issuerUrl.Hostname() /*@, perm(1/2) @*/) {
-					return ErrCertNotForIss
+					return /*@ unfolding acc(PkgMem(), _) in @*/ ErrCertNotForIss
 				} else if !util.ContainsString(subjects, fmt.Sprintf("%s.adem-configuration.%s", kid, issuerUrl.Hostname()) /*@, perm(1/2) @*/) {
-					return ErrCertNotForKey
+					return /*@ unfolding acc(PkgMem(), _) in @*/ ErrCertNotForKey
 				}
 			}
 		}

@@ -10,6 +10,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
+// @ preserves acc(tokens.PkgMem(), _)
 // @ requires p > 0
 // @ requires acc(emblem.Mem(), p)
 // @ requires acc(TokenList(endorsements), p)
@@ -25,6 +26,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	endorsedBy := make(map[string]*ADEMToken)
 
 	// @ invariant acc(emblem.Mem(), p)
+	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(endorsedBy)
 	// @ invariant acc(endorsements, p) &&
 	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p)) &&
@@ -59,6 +61,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	trustedFound := false
 	last := emblem
 	// @ invariant acc(emblem.Mem(), p)
+	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(endorsements, p) &&
 	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p))
 	// @ invariant acc(endorsedBy)

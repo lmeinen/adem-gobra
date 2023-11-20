@@ -31,6 +31,13 @@ var logMapLock /*@@@*/ sync.Mutex = sync.Mutex{}
 func init() {
 	// @ fold LockInv!<&ctLogs!>()
 	// @ logMapLock.SetInv(LockInv!<&ctLogs!>)
+
+	// TODO: (lmeinen) Gobra doesn't handle init order properly yet - really these assumptions should already hold
+	// @ assume ErrIssNoHostName != nil &&
+	// @ 	ErrCertNotForIss != nil &&
+	// @ 	ErrCertNotForKey != nil &&
+	// @ 	ErrWrongEntryType != nil
+
 	// @ fold PkgMem()
 }
 
@@ -69,10 +76,11 @@ func storeLogs(rawJson []byte) error {
 }
 
 // Get the log client associate to a CT log ID.
-// @ preserves acc(logMapLock.LockP(), _) && logMapLock.LockInv() == LockInv!<&ctLogs!>
-// @ requires ErrUnknownLog != nil
+// @ preserves acc(PkgMem(), _)
 // @ ensures err == nil ==> acc(cl) && acc(cl.jsonClient)
 func GetLogClient(id string) (cl *client.LogClient, err error) {
+	// @ unfold acc(PkgMem(), _)
+	// @ ghost defer fold acc(PkgMem(), _)
 	logMapLock.Lock()
 	defer logMapLock.Unlock()
 	// @ unfold LockInv!<&ctLogs!>()
@@ -181,6 +189,10 @@ pred LogsMem(logs *KnownLogs) {
 pred PkgMem() {
 	logMapLock.LockP() &&
 	logMapLock.LockInv() == LockInv!<&ctLogs!> &&
-	ErrUnknownLog != nil
+	ErrUnknownLog != nil &&
+	ErrIssNoHostName != nil &&
+	ErrCertNotForIss != nil &&
+	ErrCertNotForKey != nil &&
+	ErrWrongEntryType != nil
 }
 @*/

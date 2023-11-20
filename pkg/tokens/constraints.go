@@ -51,6 +51,7 @@ var ErrWndConstraint = errors.New("emblem does not satisfy wnd constraint")
 
 // Verify that the given emblem complies with the given endorsement's
 // constraints.
+// @ preserves acc(PkgMem(), _)
 // @ requires emblem != nil
 // @ requires endorsement != nil
 func VerifyConstraints(emblem jwt.Token, endorsement jwt.Token) error {
@@ -65,7 +66,7 @@ func VerifyConstraints(emblem jwt.Token, endorsement jwt.Token) error {
 	if !ok {
 		return nil
 	} else if !checkAssetConstraint(emblem, endCnstrs.(EmblemConstraints)) {
-		return ErrAssetConstraint
+		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrAssetConstraint
 	} else if embCnstrs, ok := emblem.Get("emb"); !ok {
 		return nil
 	} else {
@@ -78,16 +79,16 @@ func VerifyConstraints(emblem jwt.Token, endorsement jwt.Token) error {
 		embPrp := embCnstrs.(EmblemConstraints).Purpose
 		endPrp := endCnstrs.(EmblemConstraints).Purpose
 		if endPrp != nil && *endPrp&*embPrp != *embPrp {
-			return ErrPrpConstraint
+			return /*@ unfolding acc(PkgMem(), _) in @*/ ErrPrpConstraint
 		}
 		embDst := embCnstrs.(EmblemConstraints).Distribution
 		endDst := endCnstrs.(EmblemConstraints).Distribution
 		if endDst != nil && *endDst&*embDst != *embDst {
-			return ErrDstConstraint
+			return /*@ unfolding acc(PkgMem(), _) in @*/ ErrDstConstraint
 		}
 		wnd := endCnstrs.(EmblemConstraints).Window
 		if wnd != nil && emblem.Expiration().Unix()-emblem.NotBefore().Unix() > int64(*wnd) {
-			return ErrWndConstraint
+			return /*@ unfolding acc(PkgMem(), _) in @*/ ErrWndConstraint
 		}
 	}
 	return nil

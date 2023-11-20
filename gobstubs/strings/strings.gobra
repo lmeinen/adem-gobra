@@ -235,8 +235,9 @@ decreases _
 func ToUpper(s string) string
 
 // ToLower returns s with all Unicode letters mapped to their lower case.
+ensures len(r) == len(s)
 decreases _
-func ToLower(s string) string
+func ToLower(s string) (r string)
 
 // ToTitle returns a copy of the string s with all Unicode letters mapped to
 // their Unicode title case.
@@ -381,8 +382,9 @@ func TrimLeft(s, cutset string) string /*{
 // Unicode code points contained in cutset removed.
 //
 // To remove a suffix, use TrimSuffix instead.
+ensures len(r) <= len(s)
 decreases _
-func TrimRight(s, cutset string) string /*{
+pure func TrimRight(s, cutset string) (r string) /*{
 	if s == "" || cutset == "" {
 		return s
 	}

@@ -106,13 +106,17 @@ type ValidateOption interface {
 
 // Validator describes interface to validate a Token.
 type Validator interface {
+	// @ pred Mem()
+
 	// Validate should return an error if a required conditions is not met.
+	// @ preserves acc(Mem(), _)
 	// @ requires t != nil
 	Validate(c context.Context, t JwtToken) ValidationError
 }
 
+// @ ensures e != nil
 // @ decreases
-func NewValidationError(err error) ValidationError
+func NewValidationError(err error) (e ValidationError)
 
 // RegisterCustomField allows users to specify that a private field
 // be decoded as an instance of the specified type. This option has

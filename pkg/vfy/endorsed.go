@@ -14,6 +14,7 @@ import (
 // @ preserves acc(emblem.Mem(), p)
 // @ preserves acc(root.Mem(), p)
 // @ preserves acc(TokenList(endorsements), p)
+// @ preserves acc(tokens.PkgMem(), _)
 // @ requires trustedKeys != nil
 // @ ensures endorsedResults != nil ==> (
 // @	acc(endorsedResults) &&
@@ -28,9 +29,10 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 	existsEndorsement := false
 	// @ invariant acc(emblem.Mem(), p)
 	// @ invariant acc(root.Mem(), p)
+	// @ invariant acc(tokens.PkgMem(), _)
+	// @ invariant issuers != nil && acc(issuers)
 	// @ invariant acc(endorsements, p) &&
 	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p))
-	// @ invariant issuers != nil && acc(issuers)
 	for _, endorsement := range endorsements {
 		// @ unfold acc(endorsement.Mem(), p)
 		if endorsedKID, err := tokens.GetEndorsedKID(endorsement.Token); err != nil {
