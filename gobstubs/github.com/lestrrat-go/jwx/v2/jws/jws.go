@@ -100,7 +100,7 @@ func (m Message) Signatures( /*@ ghost p perm @*/ ) (s []*Signature) {
 //
 // Parse() currently does not take any options, but the API accepts it
 // in anticipation of future addition.
-// TODO: (lmeinen) Valid assumption w.r.t. len of msg.signatures?
+// TODO: (lmeinen) Valid assumption w.r.t. len of msg.signatures? Check library implementation.
 // @ ensures err == nil ==> (
 // @ 	acc(msg) &&
 // @ 	acc(msg.payload) &&

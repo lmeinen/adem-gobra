@@ -47,7 +47,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 			continue
 		} else {
 			end, _ := endorsement.Token.Get("end")
-			// FIXME: (lmeinen) remove type assumption with better specification of Get (and return if chain to previous format)
+			// TODO: (lmeinen) Return mem permissions from library
 			// @ assume typeOf(end) == type[bool]
 			if !end.(bool) {
 				// @ fold acc(endorsement.Mem(), p)

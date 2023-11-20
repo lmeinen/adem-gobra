@@ -172,8 +172,8 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(tokens.PkgMem(), _)
 	for iter.Next(ctx) {
-		// TODO: (lmeinen) how to do mem permissions with type casts like this? See protected below for second examplej
 		k := iter.Pair().Value
+		// TODO: (lmeinen) Return mem permissions from library
 		// @ assume typeOf(k) == type[jwk.Key]
 		km.put(k.(jwk.Key))
 	}
@@ -243,10 +243,6 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	km.waitForInit()
 	//  )
 
-	// TODO: (lmeinen) Capture intuition that the number of listeners in km was set in step 0, and is now only going to decrease continuously
-	//			--> write perm to km.listeners in preconditions (promises coming in handy) + suitable postconditions regarding no of listeners
-	// TODO: (lmeinen) Come up with suitable termination measure: threadCount decreases and (therefore) SendChannel perm increases --> result will be nil
-
 	// (lmeinen) 1 - verify the JWT tokens AND that the key chain results in a valid root key only verified keys are used to verify JWT signatures
 	// @ ghost n := threadCount
 
@@ -298,7 +294,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 			// aborted.
 			km.killListeners()
 		} else if result := <-results; result == nil {
-			// TODO: (lmeinen) Prove termination - Gobra currently doesn't support proving that all subsequent receives will return nil
+			// TODO: (lmeinen) Prove termination
 			// All threads have terminated
 			break
 		} else {
@@ -337,6 +333,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 				// @ assert forall k int :: { ts[k] } 0 <= k && k < len(ts) ==> unfolding ts[k].Mem() in ts[k] != result.token
 				ts = append( /*@ perm(1/2), @*/ ts, result.token)
 				if k, ok := result.token.Token.Get("key"); ok {
+					// TODO: (lmeinen) Return mem permissions from library
 					// @ assume typeOf(k) == type[tokens.EmbeddedKey] && k.(tokens.EmbeddedKey).Key != nil
 					km.put(k.(tokens.EmbeddedKey).Key)
 				}
@@ -386,7 +383,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 			}
 
 			ass, _ := emblem.Token.Get("ass")
-			// this assumption comes from the successful return of the jwt.Parse function + the type constraints set in claims.go
+			// TODO: (lmeinen) Return mem permissions from library
 			// @ assume typeOf(ass) == type[[]*ident.AI]
 			// @ inhale acc(ass.([]*ident.AI))
 			protected = ass.([]*ident.AI)

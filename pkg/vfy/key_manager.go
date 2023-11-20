@@ -35,11 +35,6 @@ type keyManager struct {
 	listeners map[string][]util.Promise
 }
 
-// TODO: (lmeinen) Add auxiliary datastructure to allow proving properties about promise graph (!)
-// TODO: (lmeinen) Basic memory verification
-// TODO: (lmeinen) Investigate necessity of adding a proper wg token - can maybe be used to make claims of type "method m2 is only called after m1"
-// TODO: (lmeinen) Find way to make claims about waiting number of threads - would allow proving termination of main thread
-
 // Creates a new key manager to verify [numThreads]-many tokens asynchronously.
 // @ requires numThreads > 0
 // @ ensures res.lock.LockP() &&
@@ -236,6 +231,7 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 		err = e
 	} else if logs, ok := t.Get("log"); ok {
 		headerKey := sig.ProtectedHeaders().JWK()
+		// TODO: (lmeinen) Return mem permissions from library
 		// @ assume typeOf(logs) == type[[]*tokens.LogConfig]
 		logsCast := logs.([]*tokens.LogConfig)
 		// @ inhale acc(logsCast) &&

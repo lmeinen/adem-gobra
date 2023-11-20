@@ -15,6 +15,7 @@ import (
 // @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> constraints.Assets[i].Mem()
 func checkAssetConstraint(emblem jwt.Token, constraints EmblemConstraints) bool {
 	ass, _ := emblem.Get("ass")
+	// TODO: (lmeinen) Return mem permissions from library
 	// @ assume typeOf(ass) == type[[]*ident.AI]
 	// @ inhale let casted := ass.([]*ident.AI) in
 	// @ 	acc(casted) &&
@@ -70,6 +71,7 @@ func VerifyConstraints(emblem jwt.Token, endorsement jwt.Token) error {
 	} else if embCnstrs, ok := emblem.Get("emb"); !ok {
 		return nil
 	} else {
+		// TODO: (lmeinen) Return mem permissions from library
 		// @ assume typeOf(embCnstrs) == type[EmblemConstraints]
 		// @ inhale let constraints := embCnstrs.(EmblemConstraints) in
 		// @ 	acc(constraints.Purpose) &&

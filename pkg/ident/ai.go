@@ -51,7 +51,7 @@ func (ai *AI) MoreGeneral(than *AI) bool {
 	// @ unfold than.Mem()
 	// @ ghost defer fold than.Mem()
 
-	// TODO: (lmeinen) remove the below assumption - it is not valid in general and should instead result in a bugfix
+	// TODO: (lmeinen) bugfix
 	// @ assume than.port != nil
 	if ai.port != nil && *ai.port != *than.port {
 		return false
@@ -133,8 +133,7 @@ func ParseAI(aiStr string) (r *AI, err error) {
 		addr = aiStr
 	}
 
-	// TODO: (lmeinen) Would be cool if we could drop this assumption
-	// 	--> encode into Gobra?
+	// TODO: (lmeinen) Can we drop this assumption?
 	// @ assume forall s string :: s != "" ==> len(s) > 0
 	if addr == "" {
 		return nil, ErrIllegalAI
@@ -143,7 +142,7 @@ func ParseAI(aiStr string) (r *AI, err error) {
 	ai /*@@@*/ := AI{}
 	if isIPv6(addr) {
 		// must be IPv6
-		// TODO: (lmeinen) introduce bugfix
+		// TODO: (lmeinen) bugfix
 		// @ assume len(addr) > 1
 		trimmed := addr[1 : len(addr)-1] // drop [...]
 		if ip := net.ParseIP(trimmed); ip != nil {

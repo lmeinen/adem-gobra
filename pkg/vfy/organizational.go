@@ -39,6 +39,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		kid, err := tokens.GetEndorsedKID(endorsement.Token)
 		end, _ := endorsement.Token.Get("end")
 		// @ fold acc(endorsement.Mem(), p)
+		// TODO: (lmeinen) Return mem permissions from library
 		// @ assume typeOf(end) == type[bool]
 		if err != nil {
 			log.Printf("could not get endorsed kid: %s\n", err)

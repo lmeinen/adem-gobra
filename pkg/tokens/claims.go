@@ -265,6 +265,7 @@ func (v EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) jwt.Vali
 	}
 
 	end, ok := t.Get("end")
+	// TODO: (lmeinen) Return mem permissions from library
 	// @ assume ok ==> typeOf(end) == type[bool]
 	if ok {
 		_, check := end.(bool)
@@ -302,6 +303,7 @@ func validateCommon(t jwt.Token) jwt.ValidationError {
 		return jwt.NewValidationError(err)
 	}
 	ver, ok := t.Get(`ver`)
+	// TODO: (lmeinen) Return mem permissions from library
 	// @ assume ok ==> typeOf(ver) == type[string]
 	if !ok || ver.(string) != string(consts.V1) {
 		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrIllegalVersion

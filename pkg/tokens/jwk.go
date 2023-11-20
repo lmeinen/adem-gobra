@@ -25,6 +25,7 @@ var ErrAlgMissing = errors.New("input key misses algorithm")
 // @ ensures err == nil ==> kid != ""
 func GetEndorsedKID(t jwt.Token) (kid string, err error) {
 	jwKey, ok := t.Get("key")
+	// TODO: (lmeinen) Return mem permissions from library
 	// @ assume typeOf(jwKey) == type[EmbeddedKey] && jwKey.(EmbeddedKey).Key != nil
 	if !ok {
 		return "",
@@ -70,6 +71,7 @@ func CalcKID(key jwk.Key) (kid string, err error) {
 	} else {
 		h /*@@@*/ := sha256.Sum256(canonical)
 		b32 := base32.StdEncoding.EncodeToString(h[:])
+		// TODO: (lmeinen) Can we drop this assumption?
 		// @ assume forall s string :: (len(s) == 0 ==> s == "") && (s == "" ==> len(s) == 0)
 		return strings.ToLower(strings.TrimRight(b32, "=")), nil
 	}
@@ -106,6 +108,7 @@ func SetKIDs(jwkSet jwk.Set, alg *jwa.SignatureAlgorithm) (jwk.Set, error) {
 	// @ invariant acc(PkgMem(), _)
 	for iter.Next(ctx) {
 		v := iter.Pair().Value
+		// TODO: (lmeinen) Return mem permissions from library
 		// @ assume typeOf(v) == type[jwk.Key]
 		k := v.(jwk.Key)
 		if pk, err := k.PublicKey(); err != nil {
