@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package log
 
 // These functions write to the standard logger.

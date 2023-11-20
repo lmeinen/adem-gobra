@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package bytes
 
 // Equal reports whether a and b

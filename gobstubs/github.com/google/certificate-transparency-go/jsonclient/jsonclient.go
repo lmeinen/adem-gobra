@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package jsonclient
 
 // JSONClient provides common functionality for interacting with a JSON server

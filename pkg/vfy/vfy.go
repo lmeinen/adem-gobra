@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 // @ initEnsures PkgMem()
 package vfy
 

@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package pkix
 
 // Name represents an X.509 distinguished name. This only includes the common

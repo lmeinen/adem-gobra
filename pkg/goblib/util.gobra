@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package goblib
 
 import "github.com/adem-wg/adem-proto/pkg/consts"

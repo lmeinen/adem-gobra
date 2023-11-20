@@ -1,0 +1,7 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
+package os
+
+// ReadFile reads the named file and returns the contents.
+// @ ensures acc(bs)
+func ReadFile(name string) (bs []byte, err error)

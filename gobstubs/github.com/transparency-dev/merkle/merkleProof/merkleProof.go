@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package merkleProof
 
 // FIXME: (lmeinen) Had to rename this package from proof to merkleProof due to reserved Gobra keywords

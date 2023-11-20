@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package errors
 
 // New returns an error that formats as the given text.

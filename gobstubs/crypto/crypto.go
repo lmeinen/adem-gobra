@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package crypto
 
 // Hash identifies a cryptographic hash function that is implemented in another

@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package tls
 
 // Enum is an unsigned integer.

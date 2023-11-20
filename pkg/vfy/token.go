@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package vfy
 
 import (
@@ -12,7 +13,7 @@ import (
 type ADEMToken struct {
 	VerificationKey jwk.Key
 	Headers         jws.Headers
-	Token           jwt.Token
+	Token           jwt.JwtToken
 }
 
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
@@ -20,7 +21,7 @@ type ADEMToken struct {
 // @ requires t != nil
 // @ ensures err == nil ==> res.Mem()
 // @ ensures err != nil ==> res == nil
-func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.Token) (res *ADEMToken, err error) {
+func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.JwtToken) (res *ADEMToken, err error) {
 	verifKey := km.getVerificationKey(sig).Get()
 	if verifKey == nil {
 		return nil, errors.New("no verification key")

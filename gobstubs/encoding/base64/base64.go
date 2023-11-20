@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 
 package base64
 

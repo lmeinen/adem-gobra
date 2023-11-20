@@ -1,11 +1,12 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package json
 
 // Unmarshal parses the JSON-encoded data and stores the result
 // in the value pointed to by v. If v is nil or not a pointer,
 // Unmarshal returns an InvalidUnmarshalError.
 // @ preserves acc(data)
-// @ preserves Mem()
+// @ preserves Mem() // this is needed to ensure mem permissions to more complex structs are returned
 func Unmarshal(data []byte, v any /*@, ghost Mem pred()@*/) (err error)
 
 // Marshal returns the JSON encoding of v.

@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package jwa
 
 // KeyAlgorithm is a workaround for jwk.Key being able to contain different

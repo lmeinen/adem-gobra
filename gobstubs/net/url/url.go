@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package url
 
 // The Userinfo type is an immutable encapsulation of username and

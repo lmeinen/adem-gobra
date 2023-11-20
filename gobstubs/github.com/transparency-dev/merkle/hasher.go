@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package merkle
 
 // LogHasher provides the hash functions needed to compute dense merkle trees.

@@ -1,4 +1,5 @@
 // +gobra
+// ##(--onlyFilesWithHeader)
 package regexp
 
 // Regexp is the representation of a compiled regular expression.
