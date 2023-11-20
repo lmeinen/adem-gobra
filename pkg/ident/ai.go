@@ -51,9 +51,7 @@ func (ai *AI) MoreGeneral(than *AI) bool {
 	// @ unfold than.Mem()
 	// @ ghost defer fold than.Mem()
 
-	// TODO: (lmeinen) bugfix
-	// @ assume than.port != nil
-	if ai.port != nil && *ai.port != *than.port {
+	if ai.port != nil && (ai.port != than.port || *ai.port != *than.port) {
 		return false
 	}
 
