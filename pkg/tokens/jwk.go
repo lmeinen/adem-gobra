@@ -24,7 +24,7 @@ var ErrAlgMissing = errors.New("input key misses algorithm")
 // @ preserves acc(PkgMem(), _)
 // @ requires t != nil
 // @ ensures err == nil ==> kid != ""
-func GetEndorsedKID(t jwt.JwtToken) (kid string, err error) {
+func GetEndorsedKID(t jwt.Token) (kid string, err error) {
 	jwKey, ok := t.Get("key")
 	// TODO: (lmeinen) Return mem permissions from library
 	// @ assume typeOf(jwKey) == type[EmbeddedKey] && jwKey.(EmbeddedKey).Key != nil

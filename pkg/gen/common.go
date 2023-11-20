@@ -15,17 +15,17 @@ import (
 type TokenGenerator interface {
 	// Generate a signed token. First argument is the signed token, second
 	// argument the bytes of the JWS in compact serialization.
-	SignToken() (jwt.JwtToken, []byte, error)
+	SignToken() (jwt.Token, []byte, error)
 }
 
 type EmblemConfig struct {
 	sk       jwk.Key
 	alg      *jwa.SignatureAlgorithm
-	proto    jwt.JwtToken
+	proto    jwt.Token
 	lifetime int64
 }
 
-func MkEmblemCfg(sk jwk.Key, alg *jwa.SignatureAlgorithm, proto jwt.JwtToken, lifetime int64) *EmblemConfig {
+func MkEmblemCfg(sk jwk.Key, alg *jwa.SignatureAlgorithm, proto jwt.Token, lifetime int64) *EmblemConfig {
 	return &EmblemConfig{sk: sk, alg: alg, proto: proto, lifetime: lifetime}
 }
 
@@ -35,7 +35,7 @@ type EndorsementConfig struct {
 	endorseAlg *jwa.SignatureAlgorithm
 }
 
-func MkEndorsementCfg(sk jwk.Key, alg *jwa.SignatureAlgorithm, proto jwt.JwtToken, endorse jwk.Key, endorseAlg *jwa.SignatureAlgorithm, lifetime int64) *EndorsementConfig {
+func MkEndorsementCfg(sk jwk.Key, alg *jwa.SignatureAlgorithm, proto jwt.Token, endorse jwk.Key, endorseAlg *jwa.SignatureAlgorithm, lifetime int64) *EndorsementConfig {
 	return &EndorsementConfig{
 		EmblemConfig: *MkEmblemCfg(sk, alg, proto, lifetime),
 		endorse:      endorse,
@@ -43,7 +43,7 @@ func MkEndorsementCfg(sk jwk.Key, alg *jwa.SignatureAlgorithm, proto jwt.JwtToke
 	}
 }
 
-func prepToken(t jwt.JwtToken, lifetime int64) error {
+func prepToken(t jwt.Token, lifetime int64) error {
 	iat := time.Now().Unix()
 	if err := t.Set("iat", iat); err != nil {
 		return err
@@ -57,7 +57,7 @@ func prepToken(t jwt.JwtToken, lifetime int64) error {
 	return nil
 }
 
-func signWithHeaders(t jwt.JwtToken, cty consts.CTY, alg *jwa.SignatureAlgorithm, signingKey jwk.Key) ([]byte, error) {
+func signWithHeaders(t jwt.Token, cty consts.CTY, alg *jwa.SignatureAlgorithm, signingKey jwk.Key) ([]byte, error) {
 	headers := jws.NewHeaders()
 	headers.Set("cty", string(cty))
 	verifKey, err := signingKey.PublicKey()

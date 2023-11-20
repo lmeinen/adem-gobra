@@ -99,6 +99,7 @@ func (km *keyManager) killListeners() {
 	// @ 	acc(l[key]) &&
 	// @ 	let llist, _ := l[key] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], key, i))
 	for k, listeners := range l /*@ with visited @*/ {
+		noop(k)
 		// @ invariant acc(listeners, 1/2)
 		// @ invariant forall i int :: 0 <= i && i0 <= i && i < len(listeners) ==> PromiseInv(listeners[i], k, i)
 		for _, promise := range listeners /*@ with i0 @*/ {
@@ -290,6 +291,10 @@ func doDelete(listeners map[string][]util.Promise, key string) {
 	// FIXME: (lmeinen) delete expression not supported in Gobra
 	delete(listeners, key)
 }
+
+// @ trusted
+// avoids UnusedVar compiler errors
+func noop(_ string) {}
 
 /*@
 pred WaitInv() {

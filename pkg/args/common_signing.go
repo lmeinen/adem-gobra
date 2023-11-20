@@ -70,7 +70,7 @@ func LoadPrivateKey() jwk.Key {
 	}
 }
 
-func LoadClaimsProto() jwt.JwtToken {
+func LoadClaimsProto() jwt.Token {
 	if protoPath == "" {
 		log.Fatal("no --proto arg")
 	}

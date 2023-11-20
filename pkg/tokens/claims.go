@@ -234,7 +234,7 @@ type EmblemValidatorS struct{}
 // Validation function for emblem tokens.
 // @ preserves acc(v.Mem(), _)
 // @ requires t != nil
-func (v EmblemValidatorS) Validate(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
+func (v EmblemValidatorS) Validate(_ context.Context, t jwt.Token) jwt.ValidationError {
 	// @ unfold acc(v.Mem(), _)
 	// @ ghost defer fold acc(v.Mem(), _)
 
@@ -257,7 +257,7 @@ type EndorsementValidatorS struct{}
 // Validation function for endorsement tokens.
 // @ preserves acc(v.Mem(), _)
 // @ requires t != nil
-func (v EndorsementValidatorS) Validate(_ context.Context, t jwt.JwtToken) jwt.ValidationError {
+func (v EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) jwt.ValidationError {
 	// @ unfold acc(v.Mem(), _)
 	// @ ghost defer fold acc(v.Mem(), _)
 
@@ -299,7 +299,7 @@ func validateOI(oi string) error {
 // Validate claims shared by emblems and endorsements.
 // @ preserves acc(PkgMem(), _)
 // @ requires t != nil
-func validateCommon(t jwt.JwtToken) jwt.ValidationError {
+func validateCommon(t jwt.Token) jwt.ValidationError {
 	if err := jwt.Validate(t); err != nil {
 		return jwt.NewValidationError(err)
 	}

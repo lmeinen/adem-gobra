@@ -14,7 +14,7 @@ import (
 // @ requires emblem != nil
 // @ requires acc(constraints.Assets) &&
 // @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> constraints.Assets[i].Mem()
-func checkAssetConstraint(emblem jwt.JwtToken, constraints EmblemConstraints) bool {
+func checkAssetConstraint(emblem jwt.Token, constraints EmblemConstraints) bool {
 	ass, _ := emblem.Get("ass")
 	// TODO: (lmeinen) Return mem permissions from library
 	// @ assume typeOf(ass) == type[[]*ident.AI]
@@ -56,7 +56,7 @@ var ErrWndConstraint = errors.New("emblem does not satisfy wnd constraint")
 // @ preserves acc(PkgMem(), _)
 // @ requires emblem != nil
 // @ requires endorsement != nil
-func VerifyConstraints(emblem jwt.JwtToken, endorsement jwt.JwtToken) error {
+func VerifyConstraints(emblem jwt.Token, endorsement jwt.Token) error {
 	endCnstrs, ok := endorsement.Get("emb")
 	// @ inhale ok ==> typeOf(endCnstrs) == type[EmblemConstraints] &&
 	// @ 	let constraints := endCnstrs.(EmblemConstraints) in
