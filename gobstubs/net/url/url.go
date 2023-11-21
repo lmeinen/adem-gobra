@@ -30,4 +30,6 @@ type URL struct {
 func Parse(rawURL string) (url *URL, err error)
 
 // Hostname returns u.Host, stripping any valid port number if present.
+// @ pure
+// @ requires acc(u)
 func (u *URL) Hostname() string

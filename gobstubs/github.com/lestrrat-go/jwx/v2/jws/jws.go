@@ -9,10 +9,15 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
+// The `sink` argument passed to the KeyProvider is a temporary storage
+// for the keys (either a jwk.Key or a "raw" key). The `KeyProvider`
+// is responsible for sending keys into the `sink`.
+
 // KeySink is a data storage where `jws.KeyProvider` objects should
 // send their keys to.
 type KeySink interface {
-	Key(jwa.SignatureAlgorithm, interface{})
+	// @ requires acc(k.Mem(), _)
+	Key(_ jwa.SignatureAlgorithm, k jwk.Key)
 }
 
 // KeyProvider is responsible for providing key(s) to sign or verify a payload.
@@ -26,20 +31,16 @@ type KeyProvider interface {
 
 // Headers describe a standard Header set.
 type Headers interface {
-	// pred Mem()
-
-	// preserves p > 0 && acc(Mem(), p)
+	// @ pure
 	Algorithm() jwa.SignatureAlgorithm
 
-	// preserves p > 0 && acc(Mem(), p)
+	// @ pure
 	ContentType() string
 
-	// preserves p > 0 && acc(Mem(), p)
-	// ensures acc(res.Mem(), _)
-	// @ ensures res != nil
+	// @ ensures res != nil && res.Mem()
 	JWK() (res jwk.Key)
 
-	// preserves p > 0 && acc(Mem(), p)
+	// @ pure
 	KeyID() string
 }
 

@@ -141,17 +141,17 @@ func (km *keyManager) waiting() (res int) {
 // Store a verified key and notify listeners waiting for that key.
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(tokens.PkgMem(), _)
-// @ requires k != nil
+// @ requires k != nil && k.Mem()
 func (km *keyManager) put(k jwk.Key) bool {
 	km.lock.Lock()
 	defer km.lock.Unlock()
 	// @ unfold LockInv!<km!>()
 	// @ ghost defer fold LockInv!<km!>()
 
-	kid, err := tokens.GetKID(k)
+	kid, err := tokens.GetKID(k /*@, some(perm(1/2)) @*/)
 	if err != nil {
 		return false
-	} else if fp, err := tokens.CalcKID(k); err != nil {
+	} else if fp, err := tokens.CalcKID(k /*@, some(perm(1/2)) @*/); err != nil {
 		// We set and calculate the KID ID to be consistent with key hashing later
 		// down the line.
 		return false
@@ -165,12 +165,14 @@ func (km *keyManager) put(k jwk.Key) bool {
 	}
 
 	km.keys[kid] = k
+	// @ ghost defer fold KeyMem(k, kid)
 	// FIXME: (lmeinen) added ok flag here; add as bug commit
 	promises, ok := km.listeners[kid]
 	if !ok {
 		return false
 	}
 
+	// @ invariant acc(k.Mem(), _)
 	// @ invariant acc(promises, 1/2)
 	// @ invariant forall i int :: 0 <= i && i0 <= i && i < len(promises) ==> PromiseInv(promises[i], kid, i)
 	for _, promise := range promises /*@ with i0 @*/ {
@@ -197,7 +199,9 @@ func (km *keyManager) getKey(kid string) (p util.Promise) {
 	c := util.NewPromise()
 	k, ok := km.keys[kid]
 	if ok {
+		// @ unfold KeyMem(k, kid)
 		c.Fulfill(k)
+		// @ fold KeyMem(k, kid)
 	} else {
 		listenersForKid := km.listeners[kid]
 		// @ fold PromiseInv(c, kid, len(listenersForKid))
@@ -212,8 +216,8 @@ func (km *keyManager) getKey(kid string) (p util.Promise) {
 func (km *keyManager) getVerificationKey(sig *jws.Signature) (p util.Promise) {
 	if headerKID := sig.ProtectedHeaders().KeyID(); headerKID != "" {
 		return km.getKey(headerKID)
-	} else if sig.ProtectedHeaders().JWK().KeyID() != "" {
-		return km.getKey(sig.ProtectedHeaders().JWK().KeyID())
+	} else if sig.ProtectedHeaders().JWK().KeyID( /*@ some(perm(1/2)) @*/ ) != "" {
+		return km.getKey(sig.ProtectedHeaders().JWK().KeyID( /*@ some(perm(1/2)) @*/ ))
 	} else {
 		return util.Rejected()
 	}
@@ -267,11 +271,11 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrNoKeyFound
 	}
 
-	if verificationKey.Algorithm() != sig.ProtectedHeaders().Algorithm() {
+	if verificationKey.Algorithm( /*@ none[perm] @*/ ) != sig.ProtectedHeaders().Algorithm() {
 		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrAlgsDiffer
 	}
 
-	sink.Key(jwa.SignatureAlgorithm(verificationKey.Algorithm().String()), verificationKey)
+	sink.Key(jwa.SignatureAlgorithm(verificationKey.Algorithm( /*@ none[perm] @*/ ).String()), verificationKey)
 	return nil
 }
 
@@ -293,8 +297,9 @@ func doDelete(listeners map[string][]util.Promise, key string) {
 }
 
 // @ trusted
-// avoids UnusedVar compiler errors
-func noop(_ string) {}
+func noop(_ string) {
+	// avoids UnusedVar compiler errors
+}
 
 /*@
 pred WaitInv() {
@@ -305,9 +310,14 @@ pred PromiseInv(p util.Promise, ghost k string, ghost i int) {
 	p != nil && p.ProducerToken()
 }
 
+pred KeyMem(k jwk.Key, kid string) {
+	k != nil && acc(k.Mem(), _)
+}
+
 pred LockInv(km *keyManager) {
 	acc(&km.keys) &&
 	acc(km.keys) &&
+	(forall k string :: k in km.keys ==> let jwkKey, _ := km.keys[k] in KeyMem(jwkKey, k)) &&
 	acc(&km.listeners) &&
 	acc(km.listeners) &&
 	(forall k string :: k in domain(km.listeners) ==> (

@@ -92,9 +92,7 @@ func (ai *AI) MoreGeneral(than *AI) bool {
 // @ requires acc(bs)
 func (ai *AI) UnmarshalJSON(bs []byte) error {
 	var str /*@@@*/ string
-	// @ fold PredTrue!<!>()
-	err := json.Unmarshal(bs, &str /*@, PredTrue!<!> @*/)
-	// @ unfold PredTrue!<!>()
+	err := unmarshalStr(bs, &str)
 	if err != nil {
 		return err
 	} else if parsed, err := ParseAI(str); err != nil {
@@ -109,6 +107,13 @@ func (ai *AI) UnmarshalJSON(bs []byte) error {
 		// @ fold ai.Mem()
 		return nil
 	}
+}
+
+// @ trusted
+// @ preserves acc(bs)
+// @ preserves acc(s)
+func unmarshalStr(bs []byte, s *string) error {
+	return json.Unmarshal(bs, s)
 }
 
 var portReg *regexp.Regexp = regexp.MustCompile(`:(\d+)$`)

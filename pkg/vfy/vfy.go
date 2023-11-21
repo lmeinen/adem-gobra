@@ -139,6 +139,7 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 // @ requires PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem()
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
+// @ requires trustedKeys.Mem()
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
 func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResults) {
 
@@ -176,6 +177,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 		k := iter.Pair().Value
 		// TODO: (lmeinen) Return mem permissions from library
 		// @ assume typeOf(k) == type[jwk.Key]
+		// @ inhale k.(jwk.Key).Mem()
 		km.put(k.(jwk.Key))
 	}
 
@@ -336,6 +338,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 				if k, ok := result.token.Token.Get("key"); ok {
 					// TODO: (lmeinen) Return mem permissions from library
 					// @ assume typeOf(k) == type[tokens.EmbeddedKey] && k.(tokens.EmbeddedKey).Key != nil
+					// @ inhale k.(tokens.EmbeddedKey).Key.Mem()
 					km.put(k.(tokens.EmbeddedKey).Key)
 				}
 				// @ fold result.token.Mem()

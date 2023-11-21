@@ -3,12 +3,17 @@ package io
 
 // ReadCloser is the interface that groups the basic Read and Close methods.
 type ReadCloser interface {
+	// @ preserves acc(p)
+	// @ ensures 0 <= n && n <= len(p)
 	Read(p []byte) (n int, err error)
+
 	Close() error
 }
 
 // Reader is the interface that wraps the basic Read method.
 type Reader interface {
+	// @ preserves acc(p)
+	// @ ensures 0 <= n && n <= len(p)
 	Read(p []byte) (n int, err error)
 }
 

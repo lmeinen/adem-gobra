@@ -12,6 +12,7 @@ import (
 )
 
 // @ preserves acc(tokens.PkgMem(), _)
+// @ preserves trustedKeys.Mem()
 // @ requires p > 0
 // @ requires acc(emblem.Mem(), p)
 // @ requires acc(TokenList(endorsements), p)
@@ -49,7 +50,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 			continue
 		} else if /*@ unfolding acc(emblem.Mem(), p) in unfolding acc(endorsement.Mem(), p) in @*/ emblem.Token.Issuer() != endorsement.Token.Subject() {
 			continue
-		} else if /*@ unfolding acc(emblem.Mem(), p) in @*/ kid != emblem.VerificationKey.KeyID() && !end.(bool) {
+		} else if /*@ unfolding acc(emblem.Mem(), p) in @*/ kid != emblem.VerificationKey.KeyID( /*@ none[perm] @*/ ) && !end.(bool) {
 			continue
 		} else if _, ok := endorsedBy[kid]; ok {
 			log.Println("illegal branch in endorsements")
@@ -63,6 +64,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	trustedFound := false
 	last := emblem
 	// @ invariant acc(emblem.Mem(), p)
+	// @ invariant trustedKeys.Mem()
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(endorsements, p) &&
 	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p))
@@ -73,10 +75,10 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ 	exists i int :: 0 <= i && i < len(endorsements) &&
 	// @ 	let t, _ := endorsedBy[k] in t == endorsements[i])
 	for root == nil {
-		_, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(last.Mem(), p) in @*/ last.VerificationKey.KeyID())
+		_, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(last.Mem(), p) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ ))
 		trustedFound = trustedFound || ok
 
-		if endorsing := endorsedBy[ /*@ unfolding acc(last.Mem(), p) in @*/ last.VerificationKey.KeyID()]; endorsing != nil {
+		if endorsing := endorsedBy[ /*@ unfolding acc(last.Mem(), p) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ )]; endorsing != nil {
 			if err := tokens.VerifyConstraints(
 				/*@ unfolding acc(emblem.Mem(), p) in @*/ emblem.Token,
 				/*@ unfolding acc(endorsing.Mem(), p) in @*/ endorsing.Token); err != nil {
@@ -102,7 +104,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		return []consts.VerificationResult{consts.INVALID}, nil
 	} else if rootLogged {
 		results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL)
-		if _, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(root.Mem(), p) in @*/ root.VerificationKey.KeyID()); ok {
+		if _, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(root.Mem(), p) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ )); ok {
 			results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL_TRUSTED)
 		}
 	}

@@ -17,7 +17,7 @@ type LogClient struct {
 }
 
 // New constructs a new LogClient instance.
-// @ ensures acc(lc) && acc(lc.jsonClient)
+// @ ensures err == nil ==> acc(lc) && acc(lc.jsonClient)
 func New(uri string, hc http.Client, opts jsonclient.Options) (lc *LogClient, err error)
 
 // BaseURI returns the base URI that the JSONClient makes queries to.

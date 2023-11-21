@@ -14,6 +14,7 @@ import (
 // @ preserves p > 0
 // @ preserves acc(emblem.Mem(), p)
 // @ preserves acc(root.Mem(), p)
+// @ preserves trustedKeys.Mem()
 // @ preserves acc(TokenList(endorsements), p)
 // @ preserves acc(tokens.PkgMem(), _)
 // @ requires trustedKeys != nil
@@ -30,6 +31,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 	existsEndorsement := false
 	// @ invariant acc(emblem.Mem(), p)
 	// @ invariant acc(root.Mem(), p)
+	// @ invariant trustedKeys.Mem()
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant issuers != nil && acc(issuers)
 	// @ invariant acc(endorsements, p) &&
@@ -53,7 +55,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 			if !end.(bool) {
 				// @ fold acc(endorsement.Mem(), p)
 				continue
-			} else if /*@ unfolding acc(root.Mem(), p) in @*/ root.VerificationKey.KeyID() != endorsedKID {
+			} else if /*@ unfolding acc(root.Mem(), p) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ ) != endorsedKID {
 				// @ fold acc(endorsement.Mem(), p)
 				continue
 			} else if err := tokens.VerifyConstraints( /*@ unfolding acc(emblem.Mem(), p) in @*/ emblem.Token, endorsement.Token); err != nil {
@@ -64,7 +66,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 			} else {
 				existsEndorsement = true
 				issuers = append( /*@ perm(1/2), @*/ issuers, endorsement.Token.Issuer())
-				_, ok := trustedKeys.LookupKeyID(endorsement.VerificationKey.KeyID())
+				_, ok := trustedKeys.LookupKeyID(endorsement.VerificationKey.KeyID( /*@ none[perm] @*/ ))
 				trustedFound = trustedFound || ok
 				// @ fold acc(endorsement.Mem(), p)
 			}

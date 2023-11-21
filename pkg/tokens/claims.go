@@ -67,11 +67,9 @@ const Indicative PurposeMask = 0x02
 func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
 	var prps /*@@@*/ []string
 	var mask PurposeMask
-	// @ fold StringSliceMem!<prps!>()
-	if err := json.Unmarshal(bs, &prps /*@, StringSliceMem!<prps!> @*/); err != nil {
+	if err := unmarshalStringSlice(bs, &prps); err != nil {
 		return err
 	} else {
-		// @ unfold StringSliceMem!<prps!>()
 		// @ invariant acc(prps)
 		for _, prp := range prps {
 			switch prp {
@@ -86,6 +84,14 @@ func (pm *PurposeMask) UnmarshalJSON(bs []byte) error {
 	}
 	*pm = mask
 	return nil
+}
+
+// @ trusted
+// @ preserves acc(bs)
+// @ preserves acc(s) && acc(*s)
+// @ ensures s != nil ==> *s === old(*s)
+func unmarshalStringSlice(bs []byte, s *[]string) error {
+	return json.Unmarshal(bs, s)
 }
 
 // @ preserves acc(pm)
@@ -120,11 +126,9 @@ const UDP ChannelMask = 0x04
 func (cm *ChannelMask) UnmarshalJSON(bs []byte) error {
 	var dsts /*@@@*/ []string
 	var mask ChannelMask
-	// @ fold StringSliceMem!<dsts!>()
-	if err := json.Unmarshal(bs, &dsts /*@, StringSliceMem!<dsts!> @*/); err != nil {
+	if err := unmarshalStringSlice(bs, &dsts); err != nil {
 		return err
 	} else {
-		// @ unfold StringSliceMem!<dsts!>()
 		// @ invariant acc(dsts)
 		for _, dst := range dsts {
 			switch dst {

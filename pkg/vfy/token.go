@@ -35,6 +35,7 @@ func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.Token) (res *ADEMToke
 pred (t *ADEMToken) Mem() {
 	acc(t) &&
 			t.VerificationKey != nil &&
+				acc(t.VerificationKey.Mem(), _) &&
 			t.Headers != nil &&
 			t.Token != nil
 }

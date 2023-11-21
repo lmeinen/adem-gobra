@@ -14,37 +14,30 @@ import (
 
 // JwtToken represents a generic JWT token.
 type JwtToken interface {
-	// pred Mem()
 
 	// Expiration returns the value for "exp" field of the token
-	// preserves acc(Mem(), _)
 	// @ pure
 	Expiration() time.Time
 
 	// IssuedAt returns the value for "iat" field of the token
-	// preserves acc(Mem(), _)
 	// @ pure
 	IssuedAt() time.Time
 
 	// Issuer returns the value for "iss" field of the token
-	// preserves acc(Mem(), _)
 	// @ pure
 	Issuer() string
 
 	// NotBefore returns the value for "nbf" field of the token
-	// preserves acc(Mem(), _)
 	// @ pure
 	NotBefore() time.Time
 
 	// Subject returns the value for "sub" field of the token
-	// preserves acc(Mem(), _)
 	// @ pure
 	Subject() string
 
 	// Get returns the value of the corresponding field in the token, such as
 	// `nbf`, `exp`, `iat`, and other user-defined fields. If the field does not
 	// exist in the token, the second return value will be `false`
-	// preserves p > 0 && acc(Mem(), p)
 	Get(key string) (res any, _ bool)
 }
 

@@ -12,7 +12,8 @@ type Promise interface {
 	// Fullfil the promise. [Get] will unblock (when called already) or succeed
 	// (when called later).
 	// @ requires ProducerToken()
-	Fulfill(jwk.Key)
+	// @ requires acc(k.Mem(), _)
+	Fulfill(k jwk.Key)
 
 	// Cancel a promise. Subsequent calls to [Get] will return T's null value.
 	// @ requires ProducerToken()
@@ -22,6 +23,7 @@ type Promise interface {
 	// was fullfilled with exactly once. Afterwards, it will return the null
 	// value. Call will block on unfullfilled promise.
 	// @ requires ConsumerToken()
+	// @ ensures res != nil ==> acc(res.Mem(), _)
 	Get() (res jwk.Key)
 }
 
@@ -41,6 +43,7 @@ func NewPromise() (res Promise) {
 }
 
 // @ requires p.ProducerToken()
+// @ requires acc(val.Mem(), _)
 func (p *promise) Fulfill(val jwk.Key) {
 	// @ unfold p.ProducerToken()
 	// @ fold SendInv!<_!>(val)
@@ -58,7 +61,7 @@ func (p *promise) Reject() {
 }
 
 // @ requires p.ConsumerToken()
-// @ ensures res != nil ==> true
+// @ ensures res != nil ==> acc(res.Mem(), _)
 func (p *promise) Get() (res jwk.Key) {
 	// @ unfold p.ConsumerToken()
 	// @ fold PredTrue!<!>()
@@ -67,6 +70,7 @@ func (p *promise) Get() (res jwk.Key) {
 	return e
 }
 
+// @ requires acc(val.Mem(), _)
 // @ ensures res != nil && isComparable(res) && res.ConsumerToken()
 func Fullfilled(val jwk.Key) (res Promise) {
 	p := NewPromise()
@@ -84,7 +88,7 @@ func Rejected() (res Promise) {
 /*@
 
 pred SendInv(val jwk.Key) {
-	true
+	acc(val.Mem(), _)
 }
 
 pred (p *promise) ProducerToken() {

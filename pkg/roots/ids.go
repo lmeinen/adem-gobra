@@ -51,14 +51,11 @@ func storeLogs(rawJson []byte) error {
 	// @ defer fold LockInv!<&ctLogs!>()
 
 	logs /*@@@*/ := KnownLogs{}
-	// @ fold LogsMem!<&logs!>()
-	err := json.Unmarshal(rawJson, &logs /*@, LogsMem!<&logs!> @*/)
+	err := unmarshalKnownLogs(rawJson, &logs)
 
 	if err != nil {
 		return err
 	}
-
-	// @ unfold LogsMem!<&logs!>()
 
 	s := logs.Operators
 	// @ invariant acc(&ctLogs) && acc(ctLogs)
@@ -74,6 +71,15 @@ func storeLogs(rawJson []byte) error {
 	}
 
 	return nil
+}
+
+// @ trusted
+// @ preserves acc(bs)
+// @ preserves acc(logs) &&
+// @ 	acc(logs.Operators) &&
+// @ 	forall i int :: 0 <= i && i < len(logs.Operators) ==> acc(logs.Operators[i].Logs)
+func unmarshalKnownLogs(bs []byte, logs *KnownLogs) error {
+	return json.Unmarshal(bs, logs)
 }
 
 // Get the log client associate to a CT log ID.

@@ -37,9 +37,9 @@ var ErrWrongEntryType = errors.New("do not recognize entry type")
 // @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(hash)
 // @ preserves acc(cl) && acc(cl.jsonClient)
-// @ requires rootKey != nil
+// @ preserves rootKey != nil && rootKey.Mem()
 func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk.Key) error {
-	kid, err := tokens.CalcKID(rootKey)
+	kid, err := tokens.CalcKID(rootKey /*@, some(perm(1/2)) @*/)
 	if err != nil {
 		log.Print("could not calculate KID")
 		return err
