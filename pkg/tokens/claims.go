@@ -1,6 +1,9 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
-// @ initEnsures PkgMem()
+// @ initEnsures PkgMem() &&
+// @ 	acc(&jwt.Custom, 1/2) &&
+// @ 	acc(jwt.Custom, 1/2) &&
+// @ 	CustomFields(jwt.Custom)
 package tokens
 
 import (
@@ -14,19 +17,25 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/ident"
 	"github.com/adem-wg/adem-proto/pkg/util"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	// @ importRequires acc(&jwt.Custom) && acc(jwt.Custom) && jwt.Custom.IsEmpty()
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 // Register JWT fields of emblems for easier parsing.
 func init() {
+
 	// TODO: (lmeinen) Implement parsing interface in jwt library
 	// 	- type guarantees and mem permissions for Get method
 	//	- type constraints for JSON parsing interface implementation
 	//  - PkgMem permissions for custom unmarshalling methods
-	jwt.RegisterCustomField("log", []*LogConfig{})
-	jwt.RegisterCustomField("key", EmbeddedKey{})
-	jwt.RegisterCustomField("ass", []*ident.AI{})
-	jwt.RegisterCustomField("emb", EmblemConstraints{})
+	// --> build map from key string to (witness, witness.mem) tuple
+	// --> map is passed to Get functions and the like
+	// --> how to set structure of map nicely?
+
+	jwt.RegisterCustomField("log", []*LogConfig{} /*@, jwt.Custom.Copy(1/2) @*/)
+	jwt.RegisterCustomField("key", EmbeddedKey{} /*@, jwt.Custom.Copy(1/2) @*/)
+	jwt.RegisterCustomField("ass", []*ident.AI{} /*@, jwt.Custom.Copy(1/2) @*/)
+	jwt.RegisterCustomField("emb", EmblemConstraints{} /*@, jwt.Custom.Copy(1/2) @*/)
 
 	// TODO: (lmeinen) Gobra doesn't handle init order properly yet - really these assumptions should already hold
 	// @ assume ErrAssetConstraint != nil &&
@@ -45,14 +54,6 @@ func init() {
 var ErrIllegalConst error = errors.New("json element is illegal constant")
 
 type PurposeMask byte
-
-type StringSlice []string
-
-/*@
-pred StringSliceMem(s []string) {
-	acc(s)
-}
-@*/
 
 // FIXME: (lmeinen) Gobra throws a NumberFormatException for the below binary literals
 // const Protective PurposeMask = 0b0000_0001
@@ -270,6 +271,7 @@ func (v EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) jwt.Vali
 	}
 
 	end, ok := t.Get("end")
+	// TODO: (lmeinen) not a registered claim - bugfix
 	// TODO: (lmeinen) Return mem permissions from library
 	// @ assume ok ==> typeOf(end) == type[bool]
 	if ok {
@@ -302,12 +304,14 @@ func validateOI(oi string) error {
 
 // Validate claims shared by emblems and endorsements.
 // @ preserves acc(PkgMem(), _)
+// @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
 // @ requires t != nil
 func validateCommon(t jwt.Token) jwt.ValidationError {
 	if err := jwt.Validate(t); err != nil {
 		return jwt.NewValidationError(err)
 	}
 	ver, ok := t.Get(`ver`)
+	// TODO: (lmeinen) not a registered claim - bugfix
 	// TODO: (lmeinen) Return mem permissions from library
 	// @ assume ok ==> typeOf(ver) == type[string]
 	if !ok || ver.(string) != string(consts.V1) {
@@ -327,11 +331,51 @@ func validateCommon(t jwt.Token) jwt.ValidationError {
 (EmblemValidatorS) implements jwt.Validator
 
 pred (EndorsementValidatorS) Mem() {
-	PkgMem()
+	PkgMem() &&
+	acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
 }
 
 pred (EmblemValidatorS) Mem() {
-	PkgMem()
+	PkgMem() &&
+	acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
+}
+
+pred LogMem(log []*LogConfig) {
+	acc(log) &&
+		forall i int :: 0 <= i && i < len(log) ==> acc(log[i]) && acc(log[i].Hash.Raw)
+}
+
+([]*LogConfig) implements jwt.JwtClaim {
+	pred Mem := LogMem
+}
+
+pred KeyMem(key EmbeddedKey) {
+	key.Key.Mem()
+}
+
+(EmbeddedKey) implements jwt.JwtClaim {
+	pred Mem := KeyMem
+}
+
+pred AssMem(ass []*ident.AI) {
+	acc(ass) &&
+	forall i int :: 0 <= i && i < len(ass) ==> ass[i].Mem()
+}
+
+([]*ident.AI) implements jwt.JwtClaim {
+	pred Mem := AssMem
+}
+
+pred EmbMem(emb EmblemConstraints) {
+	acc(emb.Purpose) &&
+	acc(emb.Distribution) &&
+	acc(emb.Assets) &&
+		forall i int :: 0 <= i && i < len(emb.Assets) ==> emb.Assets[i].Mem() &&
+	acc(emb.Window)
+}
+
+(EmblemConstraints) implements jwt.JwtClaim {
+	pred Mem := EmbMem
 }
 
 pred PkgMem() {
@@ -345,6 +389,17 @@ pred PkgMem() {
 	ErrAssMissing != nil &&
 	ErrNoEndorsedKey != nil &&
 	ErrAlgMissing != nil
+}
+
+ghost
+requires acc(f, _)
+pure func CustomFields(f jwt.Fields) bool {
+	return (
+		domain(f) == set[string] { "log", "key", "ass", "emb" } &&
+		typeOf(f["log"]) == type[[]*LogConfig] &&
+		typeOf(f["key"]) == type[EmbeddedKey] &&
+		typeOf(f["ass"]) == type[[]*ident.AI] &&
+		typeOf(f["emb"]) == type[EmblemConstraints])
 }
 
 @*/

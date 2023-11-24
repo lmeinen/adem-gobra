@@ -19,7 +19,7 @@ type ADEMToken struct {
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(sig, _)
 // @ requires t != nil
-// @ ensures err == nil ==> res.Mem()
+// @ ensures err == nil ==> res != nil && res.Mem()
 // @ ensures err != nil ==> res == nil
 func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.Token) (res *ADEMToken, err error) {
 	verifKey := km.getVerificationKey(sig).Get()

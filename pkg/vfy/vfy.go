@@ -79,33 +79,27 @@ type TokenVerificationResult struct {
 // obtained from [km].
 // Every call to [vfyToken] will write to [results] exactly once.
 // @ requires threadCount > 0
-// @ requires acc(PkgMem(), 1 / threadCount)
-// @ requires acc(roots.PkgMem(), 1 / threadCount)
-// @ requires acc(tokens.PkgMem(), _)
+// @ requires acc(PkgMems(), 1 / threadCount)
 // @ requires acc(rawToken, _)
 // @ requires km.init.UnitDebt(WaitInv!<!>) &&
 // @ 	acc(km.lock.LockP(), _) &&
 // @ 	km.lock.LockInv() == LockInv!<km!>
-// @ requires acc(results.SendChannel(), 1 / numSendFractions(threadCount)) &&
-// @ 	results.SendGivenPerm() == SendToken!<loc, threadCount, _!> &&
-// @ 	results.SendGotPerm() == PredTrue!<!>
-// @ requires acc(SingleUse(loc), 1 / threadCount)
+// @ requires acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 // @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
 func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
 	// @ share threadCount, loc, results, vfyWaitGroup
+	// @ unfold acc(PkgMems(), 1 / threadCount)
 	result /*@@@*/ := TokenVerificationResult{}
 	defer
 	// @ requires acc(&threadCount) && acc(&loc) && acc(&results) && acc(&vfyWaitGroup)
 	// @ requires threadCount > 0
 	// @ requires acc(&result) &&
-	// @ 			(result.err == nil ==> result.token.Mem()) &&
+	// @ 			(result.err == nil ==> result.token != nil && result.token.Mem()) &&
 	// @ 			(result.err != nil ==> result.token == nil)
-	// @ requires acc(results.SendChannel(), 1 / numSendFractions(threadCount)) &&
-	// @ 	results.SendGivenPerm() == SendToken!<loc, threadCount, _!> &&
-	// @ 	results.SendGotPerm() == PredTrue!<!>
-	// @ requires acc(SingleUse(loc), 1 / threadCount)
+	// @ requires acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 	// @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
 	func /*@ f @*/ () {
+		// @ unfold acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 		// @ fold ResultPerm(&result)
 		// @ fold SendToken!<loc, threadCount, _!>(&result)
 		results <- &result
@@ -137,6 +131,7 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 
 // Verify a slice of ADEM tokens.
 // @ requires PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem()
+// @ requires acc(&jwt.Custom, 1/2) && acc(jwt.Custom, 1/2) && tokens.CustomFields(jwt.Custom)
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 // @ requires trustedKeys.Mem()
@@ -161,6 +156,22 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	*/
 
 	// (lmeinen) 0 - set up chain of promises from root keys to signing keys
+	// @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+	// @ preserves trustedKeys.Mem() && trustedKeys != nil
+	// @ requires PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem()
+	// @ requires acc(rawTokens)
+	// @ requires len(rawTokens) > 0
+	// @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
+	// @ ensures acc(tokens.PkgMem(), _)
+	// @ ensures 0 < threadCount
+	// @ ensures results.RecvChannel() &&
+	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
+	// @ 	results.RecvGotPerm() == SendToken!<loc, threadCount, _!> &&
+	// @ 	results.Token(PredTrue!<!>) &&
+	// @ 	results.ClosureDebt(PredTrue!<!>, 1, 2) &&
+	// @ 	VfyWg(vfyWaitGroup, threadCount, results, fractionSeq)
+	// @ ensures acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
+	// @ outline (
 
 	// We maintain a thread count for termination purposes. It might be that we
 	// cannot verify all token's verification key and must cancel verification.
@@ -186,75 +197,67 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ fold SingleUse(loc)
 	results := make(chan *TokenVerificationResult)
 	// @ results.Init(SendToken!<loc, threadCount, _!>, PredTrue!<!>)
-	// @ assert results.SendChannel()
-	// @ ghost p, q := 1, 2
-	// @ ghost sendp := perm(p/q)
-	// @ results.CreateDebt(p, q, PredTrue!<!>)
-	// @ assert sendp == threadCount / numSendFractions(threadCount)
-	// @ assert acc(results.SendChannel(), sendp)
-	// @ assert results.ClosureDebt(PredTrue!<!>, p, q) && results.Token(PredTrue!<!>)
+	// @ results.CreateDebt(1, 2, PredTrue!<!>)
+	// @ fold ResultsInv(loc, threadCount, results)
 
 	/* the waitgroup is required to later collect all results send fractions in order to be able to close the channel
 	--> note that a single send to the results channel is the last thing a goroutine does, and that the main thread only
-		calls wg.Wait() when it has received a result from every spawned routine. Therefore, the waitgroup does not
-		influence concurrent behavior of the program and can be used as a proof utility.
+	calls wg.Wait() when it has received a result from every spawned routine. Therefore, the waitgroup does not
+	influence concurrent behavior of the program and can be used as a proof utility.
 	*/
 	// @ wg@ := sync.WaitGroup {}
 	// @ ghost vfyWaitGroup := &wg
-	// @ ghost fractionSeq := seq[pred()] {}
 	// @ vfyWaitGroup.Init()
 	// @ vfyWaitGroup.Add(threadCount, perm(1), PredTrue!<!>)
 	// @ vfyWaitGroup.Start(1/2, PredTrue!<!>)
+	// @ ghost fractionSeq := generateTokenSeq(vfyWaitGroup, threadCount, results)
+
+	// @ fold PkgMems()
 
 	// Start verification threads
 	// @ invariant threadCount == len(rawTokens)
-	// @ invariant acc(PkgMem(), (threadCount - i0) / threadCount)
-	// @ invariant acc(roots.PkgMem(), (threadCount - i0) / threadCount)
-	// @ invariant acc(tokens.PkgMem(), _)
+	// @ invariant acc(PkgMems(), (threadCount - i0) / threadCount)
 	// @ invariant acc(rawTokens, _)
 	// @ invariant forall i int :: { rawTokens[i] } i0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 	// @ invariant acc(km.init.UnitDebt(WaitInv!<!>), (threadCount - i0)) &&
 	// @ 	acc(km.lock.LockP(), _) &&
 	// @ 	km.lock.LockInv() == LockInv!<km!>
-	// @ invariant acc(vfyWaitGroup.UnitDebt(PredTrue!<!>), threadCount - i0)
-	// @ invariant i0 < len(rawTokens) ==> (
-	// @ 	sendp > 0 &&
-	// @ 	sendp == (threadCount - i0) / numSendFractions(threadCount) &&
-	// @ 	acc(results.SendChannel(), sendp) &&
-	// @ 	results.SendGivenPerm() == SendToken!<loc, threadCount, _!> &&
-	// @ 	results.SendGotPerm() == PredTrue!<!> &&
-	// @ 	acc(SingleUse(loc), (threadCount - i0) / threadCount))
-	// @ invariant len(fractionSeq) == i0 &&
-	// @ 	(forall i int :: { fractionSeq[i] } 0 <= i && i < i0 ==> (
-	// @ 		fractionSeq[i] == SendFraction!<results, threadCount!> &&
-	// @ 		vfyWaitGroup.TokenById(fractionSeq[i], i)))
+	// @ invariant acc(ResultsInv(loc, threadCount, results), (threadCount - i0) / threadCount)
+	// @ invariant acc(wg.UnitDebt(SendFraction!<results, threadCount!>), threadCount - i0)
 	for _, rawToken := range rawTokens /*@ with i0 @*/ {
-		// @ ghost sendFraction := SendFraction!<results, threadCount!>
-		// @ vfyWaitGroup.GenerateTokenAndDebt(sendFraction)
-		// @ fold vfyWaitGroup.TokenById(sendFraction, len(fractionSeq))
-		// @ fractionSeq = fractionSeq ++ seq[pred()] { sendFraction }
 		go vfyToken(rawToken, km, results /*@, loc, threadCount, vfyWaitGroup @*/)
-		// @ sendp = sendp - perm(1 / numSendFractions(threadCount))
-
-		// @ assert sendp == (threadCount - i0 - 1) / numSendFractions(threadCount)
-		// @ assert i0 < len(rawTokens) - 1 ? sendp > 0 : sendp == 0
 	}
 
 	// @ vfyWaitGroup.SetWaitMode(1/2, 1/2)
+	// @ fold VfyWg(vfyWaitGroup, threadCount, results, fractionSeq)
 
 	// Wait until all verification threads obtained a verification key promise.
 	km.waitForInit()
-	//  )
+	// @ )
 
 	// (lmeinen) 1 - verify the JWT tokens AND that the key chain results in a valid root key only verified keys are used to verify JWT signatures
+	// @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+	// @ preserves acc(tokens.PkgMem(), _)
+	// @ requires 0 < threadCount
+	// @ requires results.RecvChannel() &&
+	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
+	// @ 	results.RecvGotPerm() == SendToken!<loc, threadCount, _!> &&
+	// @ 	results.Token(PredTrue!<!>) &&
+	// @ 	results.ClosureDebt(PredTrue!<!>, 1, 2) &&
+	// @ 	VfyWg(vfyWaitGroup, threadCount, results, fractionSeq)
+	// @ requires acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
+	// @ ensures TokenList(ts)
+	// @ ensures len(ts) <= before(threadCount)
+	// @ outline (
+
 	// @ ghost n := threadCount
 
 	/* ensures:
 	- list of tokens, where:
-		(a) every token is non-nil
-		(b) every token is unique
-		(c) every goroutine contributed at most one token
-		(d) there are at most as many tokens as there were rawTokens
+	(a) every token is non-nil
+	(b) every token is unique
+	(c) every goroutine contributed at most one token
+	(d) there are at most as many tokens as there were rawTokens
 	*/
 	ts := []*ADEMToken{}
 	// @ fold TokenList(ts)
@@ -274,15 +277,11 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ 	(threadCount > 0 ==> (
 	// @ 		results.Token(PredTrue!<!>) &&
 	// @ 		results.ClosureDebt(PredTrue!<!>, 1, 2) &&
-	// @ 		vfyWaitGroup.WaitGroupP() &&
-	// @ 		vfyWaitGroup.WaitMode() &&
-	// @ 		len(fractionSeq) == n &&
-	// @ 		(forall i int :: { fractionSeq[i] } 0 <= i && i < len(fractionSeq) ==> (
-	// @ 			fractionSeq[i] == SendFraction!<results, n!> &&
-	// @ 			vfyWaitGroup.TokenById(fractionSeq[i], i))))) &&
+	// @ 		VfyWg(vfyWaitGroup, n, results, fractionSeq))) &&
 	// @ 	(threadCount <= 0 ==> results.Closed())
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(tokens.PkgMem(), _)
+	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant TokenList(ts)
 	// @ invariant len(ts) <= n - threadCount
 	for {
@@ -310,19 +309,11 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 			threadCount -= 1
 
 			if threadCount == 0 {
+				// @ unfold VfyWg(vfyWaitGroup, n, results, fractionSeq)
 				// @ vfyWaitGroup.Wait(perm(1), fractionSeq)
-				/*@
-				ghost {
-					invariant 0 <= i && i <= n
-					invariant forall j int :: { fractionSeq[j] } i <= j && j < n ==> sync.InjEval(fractionSeq[j], j)
-					invariant acc(results.SendChannel(), i / numSendFractions(n))
-					for i := 0; i < n; i++ {
-						unfold sync.InjEval(fractionSeq[i], i)
-						unfold SendFraction!<results, n!>()
-					}
-				}
-				@*/
+				// @ collectDebt(fractionSeq, n, results)
 				// @ fold PredTrue!<!>()
+
 				// Every call to [vfyToken] will write exactly one result. Hence, only
 				// close the [results] channel, when all threads have terminated.
 				close(results /*@, 1, 2, PredTrue!<!>@*/)
@@ -333,11 +324,12 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 			} else {
 				// @ unfold TokenList(ts)
 				// @ unfold result.token.Mem()
-				// @ assert forall k int :: { ts[k] } 0 <= k && k < len(ts) ==> unfolding ts[k].Mem() in ts[k] != result.token
+				// @ assert forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> unfolding ts[i].Mem() in ts[i] != result.token
 				ts = append( /*@ perm(1/2), @*/ ts, result.token)
+				// @ assert tokens.CustomFields(jwt.Custom)
 				if k, ok := result.token.Token.Get("key"); ok {
-					// TODO: (lmeinen) Return mem permissions from library
-					// @ assume typeOf(k) == type[tokens.EmbeddedKey] && k.(tokens.EmbeddedKey).Key != nil
+					// @ assert tokens.KeyMem(k.(tokens.EmbeddedKey))
+					//  unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
 					// @ inhale k.(tokens.EmbeddedKey).Key.Mem()
 					km.put(k.(tokens.EmbeddedKey).Key)
 				}
@@ -347,33 +339,27 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 		}
 	}
 
+	// @ )
+
 	// (lmeinen) 2 - validate the JWT tokens AND that the required fields are present and valid
 	var emblem *ADEMToken
-	// @ ghost emblemIdx := -1
-	// @ ghost endorsementIdx := seq[int] {}
 	var protected []*ident.AI
 	endorsements := []*ADEMToken{}
+	// @ fold TokenList(endorsements)
 
 	// @ unfold TokenList(ts)
 
-	// @ invariant acc(ts) &&
-	// @ 	(forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> ts[i] != nil && ts[i].Mem()) &&
-	// @ 	(forall i, j int :: { ts[i], ts[j] } 0 <= i && i < j && j < len(ts) ==> ts[i] != ts[j])
-	// @ invariant emblem != nil ==> (
-	// @ 	0 <= emblemIdx &&
-	// @ 	emblemIdx < i0 &&
-	// @ 	emblem == ts[emblemIdx])
-	// @ invariant acc(endorsements) &&
-	// @ 	len(endorsements) == len(endorsementIdx) &&
-	// @ 	(len(endorsements) == 0 || len(endorsements) <= i0) &&
-	// @ 	(forall i, j int :: { endorsements[i], endorsements[j] } 0 <= i && i < j && j < len(endorsements) ==> endorsements[i] != endorsements[j]) &&
-	// @ 	(forall i, j int :: { endorsementIdx[i], endorsementIdx[j] } 0 <= i && i < j && j < len(endorsements) ==> endorsementIdx[i] != endorsementIdx[j]) &&
-	// @ 	(forall i int :: { endorsementIdx[i] } 0 <= i && i < len(endorsementIdx) ==> 0 <= endorsementIdx[i] && endorsementIdx[i] < i0) &&
-	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] == ts[endorsementIdx[i]])
+	// @ invariant acc(tokens.PkgMem(), _)
+	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+	// @ invariant acc(ts, _) &&
+	// @ 	forall i int :: { ts[i] } 0 <= i && i0 <= i && i < len(ts) ==> ts[i] != nil && ts[i].Mem()
+	// @ invariant emblem != nil ==> emblem.Mem()
+	// @ invariant TokenList(endorsements)
 	// @ invariant protected != nil ==> acc(protected)
 	for _, t := range ts /*@ with i0 @*/ {
 		// @ unfold t.Mem()
 		if t.Headers.ContentType() == string(consts.EmblemCty) {
+			// @ fold acc(tokens.EmblemValidator.Mem(), _)
 			if emblem != nil {
 				// Multiple emblems
 				log.Print("Token set contains multiple emblems")
@@ -383,35 +369,38 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 				return ResultInvalid()
 			} else {
 				emblem = t
-				// @ ghost emblemIdx = i0
 			}
 
+			// TODO: (lmeinen) Add constraints as precondition
+			// @ assume emblem.Token.Contains("ass")
 			ass, _ := emblem.Token.Get("ass")
-			// TODO: (lmeinen) Return mem permissions from library
-			// @ assume typeOf(ass) == type[[]*ident.AI]
-			// @ inhale acc(ass.([]*ident.AI))
 			protected = ass.([]*ident.AI)
+			// @ unfold tokens.AssMem(protected)
+
 			if emblem.Headers.Algorithm() == jwa.NoSignature {
 				return VerificationResults{
 					results:   []consts.VerificationResult{consts.UNSIGNED},
 					protected: protected,
 				}
 			}
+
+			// @ fold emblem.Mem()
 		} else if t.Headers.ContentType() == string(consts.EndorsementCty) {
+			// @ fold acc(tokens.EndorsementValidator.Mem(), _)
 			err := jwt.Validate(t.Token, jwt.WithValidator(tokens.EndorsementValidator))
 			if err != nil {
 				log.Printf("Invalid endorsement: %s", err)
 			} else {
+				// @ unfold TokenList(endorsements)
+				// @ assert forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> unfolding endorsements[i].Mem() in endorsements[i] != t
 				endorsements = append( /*@ perm(1/2), @*/ endorsements, t)
-				// @ endorsementIdx = endorsementIdx ++ seq[int] { i0 }
+				// @ fold t.Mem()
+				// @ fold TokenList(endorsements)
 			}
 		} else {
 			log.Printf("Token has wrong type: %s", t.Headers.ContentType())
 		}
-		// @ fold t.Mem()
 	}
-
-	// @ fold acc(TokenList(endorsements), 1/2)
 
 	if emblem == nil {
 		log.Print("no emblem found")
@@ -448,16 +437,6 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 }
 
 /*@
-ghost
-requires threadCount > 0
-ensures res == 2 * threadCount
-pure func numSendFractions(threadCount int) (res int) {
-	return 2 * threadCount
-}
-
-pred SendToken(loc *int, threadCount int, result *TokenVerificationResult) {
-	threadCount > 0 && acc(SingleUse(loc), 1 / threadCount) && ResultPerm(result)
-}
 
 pred SingleUse(loc *int) {
 	acc(loc)
@@ -465,12 +444,34 @@ pred SingleUse(loc *int) {
 
 pred ResultPerm(result *TokenVerificationResult) {
 	acc(result) &&
-			(result.err == nil ==> result.token.Mem()) &&
+			(result.err == nil ==> result.token != nil && result.token.Mem()) &&
 			(result.err != nil ==> result.token == nil)
 }
 
-pred SendFraction(results chan *TokenVerificationResult, threadCount int) {
-	0 < threadCount && acc(results.SendChannel(), 1 / numSendFractions(threadCount))
+pred SendToken(loc *int, threadCount int, result *TokenVerificationResult) {
+	threadCount > 0 && acc(SingleUse(loc), 1 / threadCount) && ResultPerm(result)
+}
+
+pred ResultsInv(loc *int, threadCount int, results chan *TokenVerificationResult) {
+	threadCount > 0 &&
+	acc(results.SendChannel(), perm(1/2)) &&
+	results.SendGivenPerm() == SendToken!<loc, threadCount, _!> &&
+	results.SendGotPerm() == PredTrue!<!> &&
+	SingleUse(loc)
+}
+
+pred SendFraction(results chan *TokenVerificationResult, n int) {
+	0 < n && acc(results.SendChannel(), 1 / (2 * n))
+}
+
+pred VfyWg(wg *sync.WaitGroup, n int, results chan *TokenVerificationResult, ghost fractionSeq seq[pred()]) {
+	n > 0 &&
+	wg.WaitGroupP() &&
+	wg.WaitMode() &&
+	len(fractionSeq) == n &&
+	forall i int :: { fractionSeq[i] } 0 <= i && i < len(fractionSeq) ==> (
+		fractionSeq[i] == SendFraction!<results, n!> &&
+		wg.TokenById(fractionSeq[i], i))
 }
 
 pred PkgMem() {
@@ -478,6 +479,58 @@ pred PkgMem() {
 	ErrNoKeyFound != nil &&
 	ErrRootKeyUnbound != nil &&
 	ErrAlgsDiffer != nil
+}
+
+pred PkgMems() {
+	PkgMem() &&
+	roots.PkgMem() &&
+	acc(tokens.PkgMem(), _) &&
+	acc(&jwt.Custom, _) &&
+		acc(jwt.Custom, _) &&
+		tokens.CustomFields(jwt.Custom)
+}
+
+ghost
+requires n > 0
+requires acc(wg.UnitDebt(PredTrue!<!>), n)
+ensures n == old(n)
+ensures len(fractionSeq) == n &&
+	forall i int :: { fractionSeq[i] } 0 <= i && i < n ==> (
+		fractionSeq[i] == SendFraction!<results, n!> &&
+		wg.TokenById(fractionSeq[i], i))
+ensures acc(wg.UnitDebt(SendFraction!<results, n!>), n)
+func generateTokenSeq(wg *sync.WaitGroup, n int, results chan *TokenVerificationResult) (fractionSeq seq[pred()]) {
+	fractionSeq := seq[pred()] {}
+	invariant 0 <= i && i <= n
+	invariant acc(wg.UnitDebt(PredTrue!<!>), n - i)
+	invariant acc(wg.UnitDebt(SendFraction!<results, n!>), i)
+	invariant len(fractionSeq) == i &&
+		forall j int :: { fractionSeq[j] } 0 <= j && j < i ==> (
+			fractionSeq[j] == SendFraction!<results, n!> &&
+			wg.TokenById(fractionSeq[j], j))
+	for i := 0; i < n; i++ {
+		ghost sendFraction := SendFraction!<results, n!>
+		wg.GenerateTokenAndDebt(sendFraction)
+		fold wg.TokenById(sendFraction, len(fractionSeq))
+		fractionSeq = fractionSeq ++ seq[pred()] { sendFraction }
+	}
+}
+
+ghost
+requires n > 0
+requires len(fractionSeq) == n &&
+	forall i int :: { fractionSeq[i] } 0 <= i && i < n ==> (
+		sync.InjEval(fractionSeq[i], i) &&
+		fractionSeq[i] == SendFraction!<results, n!>)
+ensures acc(results.SendChannel(), 1/2)
+func collectDebt(fractionSeq seq[pred()], n int, results chan *TokenVerificationResult) {
+	invariant 0 <= i && i <= n
+	invariant forall j int :: { fractionSeq[j] } i <= j && j < n ==> sync.InjEval(fractionSeq[j], j)
+	invariant acc(results.SendChannel(), i / (2 * n))
+	for i := 0; i < n; i++ {
+		unfold sync.InjEval(fractionSeq[i], i)
+		unfold SendFraction!<results, n!>()
+	}
 }
 
 @*/

@@ -9,9 +9,11 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	// @ "github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 // @ preserves acc(tokens.PkgMem(), _)
+// @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ preserves trustedKeys.Mem()
 // @ requires p > 0
 // @ requires acc(emblem.Mem(), p)
@@ -29,6 +31,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 
 	// @ invariant acc(emblem.Mem(), p)
 	// @ invariant acc(tokens.PkgMem(), _)
+	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant acc(endorsedBy)
 	// @ invariant acc(endorsements, p) &&
 	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p)) &&
@@ -40,9 +43,10 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		// @ unfold acc(endorsement.Mem(), p)
 		kid, err := tokens.GetEndorsedKID(endorsement.Token)
 		end, _ := endorsement.Token.Get("end")
-		// @ fold acc(endorsement.Mem(), p)
+		// TODO: (lmeinen) not a registered claim - bugfix
 		// TODO: (lmeinen) Return mem permissions from library
 		// @ assume typeOf(end) == type[bool]
+		// @ fold acc(endorsement.Mem(), p)
 		if err != nil {
 			log.Printf("could not get endorsed kid: %s\n", err)
 			continue
@@ -66,6 +70,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ invariant acc(emblem.Mem(), p)
 	// @ invariant trustedKeys.Mem()
 	// @ invariant acc(tokens.PkgMem(), _)
+	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant acc(endorsements, p) &&
 	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p))
 	// @ invariant acc(endorsedBy)

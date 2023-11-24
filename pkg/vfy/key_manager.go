@@ -237,12 +237,8 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 		err = e
 	} else if logs, ok := t.Get("log"); ok {
 		headerKey := sig.ProtectedHeaders().JWK()
-		// TODO: (lmeinen) Return mem permissions from library
-		// @ assume typeOf(logs) == type[[]*tokens.LogConfig]
-		logsCast := logs.([]*tokens.LogConfig)
-		// @ inhale acc(logsCast) &&
-		// @ 	forall i int :: 0 <= i && i < len(logsCast) ==> acc(logsCast[i]) && acc(logsCast[i].Hash.Raw)
-		results := roots.VerifyBindingCerts(t.Issuer(), headerKey, logsCast)
+		// @ unfold tokens.LogMem(logs.([]*tokens.LogConfig))
+		results := roots.VerifyBindingCerts(t.Issuer(), headerKey, logs.([]*tokens.LogConfig))
 		// @ invariant acc(PkgMem(), _)
 		// @ invariant acc(results) && forall i int :: 0 <= i && i < len(results) ==> acc(results[i])
 		for _, r := range results {
@@ -332,17 +328,10 @@ pred (km *keyManager) Mem() {
 	km.lock.LockInv() == LockInv!<km!> &&
 	acc(PkgMem(), _) &&
 	acc(roots.PkgMem(), _) &&
-	acc(tokens.PkgMem(), _)
-}
-
-ghost
-trusted
-requires acc(s)
-ensures forall i int :: 0 <= i && i < len(s) ==> s[i] in r
-ensures forall k string :: k in r ==> exists i int :: 0 <= i && i < len(s) && s[i] == k
-pure func toSet(s []string) (r set[string]) {
-	return (len(s) == 0 ? set[string]{} :
-                        toSet(s[:len(s)-1]) union set[string]{s[len(s) - 1]})
+	acc(tokens.PkgMem(), _) &&
+	acc(&jwt.Custom, _) &&
+ 		acc(jwt.Custom, _) &&
+ 		tokens.CustomFields(jwt.Custom)
 }
 
 (*keyManager) implements jws.KeyProvider

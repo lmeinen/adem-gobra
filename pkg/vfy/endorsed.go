@@ -9,6 +9,7 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	// @ "github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 // @ preserves p > 0
@@ -17,6 +18,7 @@ import (
 // @ preserves trustedKeys.Mem()
 // @ preserves acc(TokenList(endorsements), p)
 // @ preserves acc(tokens.PkgMem(), _)
+// @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ requires trustedKeys != nil
 // @ ensures endorsedResults != nil ==> (
 // @	acc(endorsedResults) &&
@@ -33,6 +35,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 	// @ invariant acc(root.Mem(), p)
 	// @ invariant trustedKeys.Mem()
 	// @ invariant acc(tokens.PkgMem(), _)
+	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant issuers != nil && acc(issuers)
 	// @ invariant acc(endorsements, p) &&
 	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p))
@@ -50,6 +53,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 			continue
 		} else {
 			end, _ := endorsement.Token.Get("end")
+			// TODO: (lmeinen) not a registered claim - bugfix
 			// TODO: (lmeinen) Return mem permissions from library
 			// @ assume typeOf(end) == type[bool]
 			if !end.(bool) {
