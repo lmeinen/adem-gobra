@@ -328,8 +328,10 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 				ts = append( /*@ perm(1/2), @*/ ts, result.token)
 				// @ assert tokens.CustomFields(jwt.Custom)
 				if k, ok := result.token.Token.Get("key"); ok {
-					// @ assert tokens.KeyMem(k.(tokens.EmbeddedKey))
+					// (lmeinen) the below unfold stmt doesn't terminate - replaced with corresponding viper stmts
 					//  unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
+					// @ assert tokens.KeyMem(k.(tokens.EmbeddedKey))
+					// @ exhale tokens.KeyMem(k.(tokens.EmbeddedKey))
 					// @ inhale k.(tokens.EmbeddedKey).Key.Mem()
 					km.put(k.(tokens.EmbeddedKey).Key)
 				}
