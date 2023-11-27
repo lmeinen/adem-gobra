@@ -95,11 +95,10 @@ func (km *keyManager) killListeners() {
 	l := km.listeners
 
 	// @ invariant acc(l)
-	// @ invariant forall key string :: key in domain(l) && !(key in visited) ==> (
-	// @ 	acc(l[key]) &&
-	// @ 	let llist, _ := l[key] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], key, i))
+	// @ invariant forall key string :: key in domain(l) && !(key in visited) ==> ListInv(l[key], key)
 	for k, listeners := range l /*@ with visited @*/ {
 		noop(k)
+		// @ unfold ListInv(listeners, k)
 		// @ invariant acc(listeners, 1/2)
 		// @ invariant forall i int :: 0 <= i && i0 <= i && i < len(listeners) ==> PromiseInv(listeners[i], k, i)
 		for _, promise := range listeners /*@ with i0 @*/ {
@@ -127,12 +126,10 @@ func (km *keyManager) waiting() (res int) {
 	// FIXME: (lmeinen) for whatever reason, there seems to be no configuration of loop invariants that allows ranging over km.listeners
 	l := km.listeners
 	// @ invariant acc(l)
-	// @ invariant forall key string :: key in domain(l) ==> (
-	// @ 	acc(l[key]) &&
-	// @ 	let llist, _ := l[key] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], key, i))
+	// @ invariant forall key string :: key in domain(l) ==> ListInv(l[key], key)
 	// @ invariant 0 <= sum
-	for _, listeners := range l /*@ with visited @*/ {
-		sum += len(listeners)
+	for k, listeners := range l /*@ with visited @*/ {
+		sum += /*@ unfolding ListInv(listeners, k) in @*/ len(listeners)
 	}
 
 	return sum
@@ -172,6 +169,8 @@ func (km *keyManager) put(k jwk.Key) bool {
 		return false
 	}
 
+	// @ unfold ListInv(promises, kid)
+
 	// @ invariant acc(k.Mem(), _)
 	// @ invariant acc(promises, 1/2)
 	// @ invariant forall i int :: 0 <= i && i0 <= i && i < len(promises) ==> PromiseInv(promises[i], kid, i)
@@ -204,8 +203,10 @@ func (km *keyManager) getKey(kid string) (p util.Promise) {
 		// @ fold KeyMem(k, kid)
 	} else {
 		listenersForKid := km.listeners[kid]
+		// @ ghost { if kid in domain(km.listeners) { unfold ListInv(listenersForKid, kid) } }
 		// @ fold PromiseInv(c, kid, len(listenersForKid))
 		km.listeners[kid] = append( /*@ perm(1/2), @*/ listenersForKid, c)
+		// @ fold ListInv(km.listeners[kid], kid)
 	}
 	return c
 }
@@ -277,16 +278,13 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 
 // @ trusted
 // @ requires acc(listeners)
-// @ requires forall k string :: k in listeners && k != key ==> (
-// @ 	acc(listeners[k]) &&
-// @ 	let llist, _ := listeners[k] in forall i int :: { llist[i] } 0 <= i && i < len(llist) ==> PromiseInv(llist[i], k, i))
+// @ requires forall k string :: k in listeners && k != key ==> ListInv(listeners[k], k)
 // @ ensures acc(listeners)
 // @ ensures len(old(listeners)) - 1 <= len(listeners) && len(listeners) <= len(old(listeners))
 // @ ensures forall k string :: k in listeners ==> (
 // @ 	k != key &&
 // @ 	k in old(listeners) &&
-// @ 	acc(listeners[k]) &&
-// @ 	let llist, _ := listeners[k] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], k, i))
+// @ 	ListInv(listeners[k], k))
 func doDelete(listeners map[string][]util.Promise, key string) {
 	// FIXME: (lmeinen) delete expression not supported in Gobra
 	delete(listeners, key)
@@ -310,15 +308,18 @@ pred KeyMem(k jwk.Key, kid string) {
 	k != nil && acc(k.Mem(), _)
 }
 
+pred ListInv(l []util.Promise, k string) {
+	acc(l) &&
+	forall i int :: 0 <= i && i < len(l) ==> PromiseInv(l[i], k, i)
+}
+
 pred LockInv(km *keyManager) {
 	acc(&km.keys) &&
 	acc(km.keys) &&
 	(forall k string :: k in km.keys ==> let jwkKey, _ := km.keys[k] in KeyMem(jwkKey, k)) &&
 	acc(&km.listeners) &&
 	acc(km.listeners) &&
-	(forall k string :: k in domain(km.listeners) ==> (
-		acc(km.listeners[k]) &&
-		let llist, _ := km.listeners[k] in forall i int :: 0 <= i && i < len(llist) ==> PromiseInv(llist[i], k, i)))
+	(forall k string :: k in domain(km.listeners) ==> ListInv(km.listeners[k], k))
 }
 
 // required to capture preconditions in jwt.KeyProvider interface
