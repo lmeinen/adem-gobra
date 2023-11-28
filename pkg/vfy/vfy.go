@@ -324,9 +324,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 			} else {
 				// @ unfold TokenList(ts)
 				// @ unfold result.token.Mem()
-				// @ assert forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> unfolding ts[i].Mem() in ts[i] != result.token
 				ts = append( /*@ perm(1/2), @*/ ts, result.token)
-				// @ assert tokens.CustomFields(jwt.Custom)
 				if k, ok := result.token.Token.Get("key"); ok {
 					// (lmeinen) the below unfold stmt doesn't terminate - replaced with corresponding viper stmts
 					//  unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
@@ -336,6 +334,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 					km.put(k.(tokens.EmbeddedKey).Key)
 				}
 				// @ fold result.token.Mem()
+				// @ fold result.token.ListElem(len(ts) - 1)
 				// @ fold TokenList(ts)
 			}
 		}
@@ -354,11 +353,12 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant acc(ts, _) &&
-	// @ 	forall i int :: { ts[i] } 0 <= i && i0 <= i && i < len(ts) ==> ts[i] != nil && ts[i].Mem()
+	// @ 	forall i int :: { ts[i] } 0 <= i && i0 <= i && i < len(ts) ==> ts[i].ListElem(i)
 	// @ invariant emblem != nil ==> emblem.Mem()
 	// @ invariant TokenList(endorsements)
 	// @ invariant protected != nil ==> acc(protected)
 	for _, t := range ts /*@ with i0 @*/ {
+		// @ unfold t.ListElem(i0)
 		// @ unfold t.Mem()
 		if t.Headers.ContentType() == string(consts.EmblemCty) {
 			// @ fold acc(tokens.EmblemValidator.Mem(), _)
@@ -394,9 +394,9 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 				log.Printf("Invalid endorsement: %s", err)
 			} else {
 				// @ unfold TokenList(endorsements)
-				// @ assert forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> unfolding endorsements[i].Mem() in endorsements[i] != t
 				endorsements = append( /*@ perm(1/2), @*/ endorsements, t)
 				// @ fold t.Mem()
+				// @ fold t.ListElem(len(endorsements) - 1)
 				// @ fold TokenList(endorsements)
 			}
 		} else {

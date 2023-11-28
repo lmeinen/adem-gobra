@@ -38,18 +38,22 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant issuers != nil && acc(issuers)
 	// @ invariant acc(endorsements, p) &&
-	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p))
-	for _, endorsement := range endorsements {
+	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> acc(endorsements[i].ListElem(i), p))
+	for _, endorsement := range endorsements /*@ with i0 @*/ {
+		// @ unfold acc(endorsement.ListElem(i0), p)
 		// @ unfold acc(endorsement.Mem(), p)
 		if endorsedKID, err := tokens.GetEndorsedKID(endorsement.Token); err != nil {
 			log.Printf("could not not get endorsed kid: %s", err)
 			// @ fold acc(endorsement.Mem(), p)
+			// @ fold acc(endorsement.ListElem(i0), p)
 			continue
 		} else if /*@ unfolding acc(root.Mem(), p) in @*/ root.Token.Issuer() != endorsement.Token.Subject() {
 			// @ fold acc(endorsement.Mem(), p)
+			// @ fold acc(endorsement.ListElem(i0), p)
 			continue
 		} else if endorsement.Token.Issuer() == "" {
 			// @ fold acc(endorsement.Mem(), p)
+			// @ fold acc(endorsement.ListElem(i0), p)
 			continue
 		} else {
 			end, _ := endorsement.Token.Get("end")
@@ -58,13 +62,16 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 			// @ assume typeOf(end) == type[bool]
 			if !end.(bool) {
 				// @ fold acc(endorsement.Mem(), p)
+				// @ fold acc(endorsement.ListElem(i0), p)
 				continue
 			} else if /*@ unfolding acc(root.Mem(), p) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ ) != endorsedKID {
 				// @ fold acc(endorsement.Mem(), p)
+				// @ fold acc(endorsement.ListElem(i0), p)
 				continue
 			} else if err := tokens.VerifyConstraints( /*@ unfolding acc(emblem.Mem(), p) in @*/ emblem.Token, endorsement.Token); err != nil {
 				log.Printf("emblem does not comply with endorsement constraints: %s", err)
 				// @ fold acc(endorsement.Mem(), p)
+				// @ fold acc(endorsement.ListElem(i0), p)
 				x := []consts.VerificationResult{consts.INVALID}
 				return x, nil
 			} else {
@@ -73,6 +80,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 				_, ok := trustedKeys.LookupKeyID(endorsement.VerificationKey.KeyID( /*@ none[perm] @*/ ))
 				trustedFound = trustedFound || ok
 				// @ fold acc(endorsement.Mem(), p)
+				// @ fold acc(endorsement.ListElem(i0), p)
 			}
 		}
 	}

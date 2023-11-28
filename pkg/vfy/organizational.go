@@ -31,14 +31,14 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant acc(emblem.Mem(), p)
-	// @ invariant acc(endorsedBy)
 	// @ invariant acc(endorsements, p) &&
-	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p)) &&
-	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i0 <= i && i < len(endorsements) ==> !(endorsements[i] in range(endorsedBy)))
-	// @ invariant forall k string :: k in domain(endorsedBy) ==> (
-	// @ 	exists i int :: 0 <= i && i < len(endorsements) &&
-	// @ 	let t, _ := endorsedBy[k] in t == endorsements[i])
+	// @ 	forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> (
+	// @ 		(i < i0 ==> acc(endorsements[i].ListElem(i), p / 2)) &&
+	// @ 		(i0 <= i ==> acc(endorsements[i].ListElem(i), p)))
+	// @ invariant acc(endorsedBy) &&
+	// @ 	forall k string :: { endorsedBy[k] } k in endorsedBy ==> let t, _ := endorsedBy[k] in acc(t.MapElem(k), p / 2)
 	for _, endorsement := range endorsements /*@ with i0 @*/ {
+		// @ unfold acc(endorsement.ListElem(i0), p)
 		// @ unfold acc(endorsement.Mem(), p)
 		kid, err := tokens.GetEndorsedKID(endorsement.Token)
 		end, _ := endorsement.Token.Get("end")
@@ -48,48 +48,59 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		// @ fold acc(endorsement.Mem(), p)
 		if err != nil {
 			log.Printf("could not get endorsed kid: %s\n", err)
+			// @ fold acc(endorsement.ListElem(i0), p)
 			continue
 		} else if /*@ unfolding acc(emblem.Mem(), p) in unfolding acc(endorsement.Mem(), p) in @*/ emblem.Token.Issuer() != endorsement.Token.Issuer() {
+			// @ fold acc(endorsement.ListElem(i0), p)
 			continue
 		} else if /*@ unfolding acc(emblem.Mem(), p) in unfolding acc(endorsement.Mem(), p) in @*/ emblem.Token.Issuer() != endorsement.Token.Subject() {
+			// @ fold acc(endorsement.ListElem(i0), p)
 			continue
 		} else if /*@ unfolding acc(emblem.Mem(), p) in @*/ kid != emblem.VerificationKey.KeyID( /*@ none[perm] @*/ ) && !end.(bool) {
+			// @ fold acc(endorsement.ListElem(i0), p)
 			continue
 		} else if _, ok := endorsedBy[kid]; ok {
+			// @ fold acc(endorsement.ListElem(i0), p)
 			log.Println("illegal branch in endorsements")
 			return []consts.VerificationResult{consts.INVALID}, nil
 		} else {
+			// @ fold acc(endorsement.ListElem(i0), p / 2)
+			// @ fold acc(endorsement.MapElem(kid), p / 2)
 			endorsedBy[kid] = endorsement
 		}
 	}
 
+	// @ ghost prev := none[string]
+
 	var root *ADEMToken
 	trustedFound := false
 	last := emblem
-	// @ invariant acc(emblem.Mem(), p)
+
+	// @ invariant acc(emblem.Mem(), p / 2)
 	// @ invariant trustedKeys.Mem()
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-	// @ invariant acc(endorsements, p) &&
-	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p))
-	// @ invariant acc(endorsedBy)
-	// @ invariant last == emblem || last in range(endorsedBy)
+	// @ invariant acc(endorsedBy) &&
+	// @ 	forall k string :: { endorsedBy[k] } k in endorsedBy && some(k) != prev ==> let t, _ := endorsedBy[k] in acc(t.MapElem(k), p / 2)
+	// @ invariant prev == none[string] ? last == emblem : (get(prev) in endorsedBy && endorsedBy[get(prev)] == last)
+	// @ invariant acc(last.Mem(), p / 2)
 	// @ invariant root != nil ==> root == last
-	// @ invariant forall k string :: k in domain(endorsedBy) ==> (
-	// @ 	exists i int :: 0 <= i && i < len(endorsements) &&
-	// @ 	let t, _ := endorsedBy[k] in t == endorsements[i])
 	for root == nil {
-		_, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(last.Mem(), p) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ ))
+		_, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(last.Mem(), p / 2) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ ))
 		trustedFound = trustedFound || ok
 
-		if endorsing := endorsedBy[ /*@ unfolding acc(last.Mem(), p) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ )]; endorsing != nil {
+		kid := /*@ unfolding acc(last.Mem(), p / 2) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ )
+		if endorsing := endorsedBy[kid]; endorsing != nil {
+			// @ ghost { if some(kid) != prev { unfold acc(endorsing.MapElem(kid), p / 2) } }
 			if err := tokens.VerifyConstraints(
-				/*@ unfolding acc(emblem.Mem(), p) in @*/ emblem.Token,
-				/*@ unfolding acc(endorsing.Mem(), p) in @*/ endorsing.Token); err != nil {
+				/*@ unfolding acc(emblem.Mem(), p / 2) in @*/ emblem.Token,
+				/*@ unfolding acc(endorsing.Mem(), p / 2) in @*/ endorsing.Token); err != nil {
 				log.Printf("emblem does not comply with endorsement constraints: %s", err)
 				return []consts.VerificationResult{consts.INVALID}, nil
 			} else {
+				// @ ghost { if some(kid) != prev { fold acc(last.MapElem(get(prev)), p / 2) } }
 				last = endorsing
+				// @ prev = some(kid)
 			}
 		} else {
 			root = last
@@ -101,14 +112,14 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		results = append( /*@ perm(1/2), @*/ results, consts.SIGNED_TRUSTED)
 	}
 
-	// @ unfold acc(root.Mem(), p)
+	// @ unfold acc(root.Mem(), p / 2)
 	_, rootLogged := root.Token.Get("log")
-	// @ fold acc(root.Mem(), p)
-	if /*@ unfolding acc(emblem.Mem(), p) in @*/ emblem.Token.Issuer() != "" && !rootLogged {
+	// @ fold acc(root.Mem(), p / 2)
+	if /*@ unfolding acc(emblem.Mem(), p / 2) in @*/ emblem.Token.Issuer() != "" && !rootLogged {
 		return []consts.VerificationResult{consts.INVALID}, nil
 	} else if rootLogged {
 		results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL)
-		if _, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(root.Mem(), p) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ )); ok {
+		if _, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(root.Mem(), p / 2) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ )); ok {
 			results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL_TRUSTED)
 		}
 	}

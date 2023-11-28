@@ -40,8 +40,22 @@ pred (t *ADEMToken) Mem() {
 			t.Token != nil
 }
 
+// predicate wrappers to ensure injectivity of t
+pred (t *ADEMToken) ListElem(_ int) {
+	t != nil && t.Mem()
+}
+
+pred (t *ADEMToken) MapElem(_ string) {
+	t != nil && t.Mem()
+}
+
 pred TokenList(ts []*ADEMToken) {
 	acc(ts) &&
-	(forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> ts[i] != nil && ts[i].Mem())
+	forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> ts[i].ListElem(i)
+}
+
+pred TokenMap(ts map[string]*ADEMToken) {
+	acc(ts) &&
+	forall k string :: { ts[k] } k in ts ==> let t, _ := ts[k] in ts[k].MapElem(k)
 }
 @*/
