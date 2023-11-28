@@ -112,13 +112,12 @@ func SetKIDs(jwkSet jwk.Set, alg *jwa.SignatureAlgorithm) (jwk.Set, error) {
 	iter := jwkSet.Keys(ctx)
 	// @ invariant acc(PkgMem(), _)
 	// @ invariant withKIDs != nil && withKIDs.Mem()
+	// @ invariant forall i int :: 0 <= i && i < len(iter.PredSeq()) ==> iter.PredSeq()[i] == jwk.KeyIterConstraint!<_!>
+	// @ decreases len(iter.PredSeq())
 	for iter.Next(ctx) {
 		v := iter.Pair().Value
-		// TODO: (lmeinen) Return mem permissions from library
-		// @ assume typeOf(v) == type[jwk.Key]
-		k := v.(jwk.Key)
-		// @ inhale k.Mem()
-		if pk, err := k.PublicKey( /*@ some(perm(1/2)) @*/ ); err != nil {
+		// @ unfold jwk.KeyIterConstraint!<v!>()
+		if pk, err := v.(jwk.Key).PublicKey( /*@ some(perm(1/2)) @*/ ); err != nil {
 			return nil, err
 		} else {
 			if pk.Algorithm( /*@ some(perm(1/2)) @*/ ).String() == "" {

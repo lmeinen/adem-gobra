@@ -41,7 +41,9 @@ type Set interface {
 
 	// Keys creates an iterator to iterate through all keys in the set.
 	// @ preserves Mem()
-	// @ ensures res != nil
+	// @ ensures res != nil &&
+	// @ 	res.Index() == 0 &&
+	// @ 	forall i int :: 0 <= i && i < len(res.PredSeq()) ==> res.PredSeq()[i] == KeyIterConstraint!<_!>
 	Keys(context.Context) (res KeyIterator)
 
 	// LookupKeyID returns the first key matching the given key id.
@@ -50,6 +52,12 @@ type Set interface {
 	// @ ensures b ==> k != nil && acc(k.Mem(), _)
 	LookupKeyID(string) (k Key, b bool)
 }
+
+/*@
+pred KeyIterConstraint(k any) {
+	typeOf(k) == type[Key] && k.(Key).Mem()
+}
+@*/
 
 type KeyIterator = arrayiter.Iterator
 

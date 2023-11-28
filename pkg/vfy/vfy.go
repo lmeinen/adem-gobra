@@ -184,11 +184,11 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	iter := trustedKeys.Keys(ctx)
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(tokens.PkgMem(), _)
+	// @ invariant forall i int :: 0 <= i && i < len(iter.PredSeq()) ==> iter.PredSeq()[i] == jwk.KeyIterConstraint!<_!>
+	// @ decreases len(iter.PredSeq())
 	for iter.Next(ctx) {
 		k := iter.Pair().Value
-		// TODO: (lmeinen) Return mem permissions from library
-		// @ assume typeOf(k) == type[jwk.Key]
-		// @ inhale k.(jwk.Key).Mem()
+		// @ unfold jwk.KeyIterConstraint!<k!>()
 		km.put(k.(jwk.Key))
 	}
 
