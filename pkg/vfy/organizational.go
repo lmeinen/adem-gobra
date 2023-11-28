@@ -14,24 +14,23 @@ import (
 
 // @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-// @ preserves trustedKeys.Mem()
+// @ preserves trustedKeys != nil && trustedKeys.Mem()
 // @ requires p > 0
 // @ requires acc(emblem.Mem(), p)
 // @ requires acc(TokenList(endorsements), p)
-// @ requires trustedKeys != nil
 // @ ensures acc(emblem.Mem(), p / 2)
 // @ ensures acc(TokenList(endorsements), p / 2)
 // @ ensures acc(vfyResults)
-// @ ensures !goblib.GhostContainsResult(vfyResults, consts.INVALID) ==> acc(t.Mem(), p / 2)
+// @ ensures !goblib.GhostContainsResult(vfyResults, consts.INVALID) ==> t != nil && acc(t.Mem(), p / 2)
 func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost p perm @*/) (vfyResults []consts.VerificationResult, t *ADEMToken) {
 	// @ unfold acc(TokenList(endorsements), p)
 	// @ ghost defer fold acc(TokenList(endorsements), p / 2)
 
 	endorsedBy := make(map[string]*ADEMToken)
 
-	// @ invariant acc(emblem.Mem(), p)
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+	// @ invariant acc(emblem.Mem(), p)
 	// @ invariant acc(endorsedBy)
 	// @ invariant acc(endorsements, p) &&
 	// @ 	(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> endorsements[i] != nil && acc(endorsements[i].Mem(), p)) &&

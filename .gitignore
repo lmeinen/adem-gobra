@@ -4,6 +4,6 @@
 /cmd/**/__debug_bin
 /.vscode
 **/tmp
-pkg/main
+pkg/main/test.go
 **/builtin
 **/stubs
