@@ -56,10 +56,9 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 			// @ fold acc(endorsement.ListElem(i0), p)
 			continue
 		} else {
+			// TODO: (lmeinen) Add constraints as precondition
+			// @ assume endorsement.Token.Contains("end")
 			end, _ := endorsement.Token.Get("end")
-			// TODO: (lmeinen) not a registered claim - bugfix
-			// TODO: (lmeinen) Return mem permissions from library
-			// @ assume typeOf(end) == type[bool]
 			if !end.(bool) {
 				// @ fold acc(endorsement.Mem(), p)
 				// @ fold acc(endorsement.ListElem(i0), p)

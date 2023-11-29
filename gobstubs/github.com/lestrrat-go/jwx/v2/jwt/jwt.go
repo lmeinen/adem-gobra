@@ -34,6 +34,13 @@ pred Matches(f Fields) {
 	domain(Custom) == domain(f) &&
 	forall k string :: k in domain(Custom) ==> typeOf(Custom[k]) == typeOf(f[k])
 }
+
+pred BoolMem(_ bool) { true }
+(bool) implements JwtClaim { pred Mem := BoolMem }
+
+pred StringMem(_ string) { true }
+(string) implements JwtClaim { pred Mem := StringMem }
+
 @*/
 
 // @ ghost

@@ -41,10 +41,9 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		// @ unfold acc(endorsement.ListElem(i0), p)
 		// @ unfold acc(endorsement.Mem(), p)
 		kid, err := tokens.GetEndorsedKID(endorsement.Token)
+		// TODO: (lmeinen) Add constraints as precondition
+		// @ assume endorsement.Token.Contains("end")
 		end, _ := endorsement.Token.Get("end")
-		// TODO: (lmeinen) not a registered claim - bugfix
-		// TODO: (lmeinen) Return mem permissions from library
-		// @ assume typeOf(end) == type[bool]
 		// @ fold acc(endorsement.Mem(), p)
 		if err != nil {
 			log.Printf("could not get endorsed kid: %s\n", err)
