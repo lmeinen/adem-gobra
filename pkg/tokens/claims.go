@@ -47,6 +47,7 @@ func init() {
 	// @ 	ErrIllegalVersion != nil &&
 	// @ 	ErrIllegalType != nil &&
 	// @ 	ErrAssMissing != nil &&
+	// @ 	ErrEndMissing != nil &&
 	// @ 	ErrNoEndorsedKey != nil &&
 	// @ 	ErrAlgMissing != nil
 	// @ fold PkgMem()
@@ -233,6 +234,7 @@ func (ek *EmbeddedKey) UnmarshalJSON(bs []byte) (err error) {
 var ErrIllegalVersion = jwt.NewValidationError(errors.New("illegal version"))
 var ErrIllegalType = jwt.NewValidationError(errors.New("illegal claim type"))
 var ErrAssMissing = jwt.NewValidationError(errors.New("emblems require ass claim"))
+var ErrEndMissing = jwt.NewValidationError(errors.New("endorsements require end claim"))
 
 // FIXME: (lmeinen) This function was originally inlined: Gobra doesn't appear to fully support function types
 type EmblemValidatorS struct{}
@@ -275,14 +277,14 @@ func (v EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) (err jwt
 		return err
 	}
 
-	// TODO: (lmeinen) bug - endorsements are required to contain the "end" field
-	// @ assume t.Contains("end")
 	end, ok := t.Get("end")
 	if ok {
 		_, check := end.(bool)
 		if !check {
 			return /*@ unfolding acc(PkgMem(), _) in @*/ ErrIllegalType
 		}
+	} else {
+		return ErrEndMissing
 	}
 
 	// @ fold v.Constraints(t)
