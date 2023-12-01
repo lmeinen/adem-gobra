@@ -19,7 +19,7 @@ type ADEMToken struct {
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(sig, _)
 // @ requires t != nil
-// @ ensures err == nil ==> res != nil && res.Mem()
+// @ ensures err == nil ==> res != nil && ValidToken(res)
 // @ ensures err != nil ==> res == nil
 func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.Token) (res *ADEMToken, err error) {
 	verifKey := km.getVerificationKey(sig).Get()
@@ -27,35 +27,55 @@ func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.Token) (res *ADEMToke
 		return nil, errors.New("no verification key")
 	}
 	token := &ADEMToken{verifKey, sig.ProtectedHeaders(), t}
-	// @ fold token.Mem()
+	// @ fold ValidToken(token)
 	return token, nil
 }
 
 /*@
-pred (t *ADEMToken) Mem() {
+pred ValidToken(t *ADEMToken) {
 	acc(t) &&
-			t.VerificationKey != nil &&
-				acc(t.VerificationKey.Mem(), _) &&
-			t.Headers != nil &&
-			t.Token != nil
+	t.VerificationKey != nil &&
+		acc(t.VerificationKey.Mem(), _) &&
+	t.Headers != nil &&
+	t.Token != nil
 }
 
-// predicate wrappers to ensure injectivity of t
-pred (t *ADEMToken) ListElem(_ int) {
-	t != nil && t.Mem()
+pred Endorsement(t *ADEMToken) {
+	acc(ValidToken(t), 1/2) &&
+	acc(t, 1/2) &&
+	t.Token != nil &&
+		jwt.IsValid(t.Token) &&
+		acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
+		t.Token.Contains("end") &&
+		typeOf(t.Token.PureGet("end")) == type[bool]
 }
 
-pred (t *ADEMToken) MapElem(_ string) {
-	t != nil && t.Mem()
+pred Emblem(t *ADEMToken) {
+	acc(ValidToken(t), 1/2) &&
+	acc(t, 1/2) &&
+	t.Token != nil &&
+		jwt.IsValid(t.Token) &&
+		acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
+		t.Token.Contains("ass")
+}
+
+// predicate wrapper to ensure injectivity of t
+pred TokenListElem(_ int, t *ADEMToken) {
+	t != nil && ValidToken(t)
+}
+
+pred EndListElem(_ int, t *ADEMToken) {
+	t != nil && Endorsement(t)
 }
 
 pred TokenList(ts []*ADEMToken) {
 	acc(ts) &&
-	forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> ts[i].ListElem(i)
+	forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> TokenListElem(i, ts[i])
 }
 
-pred TokenMap(ts map[string]*ADEMToken) {
+pred EndorsementList(ts []*ADEMToken) {
 	acc(ts) &&
-	forall k string :: { ts[k] } k in ts ==> let t, _ := ts[k] in ts[k].MapElem(k)
+	forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> EndListElem(i, ts[i])
 }
+
 @*/

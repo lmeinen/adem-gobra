@@ -94,7 +94,7 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 	// @ requires acc(&threadCount) && acc(&loc) && acc(&results) && acc(&vfyWaitGroup)
 	// @ requires threadCount > 0
 	// @ requires acc(&result) &&
-	// @ 			(result.err == nil ==> result.token != nil && result.token.Mem()) &&
+	// @ 			(result.err == nil ==> result.token != nil && ValidToken(result.token)) &&
 	// @ 			(result.err != nil ==> result.token == nil)
 	// @ requires acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 	// @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
@@ -323,7 +323,7 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 				log.Printf("discarding invalid token: %s", result.err)
 			} else {
 				// @ unfold TokenList(ts)
-				// @ unfold result.token.Mem()
+				// @ unfold ValidToken(result.token)
 				ts = append( /*@ perm(1/2), @*/ ts, result.token)
 				if k, ok := result.token.Token.Get("key"); ok {
 					// (lmeinen) the below unfold stmt doesn't terminate - replaced with corresponding viper stmts
@@ -333,8 +333,8 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 					// @ inhale k.(tokens.EmbeddedKey).Key.Mem()
 					km.put(k.(tokens.EmbeddedKey).Key)
 				}
-				// @ fold result.token.Mem()
-				// @ fold result.token.ListElem(len(ts) - 1)
+				// @ fold ValidToken(result.token)
+				// @ fold TokenListElem(len(ts) - 1, result.token)
 				// @ fold TokenList(ts)
 			}
 		}
@@ -346,20 +346,20 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	var emblem *ADEMToken
 	var protected []*ident.AI
 	endorsements := []*ADEMToken{}
-	// @ fold TokenList(endorsements)
+	// @ fold EndorsementList(endorsements)
 
 	// @ unfold TokenList(ts)
 
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant acc(ts, _) &&
-	// @ 	forall i int :: { ts[i] } 0 <= i && i0 <= i && i < len(ts) ==> ts[i].ListElem(i)
-	// @ invariant emblem != nil ==> emblem.Mem()
-	// @ invariant TokenList(endorsements)
+	// @ 	forall i int :: { ts[i] } 0 <= i && i0 <= i && i < len(ts) ==> TokenListElem(i, ts[i])
+	// @ invariant emblem != nil ==> Emblem(emblem)
+	// @ invariant EndorsementList(endorsements)
 	// @ invariant protected != nil ==> acc(protected)
 	for _, t := range ts /*@ with i0 @*/ {
-		// @ unfold t.ListElem(i0)
-		// @ unfold t.Mem()
+		// @ unfold TokenListElem(i0, t)
+		// @ unfold ValidToken(t)
 		if t.Headers.ContentType() == string(consts.EmblemCty) {
 			// @ fold acc(tokens.EmblemValidator.Mem(), _)
 			if emblem != nil {
@@ -373,8 +373,6 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 				emblem = t
 			}
 
-			// TODO: (lmeinen) Add constraints as precondition
-			// @ assume emblem.Token.Contains("ass")
 			ass, _ := emblem.Token.Get("ass")
 			protected = ass.([]*ident.AI)
 			// @ unfold tokens.AssMem(protected)
@@ -386,18 +384,22 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 				}
 			}
 
-			// @ fold emblem.Mem()
+			// @ unfold tokens.EmblemValidator.Constraints(emblem.Token)
+			// @ fold Emblem(emblem)
 		} else if t.Headers.ContentType() == string(consts.EndorsementCty) {
 			// @ fold acc(tokens.EndorsementValidator.Mem(), _)
-			err := jwt.Validate(t.Token, jwt.WithValidator(tokens.EndorsementValidator))
+			o := jwt.WithValidator(tokens.EndorsementValidator)
+			err := jwt.Validate(t.Token, o)
 			if err != nil {
 				log.Printf("Invalid endorsement: %s", err)
 			} else {
-				// @ unfold TokenList(endorsements)
+				// @ unfold tokens.EndorsementValidator.Constraints(t.Token)
+				// @ unfold EndorsementList(endorsements)
 				endorsements = append( /*@ perm(1/2), @*/ endorsements, t)
-				// @ fold t.Mem()
-				// @ fold t.ListElem(len(endorsements) - 1)
-				// @ fold TokenList(endorsements)
+				// @ fold acc(ValidToken(t), 1/2)
+				// @ fold Endorsement(t)
+				// @ fold EndListElem(i0, t)
+				// @ fold EndorsementList(endorsements)
 			}
 		} else {
 			log.Printf("Token has wrong type: %s", t.Headers.ContentType())
@@ -409,8 +411,8 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 		return ResultInvalid()
 	}
 
-	// @ assert acc(emblem.Mem(), 1/2)
-	// @ assert acc(TokenList(endorsements), 1/2)
+	// @ assert acc(Emblem(emblem), 1/2)
+	// @ assert acc(EndorsementList(endorsements), 1/2)
 
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
 	vfyResults, root := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, perm(1/2) @*/)
@@ -418,16 +420,16 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 		return ResultInvalid()
 	}
 
-	// @ assert acc(TokenList(endorsements), 1/4)
-	// @ assert acc(emblem.Mem(), 1/4)
-	// @ assert acc(root.Mem(), 1/4)
+	// @ assert acc(EndorsementList(endorsements), 1/4)
+	// @ assert acc(Emblem(emblem), 1/4)
+	// @ assert acc(ValidToken(root), 1/4)
 
 	endorsedResults, endorsedBy := verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, perm(1/4) @*/)
 	if util.ContainsVerificationResult(endorsedResults, consts.INVALID /*@, perm(1/2) @*/) {
 		return ResultInvalid()
 	}
 
-	// @ unfold acc(root.Mem(), _)
+	// @ unfold acc(ValidToken(root), _)
 
 	// (lmeinen) 4 - return results
 	return VerificationResults{
@@ -446,7 +448,7 @@ pred SingleUse(loc *int) {
 
 pred ResultPerm(result *TokenVerificationResult) {
 	acc(result) &&
-			(result.err == nil ==> result.token != nil && result.token.Mem()) &&
+			(result.err == nil ==> result.token != nil && ValidToken(result.token)) &&
 			(result.err != nil ==> result.token == nil)
 }
 

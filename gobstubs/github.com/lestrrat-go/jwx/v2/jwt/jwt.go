@@ -41,6 +41,8 @@ pred BoolMem(_ bool) { true }
 pred StringMem(_ string) { true }
 (string) implements JwtClaim { pred Mem := StringMem }
 
+pred IsValid(_ JwtToken) { true }
+
 @*/
 
 // @ ghost
@@ -86,6 +88,15 @@ type JwtToken interface {
 	// @ pure
 	Contains(key string) bool
 
+	// @ ghost
+	// @ requires acc(&Custom, _) && acc(Custom, _)
+	// @ ensures Contains(key) ==> claim != nil
+	// @ ensures Contains(key) && key in domain(Custom) ==> (
+	// @		typeOf(claim) == typeOf(Custom[key]) &&
+	// @ 		typeOf(claim) == type[JwtClaim])
+	// @ pure
+	PureGet(key string) (claim any)
+
 	// Get returns the value of the corresponding field in the token, such as
 	// `nbf`, `exp`, `iat`, and other user-defined fields. If the field does not
 	// exist in the token, the second return value will be `false`
@@ -94,11 +105,7 @@ type JwtToken interface {
 	// @ ensures acc(&Custom, _) && acc(Custom, _)
 	// @ ensures Contains(key) == old(Contains(key))
 	// @ ensures Contains(key) == ok
-	// @ ensures ok ==> claim != nil
-	// @ ensures ok && key in domain(Custom) ==> (
-	// @		typeOf(claim) == typeOf(Custom[key]) &&
-	// @ 		typeOf(claim) == type[JwtClaim] &&
-	// @ 		claim.(JwtClaim).Mem())
+	// @ ensures claim === PureGet(key)
 	Get(key string) (claim any, ok bool)
 }
 
@@ -148,10 +155,12 @@ type ValidateOption interface {
 
 	// Ident returns the "indentity" of this option, a unique identifier that
 	// can be used to differentiate between options
-	Ident() interface{}
+	// @ pure
+	Ident() any
 
 	// Value returns the corresponding value.
-	Value() interface{}
+	// @ pure
+	Value() any
 	// ---------------------------------------------------------------
 
 	parseOption()
@@ -162,11 +171,13 @@ type ValidateOption interface {
 // Validator describes interface to validate a Token.
 type Validator interface {
 	// @ pred Mem()
+	// @ pred Constraints(JwtToken)
 
 	// Validate should return an error if a required conditions is not met.
 	// @ preserves acc(Mem(), _)
 	// @ requires t != nil
-	Validate(c context.Context, t JwtToken) ValidationError
+	// @ ensures err == nil ==> Constraints(t)
+	Validate(c context.Context, t JwtToken) (err ValidationError)
 }
 
 // @ ensures e != nil
@@ -196,11 +207,21 @@ func ErrInvalidIssuer() ValidationError
 //
 // See the various `WithXXX` functions for optional parameters
 // that can control the behavior of this method.
-func Validate(t JwtToken, options ...ValidateOption) error
+// @ requires forall i int :: 0 <= i && i < len(options) ==> acc(&options[i]) && options[i] != nil
+// @ ensures forall i int :: 0 <= i && i < len(options) ==> acc(&options[i]) && options[i] != nil && old(options)[i] === options[i]
+// @ ensures e == nil  && len(options) == 0 ==> IsValid(t)
+// @ ensures e == nil && forall i int :: 0 <= i && i < len(options) &&
+// @ 	typeOf(options[i].Ident()) == type[identValidator] &&
+// @ 	typeOf(options[i].Value()) == type[Validator] ==> (
+// @ 		options[i].Value().(Validator).Constraints(t))
+func Validate(t JwtToken, options ...ValidateOption) (e error)
+
+type identValidator struct{}
 
 // WithValidator validates the token with the given Validator.
 // @ preserves acc(v.Mem(), _)
-func WithValidator(v Validator) ValidateOption
+// @ ensures o != nil && typeOf(o.Ident()) == type[identValidator] && o.Value() === v && typeOf(o.Value()) == type[Validator]
+func WithValidator(v Validator) (o ValidateOption)
 
 // Parse parses the JWT token payload and creates a new `jwt.Token` object.
 // The token must be encoded in either JSON format or compact format.

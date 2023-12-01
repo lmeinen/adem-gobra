@@ -12,12 +12,10 @@ import (
 // Check that the given emblem's ass claim complies with the given ass
 // constraints.
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
-// @ requires emblem != nil
+// @ requires emblem != nil && emblem.Contains("ass")
 // @ requires acc(constraints.Assets) &&
 // @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> constraints.Assets[i].Mem()
 func checkAssetConstraint(emblem jwt.Token, constraints EmblemConstraints) bool {
-	// TODO: (lmeinen) Add constraints as precondition
-	// @ assume emblem.Contains("ass")
 	ass, _ := emblem.Get("ass")
 
 	// FIXME: (lmeinen) Gobra can't parse the range expression properly when the type cast is inlined

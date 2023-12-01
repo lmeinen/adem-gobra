@@ -36,7 +36,6 @@ func init() {
 	jwt.RegisterCustomField("key", EmbeddedKey{} /*@, jwt.Custom.Copy(1/2) @*/)
 	jwt.RegisterCustomField("ass", []*ident.AI{} /*@, jwt.Custom.Copy(1/2) @*/)
 	jwt.RegisterCustomField("emb", EmblemConstraints{} /*@, jwt.Custom.Copy(1/2) @*/)
-	jwt.RegisterCustomField("end", true /*@, jwt.Custom.Copy(1/2) @*/)
 	jwt.RegisterCustomField("ver", "" /*@, jwt.Custom.Copy(1/2) @*/)
 
 	// TODO: (lmeinen) Gobra doesn't handle init order properly yet - really these assumptions should already hold
@@ -241,7 +240,8 @@ type EmblemValidatorS struct{}
 // Validation function for emblem tokens.
 // @ preserves acc(v.Mem(), _)
 // @ requires t != nil
-func (v EmblemValidatorS) Validate(_ context.Context, t jwt.Token) jwt.ValidationError {
+// @ ensures err == nil ==> v.Constraints(t)
+func (v EmblemValidatorS) Validate(_ context.Context, t jwt.Token) (err jwt.ValidationError) {
 	// @ unfold acc(v.Mem(), _)
 	// @ ghost defer fold acc(v.Mem(), _)
 
@@ -252,6 +252,8 @@ func (v EmblemValidatorS) Validate(_ context.Context, t jwt.Token) jwt.Validatio
 	if _, ok := t.Get("ass"); !ok {
 		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrAssMissing
 	}
+
+	// @ fold v.Constraints(t)
 
 	return nil
 }
@@ -264,7 +266,8 @@ type EndorsementValidatorS struct{}
 // Validation function for endorsement tokens.
 // @ preserves acc(v.Mem(), _)
 // @ requires t != nil
-func (v EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) jwt.ValidationError {
+// @ ensures err == nil ==> v.Constraints(t)
+func (v EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) (err jwt.ValidationError) {
 	// @ unfold acc(v.Mem(), _)
 	// @ ghost defer fold acc(v.Mem(), _)
 
@@ -272,14 +275,17 @@ func (v EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) jwt.Vali
 		return err
 	}
 
+	// TODO: (lmeinen) bug - endorsements are required to contain the "end" field
+	// @ assume t.Contains("end")
 	end, ok := t.Get("end")
 	if ok {
-		// @ assert typeOf(end) == type[bool]
 		_, check := end.(bool)
 		if !check {
 			return /*@ unfolding acc(PkgMem(), _) in @*/ ErrIllegalType
 		}
 	}
+
+	// @ fold v.Constraints(t)
 
 	return nil
 }
@@ -306,7 +312,8 @@ func validateOI(oi string) error {
 // @ preserves acc(PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
 // @ requires t != nil
-func validateCommon(t jwt.Token) jwt.ValidationError {
+// @ ensures err == nil ==> CommonConstraints(t)
+func validateCommon(t jwt.Token) (err jwt.ValidationError) {
 	if err := jwt.Validate(t); err != nil {
 		return jwt.NewValidationError(err)
 	}
@@ -318,6 +325,8 @@ func validateCommon(t jwt.Token) jwt.ValidationError {
 	if validateOI(t.Issuer()) != nil {
 		return jwt.ErrInvalidIssuer()
 	}
+
+	// @ fold CommonConstraints(t)
 
 	return nil
 }
@@ -335,6 +344,28 @@ pred (EndorsementValidatorS) Mem() {
 pred (EmblemValidatorS) Mem() {
 	PkgMem() &&
 	acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
+}
+
+pred CommonConstraints(t jwt.Token) {
+	acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
+	t != nil &&
+	jwt.IsValid(t) &&
+	t.Contains("ver") &&
+	t.PureGet("ver") != string(consts.V1)
+}
+
+pred (EmblemValidatorS) Constraints(t jwt.Token) {
+	t != nil &&
+	t.Contains("ass") &&
+	CommonConstraints(t)
+}
+
+pred (EndorsementValidatorS) Constraints(t jwt.Token) {
+	t != nil &&
+	acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
+	t.Contains("end") &&
+	typeOf(t.PureGet("end")) == type[bool] &&
+	CommonConstraints(t)
 }
 
 pred LogMem(log []*LogConfig) {
@@ -392,12 +423,11 @@ ghost
 requires acc(f, _)
 pure func CustomFields(f jwt.Fields) bool {
 	return (
-		domain(f) == set[string] { "log", "key", "ass", "emb", "end", "ver" } &&
+		domain(f) == set[string] { "log", "key", "ass", "emb", "ver" } &&
 		typeOf(f["log"]) == type[[]*LogConfig] &&
 		typeOf(f["key"]) == type[EmbeddedKey] &&
 		typeOf(f["ass"]) == type[[]*ident.AI] &&
 		typeOf(f["emb"]) == type[EmblemConstraints] &&
-		typeOf(f["end"]) == type[bool] &&
 		typeOf(f["ver"]) == type[string])
 }
 
