@@ -24,14 +24,6 @@ import (
 // Register JWT fields of emblems for easier parsing.
 func init() {
 
-	// TODO: (lmeinen) Implement parsing interface in jwt library
-	// 	- type guarantees and mem permissions for Get method
-	//	- type constraints for JSON parsing interface implementation
-	//  - PkgMem permissions for custom unmarshalling methods
-	// --> build map from key string to (witness, witness.mem) tuple
-	// --> map is passed to Get functions and the like
-	// --> how to set structure of map nicely?
-
 	jwt.RegisterCustomField("log", []*LogConfig{} /*@, jwt.Custom.Copy(1/2) @*/)
 	jwt.RegisterCustomField("key", EmbeddedKey{} /*@, jwt.Custom.Copy(1/2) @*/)
 	jwt.RegisterCustomField("ass", []*ident.AI{} /*@, jwt.Custom.Copy(1/2) @*/)

@@ -225,7 +225,6 @@ func WithValidator(v Validator) (o ValidateOption)
 
 // Parse parses the JWT token payload and creates a new `jwt.Token` object.
 // The token must be encoded in either JSON format or compact format.
-// TODO: Use type constraints set in claims.go init function to return type guarantees
 // @ preserves acc(&Custom, _) && acc(Custom, _)
 // @ ensures err == nil ==> t != nil
 func Parse(s []byte, options ...ParseOption) (t JwtToken, err error)
