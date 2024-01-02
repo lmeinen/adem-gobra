@@ -276,7 +276,7 @@ func (v EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) (err jwt
 			return /*@ unfolding acc(PkgMem(), _) in @*/ ErrIllegalType
 		}
 	} else {
-		return ErrEndMissing
+		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrEndMissing
 	}
 
 	// @ fold v.Constraints(t)
@@ -408,6 +408,7 @@ pred PkgMem() {
 	ErrIllegalConst != nil &&
 	ErrIllegalVersion != nil &&
 	ErrIllegalType != nil &&
+	ErrEndMissing != nil &&
 	ErrAssMissing != nil &&
 	ErrNoEndorsedKey != nil &&
 	ErrAlgMissing != nil
