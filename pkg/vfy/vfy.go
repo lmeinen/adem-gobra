@@ -21,6 +21,13 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	//@ "claim"
+	//@ "fact"
+	//@ "place"
+	//@ "iospec"
+	//@ "term"
+	//@ "pub"
+	//@ "fresh"
 )
 
 func init() {
@@ -131,12 +138,13 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 
 // Verify a slice of ADEM tokens.
 // @ requires PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem()
+// @ requires place.token(t) && iospec.P_Verifier(t, term.freshTerm(fresh.fr_integer64(rid)), mset[fact.Fact]{})
 // @ requires acc(&jwt.Custom, 1/2) && acc(jwt.Custom, 1/2) && tokens.CustomFields(jwt.Custom)
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 // @ requires trustedKeys.Mem()
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
-func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResults) {
+func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost t place.Place @*/) (res VerificationResults) {
 
 	// Early termination for empty rawTokens slice
 	if len(rawTokens) == 0 {
@@ -156,22 +164,6 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	*/
 
 	// (lmeinen) 0 - set up chain of promises from root keys to signing keys
-	// @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-	// @ preserves trustedKeys.Mem() && trustedKeys != nil
-	// @ requires PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem()
-	// @ requires acc(rawTokens)
-	// @ requires len(rawTokens) > 0
-	// @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
-	// @ ensures acc(tokens.PkgMem(), _)
-	// @ ensures 0 < threadCount
-	// @ ensures results.RecvChannel() &&
-	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
-	// @ 	results.RecvGotPerm() == SendToken!<loc, threadCount, _!> &&
-	// @ 	results.Token(PredTrue!<!>) &&
-	// @ 	results.ClosureDebt(PredTrue!<!>, 1, 2) &&
-	// @ 	VfyWg(vfyWaitGroup, threadCount, results, fractionSeq)
-	// @ ensures acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
-	// @ outline (
 
 	// We maintain a thread count for termination purposes. It might be that we
 	// cannot verify all token's verification key and must cancel verification.
@@ -233,22 +225,8 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 	// Wait until all verification threads obtained a verification key promise.
 	km.waitForInit()
-	// @ )
 
 	// (lmeinen) 1 - verify the JWT tokens AND that the key chain results in a valid root key only verified keys are used to verify JWT signatures
-	// @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-	// @ preserves acc(tokens.PkgMem(), _)
-	// @ requires 0 < threadCount
-	// @ requires results.RecvChannel() &&
-	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
-	// @ 	results.RecvGotPerm() == SendToken!<loc, threadCount, _!> &&
-	// @ 	results.Token(PredTrue!<!>) &&
-	// @ 	results.ClosureDebt(PredTrue!<!>, 1, 2) &&
-	// @ 	VfyWg(vfyWaitGroup, threadCount, results, fractionSeq)
-	// @ requires acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
-	// @ ensures TokenList(ts)
-	// @ ensures len(ts) <= before(threadCount)
-	// @ outline (
 
 	// @ ghost n := threadCount
 
@@ -339,8 +317,6 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 			}
 		}
 	}
-
-	// @ )
 
 	// (lmeinen) 2 - validate the JWT tokens AND that the required fields are present and valid
 	var emblem *ADEMToken

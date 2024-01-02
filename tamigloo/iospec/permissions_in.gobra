@@ -1,0 +1,65 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
+package iospec
+
+
+
+import . "github.com/adem-wg/adem-proto/claim"
+import . "github.com/adem-wg/adem-proto/fact"
+import . "github.com/adem-wg/adem-proto/term"
+import . "github.com/adem-wg/adem-proto/place"
+import . "github.com/adem-wg/adem-proto/pub"
+import . "github.com/adem-wg/adem-proto/fresh"
+
+
+// permission e_InFact
+pred e_InFact(ghost tami_p Place, ghost tami_rid Term)
+
+ghost
+requires e_InFact(tami_p, tami_rid)
+pure func get_e_InFact_r1(tami_p Place, tami_rid Term) (r1 Term)
+
+ghost
+requires e_InFact(tami_p, tami_rid)
+pure func get_e_InFact_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
+
+
+// permission e_CA
+pred e_CA(ghost tami_p Place, ghost tami_rid Term)
+
+ghost
+requires e_CA(tami_p, tami_rid)
+pure func get_e_CA_r1(tami_p Place, tami_rid Term) (r1 Term)
+
+ghost
+requires e_CA(tami_p, tami_rid)
+pure func get_e_CA_r2(tami_p Place, tami_rid Term) (r2 Term)
+
+ghost
+requires e_CA(tami_p, tami_rid)
+pure func get_e_CA_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
+
+
+// permission e_Log
+pred e_Log(ghost tami_p Place, ghost tami_rid Term)
+
+ghost
+requires e_Log(tami_p, tami_rid)
+pure func get_e_Log_r1(tami_p Place, tami_rid Term) (r1 Term)
+
+ghost
+requires e_Log(tami_p, tami_rid)
+pure func get_e_Log_r2(tami_p Place, tami_rid Term) (r2 Term)
+
+ghost
+requires e_Log(tami_p, tami_rid)
+pure func get_e_Log_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
+
+
+// permission e_Setup_Verifier
+pred e_Setup_Verifier(ghost tami_p Place, ghost tami_rid Term)
+
+ghost
+requires e_Setup_Verifier(tami_p, tami_rid)
+pure func get_e_Setup_Verifier_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
+

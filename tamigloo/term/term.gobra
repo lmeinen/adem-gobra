@@ -1,0 +1,76 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
+package term
+
+
+
+import . "github.com/adem-wg/adem-proto/pub"
+import . "github.com/adem-wg/adem-proto/fresh"
+
+
+type Term domain {
+    func freshTerm(f Fresh) Term
+    func getFreshTerm(t Term) Fresh
+    axiom  {
+        forall f Fresh :: 
+            { freshTerm(f) } (
+                getFreshTerm(freshTerm(f)) == f)
+    }
+    func pubTerm(p Pub) Term
+    func getPubTerm(t Term) Pub
+    axiom  {
+        forall p Pub :: 
+            { pubTerm(p) } (
+                getPubTerm(pubTerm(p)) == p)
+    }
+
+    func fst(t1 Term) Term
+    func pair(t1 Term, t2 Term) Term
+    func pk(t1 Term) Term
+    func sha256(t1 Term) Term
+    func sign(t1 Term, t2 Term) Term
+    func snd(t1 Term) Term
+    func tlsClientMsg(t1 Term, t2 Term, t3 Term, t4 Term) Term
+    func tlsClientReceive(t1 Term, t2 Term) Term
+    func tlsServerMsg(t1 Term, t2 Term, t3 Term, t4 Term) Term
+    func tlsServerReceive(t1 Term, t2 Term) Term
+    func ok() Term
+    func verify(t1 Term, t2 Term, t3 Term) Term
+    
+
+    axiom  {
+        forall x_1, x_2 Term :: 
+            { fst(pair(x_1, x_2)) } (
+                fst(pair(x_1, x_2)) == x_1)
+    }
+
+    axiom  {
+        forall x_1, x_2 Term :: 
+            { snd(pair(x_1, x_2)) } (
+                snd(pair(x_1, x_2)) == x_2)
+    }
+
+    axiom  {
+        forall d, m, sess, sk Term :: 
+            { tlsClientReceive(tlsServerMsg(sess, d, sk, m), sess) } (
+                tlsClientReceive(tlsServerMsg(sess, d, sk, m), sess) == m)
+    }
+
+    axiom  {
+        forall d, m, sess, sk Term :: 
+            { tlsServerReceive(tlsClientMsg(sess, d, pk(sk), m), sk) } (
+                tlsServerReceive(tlsClientMsg(sess, d, pk(sk), m), sk) == m)
+    }
+
+    axiom  {
+        forall d, m, sess, sk Term :: 
+            { tlsServerReceive(tlsClientMsg(sess, d, pk(sk), m), sk) } (
+                tlsServerReceive(tlsClientMsg(sess, d, pk(sk), m), sk) == sess)
+    }
+
+    axiom  {
+        forall x_1, x_2 Term :: 
+            { verify(sign(x_1, x_2), x_1, pk(x_2)) } (
+                verify(sign(x_1, x_2), x_1, pk(x_2)) == ok())
+    }
+}

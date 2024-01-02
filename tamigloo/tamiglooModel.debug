@@ -1,0 +1,2538 @@
+ADEM
+    Signature {_sigMaudeInfo = MaudeSig {enableDH = False, enableBP = False, enableMSet = False, enableXor = False, enableDiff = False, stFunSyms = fromList [("fst",(1,Public)),("pair",(2,Public)),("pk",(1,Public)),("sha256",(1,Public)),("sign",(2,Public)),("snd",(1,Public)),("tlsClientMsg",(4,Public)),("tlsClientReceive",(2,Public)),("tlsServerMsg",(4,Public)),("tlsServerReceive",(2,Public)),("true",(0,Public)),("verify",(3,Public))], stRules = fromList [CtxtStRule fst(pair(x.1,x.2)) (StRhs [[0,0]] x.1),CtxtStRule snd(pair(x.1,x.2)) (StRhs [[0,1]] x.2),CtxtStRule tlsClientReceive(tlsServerMsg(sess,d,sk,m),sess) (StRhs [[0,3]] m),CtxtStRule tlsServerReceive(tlsClientMsg(sess,d,pk(sk),m),sk) (StRhs [[0,0]] sess),CtxtStRule tlsServerReceive(tlsClientMsg(sess,d,pk(sk),m),sk) (StRhs [[0,3]] m),CtxtStRule verify(sign(x.1,x.2),x.1,pk(x.2)) (StRhs [[0,0]] true)], funSyms = fromList [NoEq ("fst",(1,Public)),NoEq ("pair",(2,Public)),NoEq ("pk",(1,Public)),NoEq ("sha256",(1,Public)),NoEq ("sign",(2,Public)),NoEq ("snd",(1,Public)),NoEq ("tlsClientMsg",(4,Public)),NoEq ("tlsClientReceive",(2,Public)),NoEq ("tlsServerMsg",(4,Public)),NoEq ("tlsServerReceive",(2,Public)),NoEq ("true",(0,Public)),NoEq ("verify",(3,Public))], irreducibleFunSyms = fromList [NoEq ("pair",(2,Public)),NoEq ("pk",(1,Public)),NoEq ("sha256",(1,Public)),NoEq ("sign",(2,Public)),NoEq ("tlsClientMsg",(4,Public)),NoEq ("tlsServerMsg",(4,Public)),NoEq ("true",(0,Public))], reducibleFunSyms = fromList [NoEq ("fst",(1,Public)),NoEq ("snd",(1,Public)),NoEq ("tlsClientReceive",(2,Public)),NoEq ("tlsServerReceive",(2,Public)),NoEq ("verify",(3,Public))]}}
+
+    rule DomainRegister EnvRule:
+        Pr: (Proto)_DomainRegister/2
+            |  (A, d)
+            |  EnvGroup Env
+        Ac: (Proto)_OnlyOnce/1
+            |  (pair(pubTerm(const_domain_register_pub()), d))
+            |  ActionGroup
+            (Proto)_NoTuple/1
+            |  (d)
+            |  ActionGroup
+        Cncl:
+            !(Proto)_DomainOwner/2
+            |  (A, d)
+            |  EnvGroup Env
+    
+
+
+    rule SubdomainRegister EnvRule:
+        Pr: (Proto)_DomainRegister/2
+            |  (A, pair(d, sub))
+            |  EnvGroup Env
+            !(Proto)_DomainOwner/2
+            |  (A, d)
+            |  EnvGroup Env
+        Ac: (Proto)_OnlyOnce/1
+            |  (pair(pubTerm(const_domain_register_pub()), pair(d, sub)))
+            |  ActionGroup
+        Cncl:
+            !(Proto)_DomainOwner/2
+            |  (A, pair(d, sub))
+            |  EnvGroup Env
+    
+
+
+    rule DomainCompromise EnvRule:
+        Pr: In/1
+            |  (A)
+            |  EnvGroup EnvIn
+            In/1
+            |  (d)
+            |  EnvGroup EnvIn
+        Ac: (Proto)_CompromisedDomainOwner/1
+            |  (A)
+            |  ActionGroup
+            (Proto)_SomeCompromise/0
+            |  ()
+            |  ActionGroup
+        Cncl:
+            (Proto)_DomainRegister/2
+            |  (A, d)
+            |  EnvGroup Env
+    
+
+
+    rule CA EnvRule:
+        Pr: Fr/1
+            |  (skCA)
+            |  EnvGroup Env
+        Ac: (Proto)_CASk/2
+            |  (CA, skCA)
+            |  ActionGroup
+            (Proto)_OnlyOnce/1
+            |  (pair(pubTerm(const_CA_pub()), CA))
+            |  ActionGroup
+        Cncl:
+            !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+            Out/1
+            |  (pk(skCA))
+            |  EnvGroup EnvOut
+    
+
+
+    rule FraudulentCertificate EnvRule:
+        Pr: !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+            In/1
+            |  (m)
+            |  EnvGroup EnvIn
+        Ac: (Proto)_SigningOracleCA/2
+            |  (CA, m)
+            |  ActionGroup
+            (Proto)_CompromisedCA/1
+            |  (CA)
+            |  ActionGroup
+            (Proto)_CompromisedParty/1
+            |  (CA)
+            |  ActionGroup
+            (Proto)_SomeCompromise/0
+            |  ()
+            |  ActionGroup
+        Cncl:
+            Out/1
+            |  (sign(m, skCA))
+            |  EnvGroup EnvOut
+    
+
+
+    rule TLSKeyRegister EnvRule:
+        Pr: !(Proto)_DomainOwner/2
+            |  (A, d)
+            |  EnvGroup Env
+            !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+            Fr/1
+            |  (skUser)
+            |  EnvGroup Env
+        Ac: (Proto)_OnlyOnce/1
+            |  (pair(pubTerm(const_tls_key_pub()), d))
+            |  ActionGroup
+            (Proto)_TLSKeyGen/1
+            |  (skUser)
+            |  ActionGroup
+        Cncl:
+            !(Proto)_TLSKey/4
+            |  (A, CA, d, skUser)
+            |  EnvGroup Env
+            Out/1
+            |  (pk(skUser))
+            |  EnvGroup EnvOut
+    
+
+
+    rule TLSKeyShare EnvRule:
+        Pr: !(Proto)_TLSKey/4
+            |  (A, CA, d1, skUser)
+            |  EnvGroup Env
+            !(Proto)_DomainOwner/2
+            |  (A, d2)
+            |  EnvGroup Env
+        Ac: (Proto)_TLSKeyShare/1
+            |  (skUser)
+            |  ActionGroup
+            (Proto)_OnlyOnce/1
+            |  (pair(pubTerm(const_tls_key_pub()), d2))
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (d1, fst(d2))
+            |  ActionGroup
+        Cncl:
+            !(Proto)_TLSKey/4
+            |  (A, CA, d2, skUser)
+            |  EnvGroup Env
+    
+
+
+    rule TLSKeyLeak EnvRule:
+        Pr: !(Proto)_TLSKey/4
+            |  (A, CA, d, skUser)
+            |  EnvGroup Env
+        Ac: (Proto)_CompromisedTLSKey/1
+            |  (skUser)
+            |  ActionGroup
+            (Proto)_SomeCompromise/0
+            |  ()
+            |  ActionGroup
+        Cncl:
+            Out/1
+            |  (skUser)
+            |  EnvGroup EnvOut
+    
+
+
+    rule CertificateRequest EnvRule:
+        Pr: !(Proto)_DomainOwner/2
+            |  (A, d)
+            |  EnvGroup Env
+            !(Proto)_TLSKey/4
+            |  (A, CA, d, skTLS)
+            |  EnvGroup Env
+            !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+        Ac: (Proto)_OnlyOnce/1
+            |  (pair(pubTerm(const_certificate_pub()), d))
+            |  ActionGroup
+        Cncl:
+            Out/1
+            |  (sign(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk(skTLS)))), skCA))
+            |  EnvGroup EnvOut
+    
+
+
+    rule LogRegister EnvRule:
+        Pr: Fr/1
+            |  (skCT)
+            |  EnvGroup Env
+        Ac: (Proto)_IsLog/1
+            |  (Log)
+            |  ActionGroup
+        Cncl:
+            !(Proto)_Log/2
+            |  (Log, skCT)
+            |  EnvGroup EnvIn
+    
+
+
+    rule Submit EnvRule:
+        Pr: !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+            !(Proto)_Log/2
+            |  (Log, skCT)
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+            |  EnvGroup EnvIn
+        Ac: (Proto)_Eq/2
+            |  (verify(certSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), pk(skCA)), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (fst(snd(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))))), CA)
+            |  ActionGroup
+            (Proto)_LogInclusion/2
+            |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+            |  ActionGroup
+        Cncl:
+            !(Proto)_MHTLeaf/2
+            |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+            |  EnvGroup Env
+    
+
+
+    rule AdversarialAppend EnvRule:
+        Pr: In/1
+            |  (msg)
+            |  EnvGroup EnvIn
+        Ac: (Proto)_LogInclusion/2
+            |  (Log, msg)
+            |  ActionGroup
+            (Proto)_CompromisedParty/1
+            |  (Log)
+            |  ActionGroup
+            (Proto)_SomeCompromise/0
+            |  ()
+            |  ActionGroup
+        Cncl:
+            !(Proto)_MHTLeaf/2
+            |  (Log, msg)
+            |  EnvGroup Env
+    
+
+
+    rule MHTLeafReq EnvRule:
+        Pr: !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+            !(Proto)_Log/2
+            |  (Log, skCT)
+            |  EnvGroup EnvIn
+            !(Proto)_MHTLeaf/2
+            |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+            |  EnvGroup Env
+            In/1
+            |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, d)))
+            |  EnvGroup EnvIn
+        Ac: (Proto)_LeafReq/1
+            |  (Log)
+            |  ActionGroup
+        Cncl:
+            Out/1
+            |  (sign(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))), skCT))
+            |  EnvGroup EnvOut
+    
+
+
+    rule Ltk EnvRule:
+        Pr: Fr/1
+            |  (rootKey)
+            |  EnvGroup Env
+        Ac:
+        Cncl:
+            !(Proto)_Ltk/2
+            |  (A, rootKey)
+            |  EnvGroup Env
+            Out/1
+            |  (pk(rootKey))
+            |  EnvGroup EnvOut
+    
+
+
+    rule Reveal EnvRule:
+        Pr: !(Proto)_Ltk/2
+            |  (A, ltk)
+            |  EnvGroup Env
+        Ac: (Proto)_CompromisedADEMParty/2
+            |  (A, pk(ltk))
+            |  ActionGroup
+            (Proto)_CompromisedParty/1
+            |  (A)
+            |  ActionGroup
+            (Proto)_SomeCompromise/0
+            |  ()
+            |  ActionGroup
+        Cncl:
+            Out/1
+            |  (ltk)
+            |  EnvGroup EnvOut
+    
+
+
+    rule AssetKey EnvRule:
+        Pr: Fr/1
+            |  (assetKey)
+            |  EnvGroup Env
+        Ac:
+        Cncl:
+            !(Proto)_LtkAsset/2
+            |  (A, assetKey)
+            |  EnvGroup Env
+            Out/1
+            |  (pk(assetKey))
+            |  EnvGroup EnvOut
+    
+
+
+    rule RevealAsset EnvRule:
+        Pr: !(Proto)_LtkAsset/2
+            |  (A, ltk)
+            |  EnvGroup Env
+        Ac: (Proto)_CompromisedAssetKey/2
+            |  (A, pk(ltk))
+            |  ActionGroup
+            (Proto)_SomeCompromise/0
+            |  ()
+            |  ActionGroup
+        Cncl:
+            Out/1
+            |  (ltk)
+            |  EnvGroup EnvOut
+    
+
+
+    rule RootSetupDomains EnvRule:
+        Pr: !(Proto)_Ltk/2
+            |  (Party, rootKey)
+            |  EnvGroup Env
+        Ac: (Proto)_OnlyOnce/1
+            |  (pair(pubTerm(const_root_pub()), OI))
+            |  ActionGroup
+            (Proto)_IsRootPK/3
+            |  (Party, OI, pk(rootKey))
+            |  ActionGroup
+            (Proto)_OI/2
+            |  (Party, OI)
+            |  ActionGroup
+        Cncl:
+            (Proto)_DomainRegister/2
+            |  (Party, OI)
+            |  EnvGroup Env
+            (Proto)_DomainRegister/2
+            |  (Party, pair(OI, sha256(pk(rootKey))))
+            |  EnvGroup Env
+            !(Proto)_RootDomains/4
+            |  (Party, rootKey, OI, pair(OI, sha256(pk(rootKey))))
+            |  EnvGroup Env
+    
+
+
+    rule RootSetupCertificates EnvRule:
+        Pr: !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+            !(Proto)_RootDomains/4
+            |  (P, rootKey, oi, rootD)
+            |  EnvGroup Env
+            !(Proto)_TLSKey/4
+            |  (P, CA, oi, tlsSk)
+            |  EnvGroup Env
+            !(Proto)_TLSKey/4
+            |  (P, CA, rootD, tlsSk)
+            |  EnvGroup Env
+            !(Proto)_MHTLeaf/2
+            |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, pk(tlsSk)))), sigOiCert))
+            |  EnvGroup Env
+            !(Proto)_MHTLeaf/2
+            |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(rootD, pk(tlsSk)))), sigRootCert))
+            |  EnvGroup Env
+        Ac: (Proto)_OnlyOnce/1
+            |  (pair(pubTerm(const_root_setup_pub()), oi))
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(sigOiCert, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, pk(tlsSk)))), pk(skCA)), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(sigRootCert, pair(pubTerm(const_cert_pub()), pair(CA, pair(rootD, pk(tlsSk)))), pk(skCA)), ok())
+            |  ActionGroup
+        Cncl:
+            !(Proto)_RootSetup/4
+            |  (P, rootKey, oi, rootD)
+            |  EnvGroup Env
+    
+
+
+    rule MonitorLogs EnvRule:
+        Pr: !(Proto)_MHTLeaf/2
+            |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(SigningCA, pair(d, pkTLS))), sig))
+            |  EnvGroup Env
+            !(Proto)_TLSKey/4
+            |  (P, CA, d, skTLS)
+            |  EnvGroup Env
+        Ac: (Proto)_Neq/2
+            |  (pk(skTLS), pkTLS)
+            |  ActionGroup
+            (Proto)_Dispute/5
+            |  (P, Log, SigningCA, d, pkTLS)
+            |  ActionGroup
+        Cncl:
+    
+
+
+    rule Asset EnvRule:
+        Pr: !(Proto)_LtkAsset/2
+            |  (E, assetKey)
+            |  EnvGroup Env
+            !(Proto)_RootSetup/4
+            |  (P, rootKey, oi, rootD)
+            |  EnvGroup Env
+        Ac: (Proto)_IsAsset/3
+            |  (P, E, pk(assetKey))
+            |  ActionGroup
+            (Proto)_OnlyOnce/1
+            |  (pair(pubTerm(const_asset_pub()), E))
+            |  ActionGroup
+        Cncl:
+            !(Proto)_AssetOf/3
+            |  (P, E, assetKey)
+            |  EnvGroup Env
+    
+
+
+    rule EndorseAsset EnvRule:
+        Pr: !(Proto)_AssetOf/3
+            |  (P, E, assetKey)
+            |  EnvGroup Env
+            !(Proto)_RootDomains/4
+            |  (P, rootKey, oi, rootD)
+            |  EnvGroup Env
+        Ac: (Proto)_OnlyOnce/1
+            |  (pair(pubTerm(const_end_int_pub()), E))
+            |  ActionGroup
+        Cncl:
+            Out/1
+            |  (sign(pair(pubTerm(const_end_int_pub()), pair(oi, pk(assetKey))), rootKey))
+            |  EnvGroup EnvOut
+    
+
+
+    rule EndorseParty EnvRule:
+        Pr: !(Proto)_RootDomains/4
+            |  (Endorsed, rootKeyT, oiT, rootDT)
+            |  EnvGroup Env
+            !(Proto)_RootDomains/4
+            |  (Endorser, rootKeyS, oiS, rootDS)
+            |  EnvGroup Env
+        Ac:
+        Cncl:
+            Out/1
+            |  (sign(pair(pubTerm(const_end_ext_pub()), pair(oiS, pair(oiT, pk(rootKeyT)))), rootKeyS))
+            |  EnvGroup EnvOut
+    
+
+
+    rule SendEmblem EnvRule:
+        Pr: !(Proto)_AssetOf/3
+            |  (P, E, assetKey)
+            |  EnvGroup Env
+            !(Proto)_RootDomains/4
+            |  (P, rootKey, oi, rootD)
+            |  EnvGroup Env
+        Ac:
+        Cncl:
+            Out/1
+            |  (sign(pair(pubTerm(const_emblem_pub()), pair(E, oi)), assetKey))
+            |  EnvGroup EnvOut
+    
+
+
+    rule Verifier_init EnvRule:
+        Pr: Fr/1
+            |  (rid)
+            |  EnvGroup Env
+        Ac:
+        Cncl:
+            (Setup)_Verifier/1
+            |  (rid)
+            |  EnvGroup EnvIn
+    
+
+
+    rule ReceiveInvalidEmblem StateRule "Verifier":
+        Pr: (Setup)_Verifier/1
+            |  (rid)
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(epk, pair(pair(pubTerm(const_emblem_pub()), tail), emblemSignature)))
+            |  EnvGroup EnvIn
+        Ac: (Proto)_Neq/2
+            |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), tail), epk), ok())
+            |  ActionGroup
+        Cncl:
+            (St)_Verifier_0/1
+            |  (rid)
+            |  StateGroup
+            Out/1
+            |  (pubTerm(const_INVALID_pub()))
+            |  EnvGroup EnvOut
+    
+
+
+    rule ReceiveUnsignedEmblem StateRule "Verifier":
+        Pr: (Setup)_Verifier/1
+            |  (rid)
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(pubTerm(const_emblem_pub()), E))
+            |  EnvGroup EnvIn
+        Ac:
+        Cncl:
+            (St)_Verifier_0/1
+            |  (rid)
+            |  StateGroup
+            Out/1
+            |  (pair(pubTerm(const_UNSIGNED_pub()), E))
+            |  EnvGroup EnvOut
+    
+
+
+    rule ReceiveSignedEmblem StateRule "Verifier":
+        Pr: (Setup)_Verifier/1
+            |  (rid)
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(epk, pair(pair(pubTerm(const_emblem_pub()), E), emblemSignature)))
+            |  EnvGroup EnvIn
+        Ac: (Proto)_Eq/2
+            |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), E), epk), ok())
+            |  ActionGroup
+        Cncl:
+            (St)_Verifier_0/1
+            |  (rid)
+            |  StateGroup
+            Out/1
+            |  (pair(pubTerm(const_SIGNED_pub()), E))
+            |  EnvGroup EnvOut
+    
+
+
+    rule ReceiveOrganizationalEmblem StateRule "Verifier":
+        Pr: (Setup)_Verifier/1
+            |  (rid)
+            |  EnvGroup EnvIn
+            !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+            !(Proto)_Log/2
+            |  (Log, skCT)
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)))
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+            |  EnvGroup EnvIn
+        Ac:
+        Cncl:
+            (St)_Verifier_1/3
+            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+            |  StateGroup
+            Out/1
+            |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, oi)))
+            |  EnvGroup EnvOut
+            Out/1
+            |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(oi, sha256(rootKey)))))
+            |  EnvGroup EnvOut
+    
+
+
+    rule OrgRootKeyLearn StateRule "Verifier":
+        Pr: (St)_Verifier_1/3
+            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+            |  StateGroup
+            !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+            !(Proto)_Log/2
+            |  (Log, skCT)
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), certOiSig))), ctSigOi))
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))), ctSigRootD))
+            |  EnvGroup EnvIn
+        Ac: (Proto)_Eq/2
+            |  (verify(ctSigOi, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), certOiSig))), pk(skCT)), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(ctSigRootD, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))), pk(skCT)), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(certOiSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), pk(skCA)), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), pk(skCA)), ok())
+            |  ActionGroup
+            (Proto)_VerifiedRootKey/2
+            |  (oi, sha256(rootKey))
+            |  ActionGroup
+            (Proto)_RootCertVerified/1
+            |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))
+            |  ActionGroup
+            (Proto)_LogInclusionVerified/2
+            |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))))
+            |  ActionGroup
+            (Proto)_LogInclusionVerified/2
+            |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))))
+            |  ActionGroup
+        Cncl:
+            (St)_Verifier_2/3
+            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+            |  StateGroup
+    
+
+
+    rule VerifyOrganizationalEmblem StateRule "Verifier":
+        Pr: (St)_Verifier_2/3
+            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+            |  StateGroup
+        Ac: (Proto)_VerifiedEndorsed/4
+            |  (rid, oi, E, epk)
+            |  ActionGroup
+            (Proto)_VerifiedRootEndorsement/3
+            |  (rid, oi, rootKey)
+            |  ActionGroup
+            (Proto)_UsedRootKey/2
+            |  (oi, rootKey)
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), pair(E, oi)), epk), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(signature, pair(pubTerm(const_end_int_pub()), pair(oi, epk)), rootKey), ok())
+            |  ActionGroup
+        Cncl:
+            (St)_Verifier_3/4
+            |  (rid, oi, rootKey, E)
+            |  StateGroup
+            Out/1
+            |  (pair(pubTerm(const_SIGNED_pub()), E))
+            |  EnvGroup EnvOut
+            Out/1
+            |  (pair(pubTerm(const_ORGANIZATIONAL_pub()), pair(oi, E)))
+            |  EnvGroup EnvOut
+    
+
+
+    rule VerifyAuthorityEndorsementsTerminate StateRule "Verifier":
+        Pr: (St)_Verifier_3/4
+            |  (rid, oi, rootKey, E)
+            |  StateGroup
+        Ac:
+        Cncl:
+            (St)_Verifier_0/1
+            |  (rid)
+            |  StateGroup
+    
+
+
+    rule ReceiveAuthorityEndorsement StateRule "Verifier":
+        Pr: (St)_Verifier_3/4
+            |  (rid, oi, rootKey, E)
+            |  StateGroup
+            !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+            !(Proto)_Log/2
+            |  (Log, skCT)
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+            |  EnvGroup EnvIn
+        Ac:
+        Cncl:
+            (St)_Verifier_4/5
+            |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+            |  StateGroup
+            Out/1
+            |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, auth)))
+            |  EnvGroup EnvOut
+            Out/1
+            |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(auth, sha256(authPk)))))
+            |  EnvGroup EnvOut
+    
+
+
+    rule AuthRootKeyLearn StateRule "Verifier":
+        Pr: (St)_Verifier_4/5
+            |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+            |  StateGroup
+            !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+            !(Proto)_Log/2
+            |  (Log, skCT)
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), ctSigOi))
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))), ctSigRootD))
+            |  EnvGroup EnvIn
+        Ac: (Proto)_Eq/2
+            |  (verify(ctSigOi, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), pk(skCT)), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(ctSigRootD, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))), pk(skCT)), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(certOiSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), pk(skCA)), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), pk(skCA)), ok())
+            |  ActionGroup
+            (Proto)_VerifiedRootKey/2
+            |  (auth, sha256(authPk))
+            |  ActionGroup
+            (Proto)_RootCertVerified/1
+            |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))
+            |  ActionGroup
+            (Proto)_LogInclusionVerified/2
+            |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))))
+            |  ActionGroup
+            (Proto)_LogInclusionVerified/2
+            |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))))
+            |  ActionGroup
+        Cncl:
+            (St)_Verifier_5/5
+            |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+            |  StateGroup
+    
+
+
+    rule VerifyAuthorityEndorsement StateRule "Verifier":
+        Pr: (St)_Verifier_5/5
+            |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+            |  StateGroup
+        Ac: (Proto)_Neq/2
+            |  (auth, oi)
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(endSignature, pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), authPk), ok())
+            |  ActionGroup
+            (Proto)_VerifiedAuthorityEndorsement/5
+            |  (rid, auth, authPk, oi, rootKey)
+            |  ActionGroup
+            (Proto)_UsedRootKey/2
+            |  (auth, authPk)
+            |  ActionGroup
+        Cncl:
+            (St)_Verifier_3/4
+            |  (rid, oi, rootKey, E)
+            |  StateGroup
+            Out/1
+            |  (pair(pubTerm(const_ENDORSED_pub()), auth))
+            |  EnvGroup EnvOut
+    
+
+==== Protocol Format ==========
+
+    Fact signature Environment
+        (Proto)_DomainRegister/2
+        !(Proto)_DomainOwner/2
+        In/1
+        Fr/1
+        !(Proto)_CA/2
+        Out/1
+        !(Proto)_TLSKey/4
+        !(Proto)_Log/2
+        !(Proto)_MHTLeaf/2
+        !(Proto)_Ltk/2
+        !(Proto)_LtkAsset/2
+        !(Proto)_RootDomains/4
+        !(Proto)_RootSetup/4
+        !(Proto)_AssetOf/3
+        (Setup)_Verifier/1
+    
+
+    Fact signature Action
+        (Proto)_OnlyOnce/1
+        (Proto)_NoTuple/1
+        (Proto)_CompromisedDomainOwner/1
+        (Proto)_SomeCompromise/0
+        (Proto)_CASk/2
+        (Proto)_SigningOracleCA/2
+        (Proto)_CompromisedCA/1
+        (Proto)_CompromisedParty/1
+        (Proto)_TLSKeyGen/1
+        (Proto)_TLSKeyShare/1
+        (Proto)_Eq/2
+        (Proto)_CompromisedTLSKey/1
+        (Proto)_IsLog/1
+        (Proto)_LogInclusion/2
+        (Proto)_LeafReq/1
+        (Proto)_CompromisedADEMParty/2
+        (Proto)_CompromisedAssetKey/2
+        (Proto)_IsRootPK/3
+        (Proto)_OI/2
+        (Proto)_Neq/2
+        (Proto)_Dispute/5
+        (Proto)_IsAsset/3
+        (Proto)_VerifiedRootKey/2
+        (Proto)_RootCertVerified/1
+        (Proto)_LogInclusionVerified/2
+        (Proto)_VerifiedEndorsed/4
+        (Proto)_VerifiedRootEndorsement/3
+        (Proto)_UsedRootKey/2
+        (Proto)_VerifiedAuthorityEndorsement/5
+    
+
+    Fact signature State
+        Verifier:
+            (St)_Verifier_0/1
+            (St)_Verifier_1/3
+            (St)_Verifier_2/3
+            (St)_Verifier_3/4
+            (St)_Verifier_4/5
+            (St)_Verifier_5/5
+    
+
+    Environment Rules
+        rule DomainRegister EnvRule:
+            Pr: (Proto)_DomainRegister/2
+                |  (A, d)
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_domain_register_pub()), d))
+                |  ActionGroup
+                (Proto)_NoTuple/1
+                |  (d)
+                |  ActionGroup
+            Cncl:
+                !(Proto)_DomainOwner/2
+                |  (A, d)
+                |  EnvGroup Env
+        
+
+        rule SubdomainRegister EnvRule:
+            Pr: (Proto)_DomainRegister/2
+                |  (A, pair(d, sub))
+                |  EnvGroup Env
+                !(Proto)_DomainOwner/2
+                |  (A, d)
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_domain_register_pub()), pair(d, sub)))
+                |  ActionGroup
+            Cncl:
+                !(Proto)_DomainOwner/2
+                |  (A, pair(d, sub))
+                |  EnvGroup Env
+        
+
+        rule DomainCompromise EnvRule:
+            Pr: In/1
+                |  (A)
+                |  EnvGroup EnvIn
+                In/1
+                |  (d)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_CompromisedDomainOwner/1
+                |  (A)
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                (Proto)_DomainRegister/2
+                |  (A, d)
+                |  EnvGroup Env
+        
+
+        rule CA EnvRule:
+            Pr: Fr/1
+                |  (skCA)
+                |  EnvGroup Env
+            Ac: (Proto)_CASk/2
+                |  (CA, skCA)
+                |  ActionGroup
+                (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_CA_pub()), CA))
+                |  ActionGroup
+            Cncl:
+                !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                Out/1
+                |  (pk(skCA))
+                |  EnvGroup EnvOut
+        
+
+        rule FraudulentCertificate EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                In/1
+                |  (m)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_SigningOracleCA/2
+                |  (CA, m)
+                |  ActionGroup
+                (Proto)_CompromisedCA/1
+                |  (CA)
+                |  ActionGroup
+                (Proto)_CompromisedParty/1
+                |  (CA)
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (sign(m, skCA))
+                |  EnvGroup EnvOut
+        
+
+        rule TLSKeyRegister EnvRule:
+            Pr: !(Proto)_DomainOwner/2
+                |  (A, d)
+                |  EnvGroup Env
+                !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                Fr/1
+                |  (skUser)
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_tls_key_pub()), d))
+                |  ActionGroup
+                (Proto)_TLSKeyGen/1
+                |  (skUser)
+                |  ActionGroup
+            Cncl:
+                !(Proto)_TLSKey/4
+                |  (A, CA, d, skUser)
+                |  EnvGroup Env
+                Out/1
+                |  (pk(skUser))
+                |  EnvGroup EnvOut
+        
+
+        rule TLSKeyShare EnvRule:
+            Pr: !(Proto)_TLSKey/4
+                |  (A, CA, d1, skUser)
+                |  EnvGroup Env
+                !(Proto)_DomainOwner/2
+                |  (A, d2)
+                |  EnvGroup Env
+            Ac: (Proto)_TLSKeyShare/1
+                |  (skUser)
+                |  ActionGroup
+                (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_tls_key_pub()), d2))
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (d1, fst(d2))
+                |  ActionGroup
+            Cncl:
+                !(Proto)_TLSKey/4
+                |  (A, CA, d2, skUser)
+                |  EnvGroup Env
+        
+
+        rule TLSKeyLeak EnvRule:
+            Pr: !(Proto)_TLSKey/4
+                |  (A, CA, d, skUser)
+                |  EnvGroup Env
+            Ac: (Proto)_CompromisedTLSKey/1
+                |  (skUser)
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (skUser)
+                |  EnvGroup EnvOut
+        
+
+        rule CertificateRequest EnvRule:
+            Pr: !(Proto)_DomainOwner/2
+                |  (A, d)
+                |  EnvGroup Env
+                !(Proto)_TLSKey/4
+                |  (A, CA, d, skTLS)
+                |  EnvGroup Env
+                !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_certificate_pub()), d))
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (sign(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk(skTLS)))), skCA))
+                |  EnvGroup EnvOut
+        
+
+        rule LogRegister EnvRule:
+            Pr: Fr/1
+                |  (skCT)
+                |  EnvGroup Env
+            Ac: (Proto)_IsLog/1
+                |  (Log)
+                |  ActionGroup
+            Cncl:
+                !(Proto)_Log/2
+                |  (Log, skCT)
+                |  EnvGroup EnvIn
+        
+
+        rule Submit EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log/2
+                |  (Log, skCT)
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Eq/2
+                |  (verify(certSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (fst(snd(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))))), CA)
+                |  ActionGroup
+                (Proto)_LogInclusion/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+                |  ActionGroup
+            Cncl:
+                !(Proto)_MHTLeaf/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+                |  EnvGroup Env
+        
+
+        rule AdversarialAppend EnvRule:
+            Pr: In/1
+                |  (msg)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_LogInclusion/2
+                |  (Log, msg)
+                |  ActionGroup
+                (Proto)_CompromisedParty/1
+                |  (Log)
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                !(Proto)_MHTLeaf/2
+                |  (Log, msg)
+                |  EnvGroup Env
+        
+
+        rule MHTLeafReq EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log/2
+                |  (Log, skCT)
+                |  EnvGroup EnvIn
+                !(Proto)_MHTLeaf/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+                |  EnvGroup Env
+                In/1
+                |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, d)))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_LeafReq/1
+                |  (Log)
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (sign(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))), skCT))
+                |  EnvGroup EnvOut
+        
+
+        rule Ltk EnvRule:
+            Pr: Fr/1
+                |  (rootKey)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                !(Proto)_Ltk/2
+                |  (A, rootKey)
+                |  EnvGroup Env
+                Out/1
+                |  (pk(rootKey))
+                |  EnvGroup EnvOut
+        
+
+        rule Reveal EnvRule:
+            Pr: !(Proto)_Ltk/2
+                |  (A, ltk)
+                |  EnvGroup Env
+            Ac: (Proto)_CompromisedADEMParty/2
+                |  (A, pk(ltk))
+                |  ActionGroup
+                (Proto)_CompromisedParty/1
+                |  (A)
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (ltk)
+                |  EnvGroup EnvOut
+        
+
+        rule AssetKey EnvRule:
+            Pr: Fr/1
+                |  (assetKey)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                !(Proto)_LtkAsset/2
+                |  (A, assetKey)
+                |  EnvGroup Env
+                Out/1
+                |  (pk(assetKey))
+                |  EnvGroup EnvOut
+        
+
+        rule RevealAsset EnvRule:
+            Pr: !(Proto)_LtkAsset/2
+                |  (A, ltk)
+                |  EnvGroup Env
+            Ac: (Proto)_CompromisedAssetKey/2
+                |  (A, pk(ltk))
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (ltk)
+                |  EnvGroup EnvOut
+        
+
+        rule RootSetupDomains EnvRule:
+            Pr: !(Proto)_Ltk/2
+                |  (Party, rootKey)
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_root_pub()), OI))
+                |  ActionGroup
+                (Proto)_IsRootPK/3
+                |  (Party, OI, pk(rootKey))
+                |  ActionGroup
+                (Proto)_OI/2
+                |  (Party, OI)
+                |  ActionGroup
+            Cncl:
+                (Proto)_DomainRegister/2
+                |  (Party, OI)
+                |  EnvGroup Env
+                (Proto)_DomainRegister/2
+                |  (Party, pair(OI, sha256(pk(rootKey))))
+                |  EnvGroup Env
+                !(Proto)_RootDomains/4
+                |  (Party, rootKey, OI, pair(OI, sha256(pk(rootKey))))
+                |  EnvGroup Env
+        
+
+        rule RootSetupCertificates EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_RootDomains/4
+                |  (P, rootKey, oi, rootD)
+                |  EnvGroup Env
+                !(Proto)_TLSKey/4
+                |  (P, CA, oi, tlsSk)
+                |  EnvGroup Env
+                !(Proto)_TLSKey/4
+                |  (P, CA, rootD, tlsSk)
+                |  EnvGroup Env
+                !(Proto)_MHTLeaf/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, pk(tlsSk)))), sigOiCert))
+                |  EnvGroup Env
+                !(Proto)_MHTLeaf/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(rootD, pk(tlsSk)))), sigRootCert))
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_root_setup_pub()), oi))
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(sigOiCert, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, pk(tlsSk)))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(sigRootCert, pair(pubTerm(const_cert_pub()), pair(CA, pair(rootD, pk(tlsSk)))), pk(skCA)), ok())
+                |  ActionGroup
+            Cncl:
+                !(Proto)_RootSetup/4
+                |  (P, rootKey, oi, rootD)
+                |  EnvGroup Env
+        
+
+        rule MonitorLogs EnvRule:
+            Pr: !(Proto)_MHTLeaf/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(SigningCA, pair(d, pkTLS))), sig))
+                |  EnvGroup Env
+                !(Proto)_TLSKey/4
+                |  (P, CA, d, skTLS)
+                |  EnvGroup Env
+            Ac: (Proto)_Neq/2
+                |  (pk(skTLS), pkTLS)
+                |  ActionGroup
+                (Proto)_Dispute/5
+                |  (P, Log, SigningCA, d, pkTLS)
+                |  ActionGroup
+            Cncl:
+        
+
+        rule Asset EnvRule:
+            Pr: !(Proto)_LtkAsset/2
+                |  (E, assetKey)
+                |  EnvGroup Env
+                !(Proto)_RootSetup/4
+                |  (P, rootKey, oi, rootD)
+                |  EnvGroup Env
+            Ac: (Proto)_IsAsset/3
+                |  (P, E, pk(assetKey))
+                |  ActionGroup
+                (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_asset_pub()), E))
+                |  ActionGroup
+            Cncl:
+                !(Proto)_AssetOf/3
+                |  (P, E, assetKey)
+                |  EnvGroup Env
+        
+
+        rule EndorseAsset EnvRule:
+            Pr: !(Proto)_AssetOf/3
+                |  (P, E, assetKey)
+                |  EnvGroup Env
+                !(Proto)_RootDomains/4
+                |  (P, rootKey, oi, rootD)
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_end_int_pub()), E))
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (sign(pair(pubTerm(const_end_int_pub()), pair(oi, pk(assetKey))), rootKey))
+                |  EnvGroup EnvOut
+        
+
+        rule EndorseParty EnvRule:
+            Pr: !(Proto)_RootDomains/4
+                |  (Endorsed, rootKeyT, oiT, rootDT)
+                |  EnvGroup Env
+                !(Proto)_RootDomains/4
+                |  (Endorser, rootKeyS, oiS, rootDS)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                Out/1
+                |  (sign(pair(pubTerm(const_end_ext_pub()), pair(oiS, pair(oiT, pk(rootKeyT)))), rootKeyS))
+                |  EnvGroup EnvOut
+        
+
+        rule SendEmblem EnvRule:
+            Pr: !(Proto)_AssetOf/3
+                |  (P, E, assetKey)
+                |  EnvGroup Env
+                !(Proto)_RootDomains/4
+                |  (P, rootKey, oi, rootD)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                Out/1
+                |  (sign(pair(pubTerm(const_emblem_pub()), pair(E, oi)), assetKey))
+                |  EnvGroup EnvOut
+        
+
+        rule Verifier_init EnvRule:
+            Pr: Fr/1
+                |  (rid)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+        
+
+    Protocol Rules
+        "Verifier"
+        rule ReceiveInvalidEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(epk, pair(pair(pubTerm(const_emblem_pub()), tail), emblemSignature)))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Neq/2
+                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), tail), epk), ok())
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                Out/1
+                |  (pubTerm(const_INVALID_pub()))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule ReceiveUnsignedEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(pubTerm(const_emblem_pub()), E))
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                Out/1
+                |  (pair(pubTerm(const_UNSIGNED_pub()), E))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule ReceiveSignedEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(epk, pair(pair(pubTerm(const_emblem_pub()), E), emblemSignature)))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Eq/2
+                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), E), epk), ok())
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                Out/1
+                |  (pair(pubTerm(const_SIGNED_pub()), E))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule ReceiveOrganizationalEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+                !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log/2
+                |  (Log, skCT)
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)))
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                (St)_Verifier_1/3
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  StateGroup
+                Out/1
+                |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, oi)))
+                |  EnvGroup EnvOut
+                Out/1
+                |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(oi, sha256(rootKey)))))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule OrgRootKeyLearn StateRule "Verifier":
+            Pr: (St)_Verifier_1/3
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  StateGroup
+                !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log/2
+                |  (Log, skCT)
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), certOiSig))), ctSigOi))
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))), ctSigRootD))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Eq/2
+                |  (verify(ctSigOi, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), certOiSig))), pk(skCT)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(ctSigRootD, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))), pk(skCT)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(certOiSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_VerifiedRootKey/2
+                |  (oi, sha256(rootKey))
+                |  ActionGroup
+                (Proto)_RootCertVerified/1
+                |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))
+                |  ActionGroup
+                (Proto)_LogInclusionVerified/2
+                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))))
+                |  ActionGroup
+                (Proto)_LogInclusionVerified/2
+                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))))
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_2/3
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  StateGroup
+        
+
+        "Verifier"
+        rule VerifyOrganizationalEmblem StateRule "Verifier":
+            Pr: (St)_Verifier_2/3
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  StateGroup
+            Ac: (Proto)_VerifiedEndorsed/4
+                |  (rid, oi, E, epk)
+                |  ActionGroup
+                (Proto)_VerifiedRootEndorsement/3
+                |  (rid, oi, rootKey)
+                |  ActionGroup
+                (Proto)_UsedRootKey/2
+                |  (oi, rootKey)
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), pair(E, oi)), epk), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(signature, pair(pubTerm(const_end_int_pub()), pair(oi, epk)), rootKey), ok())
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_3/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+                Out/1
+                |  (pair(pubTerm(const_SIGNED_pub()), E))
+                |  EnvGroup EnvOut
+                Out/1
+                |  (pair(pubTerm(const_ORGANIZATIONAL_pub()), pair(oi, E)))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule VerifyAuthorityEndorsementsTerminate StateRule "Verifier":
+            Pr: (St)_Verifier_3/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+            Ac:
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+        
+
+        "Verifier"
+        rule ReceiveAuthorityEndorsement StateRule "Verifier":
+            Pr: (St)_Verifier_3/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+                !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log/2
+                |  (Log, skCT)
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                (St)_Verifier_4/5
+                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+                |  StateGroup
+                Out/1
+                |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, auth)))
+                |  EnvGroup EnvOut
+                Out/1
+                |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(auth, sha256(authPk)))))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule AuthRootKeyLearn StateRule "Verifier":
+            Pr: (St)_Verifier_4/5
+                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+                |  StateGroup
+                !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log/2
+                |  (Log, skCT)
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), ctSigOi))
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))), ctSigRootD))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Eq/2
+                |  (verify(ctSigOi, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), pk(skCT)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(ctSigRootD, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))), pk(skCT)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(certOiSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_VerifiedRootKey/2
+                |  (auth, sha256(authPk))
+                |  ActionGroup
+                (Proto)_RootCertVerified/1
+                |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))
+                |  ActionGroup
+                (Proto)_LogInclusionVerified/2
+                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))))
+                |  ActionGroup
+                (Proto)_LogInclusionVerified/2
+                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))))
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_5/5
+                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+                |  StateGroup
+        
+
+        "Verifier"
+        rule VerifyAuthorityEndorsement StateRule "Verifier":
+            Pr: (St)_Verifier_5/5
+                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+                |  StateGroup
+            Ac: (Proto)_Neq/2
+                |  (auth, oi)
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(endSignature, pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), authPk), ok())
+                |  ActionGroup
+                (Proto)_VerifiedAuthorityEndorsement/5
+                |  (rid, auth, authPk, oi, rootKey)
+                |  ActionGroup
+                (Proto)_UsedRootKey/2
+                |  (auth, authPk)
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_3/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+                Out/1
+                |  (pair(pubTerm(const_ENDORSED_pub()), auth))
+                |  EnvGroup EnvOut
+        
+
+==== Interface Model ==========
+
+    Fact signature Buffer
+        Verifier:
+            (Proto)_InFact_Verifier/2
+            |  (added_rid, new_x)
+            |  EnvGroup EnvIn
+            !(Proto)_CA_Verifier/3
+            |  (added_rid, new_x, new_x_1)
+            |  EnvGroup EnvIn
+            !(Proto)_Log_Verifier/3
+            |  (added_rid, new_x, new_x_1)
+            |  EnvGroup EnvIn
+            (Proto)_OutFact_Verifier/2
+            |  (added_rid, new_x)
+            |  EnvGroup EnvOut
+    
+
+    Environment Rules minus Setup Rules
+        rule DomainRegister EnvRule:
+            Pr: (Proto)_DomainRegister/2
+                |  (A, d)
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_domain_register_pub()), d))
+                |  ActionGroup
+                (Proto)_NoTuple/1
+                |  (d)
+                |  ActionGroup
+            Cncl:
+                !(Proto)_DomainOwner/2
+                |  (A, d)
+                |  EnvGroup Env
+        
+
+        rule SubdomainRegister EnvRule:
+            Pr: (Proto)_DomainRegister/2
+                |  (A, pair(d, sub))
+                |  EnvGroup Env
+                !(Proto)_DomainOwner/2
+                |  (A, d)
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_domain_register_pub()), pair(d, sub)))
+                |  ActionGroup
+            Cncl:
+                !(Proto)_DomainOwner/2
+                |  (A, pair(d, sub))
+                |  EnvGroup Env
+        
+
+        rule DomainCompromise EnvRule:
+            Pr: In/1
+                |  (A)
+                |  EnvGroup EnvIn
+                In/1
+                |  (d)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_CompromisedDomainOwner/1
+                |  (A)
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                (Proto)_DomainRegister/2
+                |  (A, d)
+                |  EnvGroup Env
+        
+
+        rule CA EnvRule:
+            Pr: Fr/1
+                |  (skCA)
+                |  EnvGroup Env
+            Ac: (Proto)_CASk/2
+                |  (CA, skCA)
+                |  ActionGroup
+                (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_CA_pub()), CA))
+                |  ActionGroup
+            Cncl:
+                !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                Out/1
+                |  (pk(skCA))
+                |  EnvGroup EnvOut
+        
+
+        rule FraudulentCertificate EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                In/1
+                |  (m)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_SigningOracleCA/2
+                |  (CA, m)
+                |  ActionGroup
+                (Proto)_CompromisedCA/1
+                |  (CA)
+                |  ActionGroup
+                (Proto)_CompromisedParty/1
+                |  (CA)
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (sign(m, skCA))
+                |  EnvGroup EnvOut
+        
+
+        rule TLSKeyRegister EnvRule:
+            Pr: !(Proto)_DomainOwner/2
+                |  (A, d)
+                |  EnvGroup Env
+                !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                Fr/1
+                |  (skUser)
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_tls_key_pub()), d))
+                |  ActionGroup
+                (Proto)_TLSKeyGen/1
+                |  (skUser)
+                |  ActionGroup
+            Cncl:
+                !(Proto)_TLSKey/4
+                |  (A, CA, d, skUser)
+                |  EnvGroup Env
+                Out/1
+                |  (pk(skUser))
+                |  EnvGroup EnvOut
+        
+
+        rule TLSKeyShare EnvRule:
+            Pr: !(Proto)_TLSKey/4
+                |  (A, CA, d1, skUser)
+                |  EnvGroup Env
+                !(Proto)_DomainOwner/2
+                |  (A, d2)
+                |  EnvGroup Env
+            Ac: (Proto)_TLSKeyShare/1
+                |  (skUser)
+                |  ActionGroup
+                (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_tls_key_pub()), d2))
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (d1, fst(d2))
+                |  ActionGroup
+            Cncl:
+                !(Proto)_TLSKey/4
+                |  (A, CA, d2, skUser)
+                |  EnvGroup Env
+        
+
+        rule TLSKeyLeak EnvRule:
+            Pr: !(Proto)_TLSKey/4
+                |  (A, CA, d, skUser)
+                |  EnvGroup Env
+            Ac: (Proto)_CompromisedTLSKey/1
+                |  (skUser)
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (skUser)
+                |  EnvGroup EnvOut
+        
+
+        rule CertificateRequest EnvRule:
+            Pr: !(Proto)_DomainOwner/2
+                |  (A, d)
+                |  EnvGroup Env
+                !(Proto)_TLSKey/4
+                |  (A, CA, d, skTLS)
+                |  EnvGroup Env
+                !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_certificate_pub()), d))
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (sign(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk(skTLS)))), skCA))
+                |  EnvGroup EnvOut
+        
+
+        rule LogRegister EnvRule:
+            Pr: Fr/1
+                |  (skCT)
+                |  EnvGroup Env
+            Ac: (Proto)_IsLog/1
+                |  (Log)
+                |  ActionGroup
+            Cncl:
+                !(Proto)_Log/2
+                |  (Log, skCT)
+                |  EnvGroup EnvIn
+        
+
+        rule Submit EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log/2
+                |  (Log, skCT)
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Eq/2
+                |  (verify(certSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (fst(snd(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))))), CA)
+                |  ActionGroup
+                (Proto)_LogInclusion/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+                |  ActionGroup
+            Cncl:
+                !(Proto)_MHTLeaf/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+                |  EnvGroup Env
+        
+
+        rule AdversarialAppend EnvRule:
+            Pr: In/1
+                |  (msg)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_LogInclusion/2
+                |  (Log, msg)
+                |  ActionGroup
+                (Proto)_CompromisedParty/1
+                |  (Log)
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                !(Proto)_MHTLeaf/2
+                |  (Log, msg)
+                |  EnvGroup Env
+        
+
+        rule MHTLeafReq EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log/2
+                |  (Log, skCT)
+                |  EnvGroup EnvIn
+                !(Proto)_MHTLeaf/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))
+                |  EnvGroup Env
+                In/1
+                |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, d)))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_LeafReq/1
+                |  (Log)
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (sign(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(d, pk))), certSig))), skCT))
+                |  EnvGroup EnvOut
+        
+
+        rule Ltk EnvRule:
+            Pr: Fr/1
+                |  (rootKey)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                !(Proto)_Ltk/2
+                |  (A, rootKey)
+                |  EnvGroup Env
+                Out/1
+                |  (pk(rootKey))
+                |  EnvGroup EnvOut
+        
+
+        rule Reveal EnvRule:
+            Pr: !(Proto)_Ltk/2
+                |  (A, ltk)
+                |  EnvGroup Env
+            Ac: (Proto)_CompromisedADEMParty/2
+                |  (A, pk(ltk))
+                |  ActionGroup
+                (Proto)_CompromisedParty/1
+                |  (A)
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (ltk)
+                |  EnvGroup EnvOut
+        
+
+        rule AssetKey EnvRule:
+            Pr: Fr/1
+                |  (assetKey)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                !(Proto)_LtkAsset/2
+                |  (A, assetKey)
+                |  EnvGroup Env
+                Out/1
+                |  (pk(assetKey))
+                |  EnvGroup EnvOut
+        
+
+        rule RevealAsset EnvRule:
+            Pr: !(Proto)_LtkAsset/2
+                |  (A, ltk)
+                |  EnvGroup Env
+            Ac: (Proto)_CompromisedAssetKey/2
+                |  (A, pk(ltk))
+                |  ActionGroup
+                (Proto)_SomeCompromise/0
+                |  ()
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (ltk)
+                |  EnvGroup EnvOut
+        
+
+        rule RootSetupDomains EnvRule:
+            Pr: !(Proto)_Ltk/2
+                |  (Party, rootKey)
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_root_pub()), OI))
+                |  ActionGroup
+                (Proto)_IsRootPK/3
+                |  (Party, OI, pk(rootKey))
+                |  ActionGroup
+                (Proto)_OI/2
+                |  (Party, OI)
+                |  ActionGroup
+            Cncl:
+                (Proto)_DomainRegister/2
+                |  (Party, OI)
+                |  EnvGroup Env
+                (Proto)_DomainRegister/2
+                |  (Party, pair(OI, sha256(pk(rootKey))))
+                |  EnvGroup Env
+                !(Proto)_RootDomains/4
+                |  (Party, rootKey, OI, pair(OI, sha256(pk(rootKey))))
+                |  EnvGroup Env
+        
+
+        rule RootSetupCertificates EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_RootDomains/4
+                |  (P, rootKey, oi, rootD)
+                |  EnvGroup Env
+                !(Proto)_TLSKey/4
+                |  (P, CA, oi, tlsSk)
+                |  EnvGroup Env
+                !(Proto)_TLSKey/4
+                |  (P, CA, rootD, tlsSk)
+                |  EnvGroup Env
+                !(Proto)_MHTLeaf/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, pk(tlsSk)))), sigOiCert))
+                |  EnvGroup Env
+                !(Proto)_MHTLeaf/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(rootD, pk(tlsSk)))), sigRootCert))
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_root_setup_pub()), oi))
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(sigOiCert, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, pk(tlsSk)))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(sigRootCert, pair(pubTerm(const_cert_pub()), pair(CA, pair(rootD, pk(tlsSk)))), pk(skCA)), ok())
+                |  ActionGroup
+            Cncl:
+                !(Proto)_RootSetup/4
+                |  (P, rootKey, oi, rootD)
+                |  EnvGroup Env
+        
+
+        rule MonitorLogs EnvRule:
+            Pr: !(Proto)_MHTLeaf/2
+                |  (Log, pair(pair(pubTerm(const_cert_pub()), pair(SigningCA, pair(d, pkTLS))), sig))
+                |  EnvGroup Env
+                !(Proto)_TLSKey/4
+                |  (P, CA, d, skTLS)
+                |  EnvGroup Env
+            Ac: (Proto)_Neq/2
+                |  (pk(skTLS), pkTLS)
+                |  ActionGroup
+                (Proto)_Dispute/5
+                |  (P, Log, SigningCA, d, pkTLS)
+                |  ActionGroup
+            Cncl:
+        
+
+        rule Asset EnvRule:
+            Pr: !(Proto)_LtkAsset/2
+                |  (E, assetKey)
+                |  EnvGroup Env
+                !(Proto)_RootSetup/4
+                |  (P, rootKey, oi, rootD)
+                |  EnvGroup Env
+            Ac: (Proto)_IsAsset/3
+                |  (P, E, pk(assetKey))
+                |  ActionGroup
+                (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_asset_pub()), E))
+                |  ActionGroup
+            Cncl:
+                !(Proto)_AssetOf/3
+                |  (P, E, assetKey)
+                |  EnvGroup Env
+        
+
+        rule EndorseAsset EnvRule:
+            Pr: !(Proto)_AssetOf/3
+                |  (P, E, assetKey)
+                |  EnvGroup Env
+                !(Proto)_RootDomains/4
+                |  (P, rootKey, oi, rootD)
+                |  EnvGroup Env
+            Ac: (Proto)_OnlyOnce/1
+                |  (pair(pubTerm(const_end_int_pub()), E))
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (sign(pair(pubTerm(const_end_int_pub()), pair(oi, pk(assetKey))), rootKey))
+                |  EnvGroup EnvOut
+        
+
+        rule EndorseParty EnvRule:
+            Pr: !(Proto)_RootDomains/4
+                |  (Endorsed, rootKeyT, oiT, rootDT)
+                |  EnvGroup Env
+                !(Proto)_RootDomains/4
+                |  (Endorser, rootKeyS, oiS, rootDS)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                Out/1
+                |  (sign(pair(pubTerm(const_end_ext_pub()), pair(oiS, pair(oiT, pk(rootKeyT)))), rootKeyS))
+                |  EnvGroup EnvOut
+        
+
+        rule SendEmblem EnvRule:
+            Pr: !(Proto)_AssetOf/3
+                |  (P, E, assetKey)
+                |  EnvGroup Env
+                !(Proto)_RootDomains/4
+                |  (P, rootKey, oi, rootD)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                Out/1
+                |  (sign(pair(pubTerm(const_emblem_pub()), pair(E, oi)), assetKey))
+                |  EnvGroup EnvOut
+        
+
+    IO Rules
+        "Verifier"
+        rule InIntf_InFact_Verifier EnvRule:
+            Pr: In/1
+                |  (new_x)
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                (Proto)_InFact_Verifier/2
+                |  (added_rid, new_x)
+                |  EnvGroup EnvIn
+        
+
+        "Verifier"
+        rule InIntf_CA_Verifier EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (new_x, new_x_1)
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                !(Proto)_CA_Verifier/3
+                |  (added_rid, new_x, new_x_1)
+                |  EnvGroup EnvIn
+        
+
+        "Verifier"
+        rule InIntf_Log_Verifier EnvRule:
+            Pr: !(Proto)_Log/2
+                |  (new_x, new_x_1)
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                !(Proto)_Log_Verifier/3
+                |  (added_rid, new_x, new_x_1)
+                |  EnvGroup EnvIn
+        
+
+        "Verifier"
+        rule OutIntf_OutFact_Verifier EnvRule:
+            Pr: (Proto)_OutFact_Verifier/2
+                |  (added_rid, new_x)
+                |  EnvGroup EnvOut
+            Ac:
+            Cncl:
+                Out/1
+                |  (new_x)
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule IoInIntf_Verifier_init EnvRule:
+            Pr: Fr/1
+                |  (rid)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+        
+
+    Protocol Rules with rid
+        "Verifier"
+        rule ReceiveInvalidEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), tail), emblemSignature)))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Neq/2
+                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), tail), epk), ok())
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pubTerm(const_INVALID_pub()))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule ReceiveUnsignedEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(pubTerm(const_emblem_pub()), E))
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pair(pubTerm(const_UNSIGNED_pub()), E))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule ReceiveSignedEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), E), emblemSignature)))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Eq/2
+                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), E), epk), ok())
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pair(pubTerm(const_SIGNED_pub()), E))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule ReceiveOrganizationalEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+                !(Proto)_CA_Verifier/3
+                |  (rid, CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log_Verifier/3
+                |  (rid, Log, skCT)
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)))
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                (St)_Verifier_1/3
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  StateGroup
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, oi)))
+                |  EnvGroup EnvOut
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(oi, sha256(rootKey)))))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule OrgRootKeyLearn StateRule "Verifier":
+            Pr: (St)_Verifier_1/3
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  StateGroup
+                !(Proto)_CA_Verifier/3
+                |  (rid, CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log_Verifier/3
+                |  (rid, Log, skCT)
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), certOiSig))), ctSigOi))
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))), ctSigRootD))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Eq/2
+                |  (verify(ctSigOi, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), certOiSig))), pk(skCT)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(ctSigRootD, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))), pk(skCT)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(certOiSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_VerifiedRootKey/2
+                |  (oi, sha256(rootKey))
+                |  ActionGroup
+                (Proto)_RootCertVerified/1
+                |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))
+                |  ActionGroup
+                (Proto)_LogInclusionVerified/2
+                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))))
+                |  ActionGroup
+                (Proto)_LogInclusionVerified/2
+                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))))
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_2/3
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  StateGroup
+        
+
+        "Verifier"
+        rule VerifyOrganizationalEmblem StateRule "Verifier":
+            Pr: (St)_Verifier_2/3
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  StateGroup
+            Ac: (Proto)_VerifiedEndorsed/4
+                |  (rid, oi, E, epk)
+                |  ActionGroup
+                (Proto)_VerifiedRootEndorsement/3
+                |  (rid, oi, rootKey)
+                |  ActionGroup
+                (Proto)_UsedRootKey/2
+                |  (oi, rootKey)
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), pair(E, oi)), epk), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(signature, pair(pubTerm(const_end_int_pub()), pair(oi, epk)), rootKey), ok())
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_3/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pair(pubTerm(const_SIGNED_pub()), E))
+                |  EnvGroup EnvOut
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pair(pubTerm(const_ORGANIZATIONAL_pub()), pair(oi, E)))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule VerifyAuthorityEndorsementsTerminate StateRule "Verifier":
+            Pr: (St)_Verifier_3/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+            Ac:
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+        
+
+        "Verifier"
+        rule ReceiveAuthorityEndorsement StateRule "Verifier":
+            Pr: (St)_Verifier_3/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+                !(Proto)_CA_Verifier/3
+                |  (rid, CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log_Verifier/3
+                |  (rid, Log, skCT)
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                (St)_Verifier_4/5
+                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+                |  StateGroup
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, auth)))
+                |  EnvGroup EnvOut
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(auth, sha256(authPk)))))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule AuthRootKeyLearn StateRule "Verifier":
+            Pr: (St)_Verifier_4/5
+                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+                |  StateGroup
+                !(Proto)_CA_Verifier/3
+                |  (rid, CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log_Verifier/3
+                |  (rid, Log, skCT)
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), ctSigOi))
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))), ctSigRootD))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Eq/2
+                |  (verify(ctSigOi, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), pk(skCT)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(ctSigRootD, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))), pk(skCT)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(certOiSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), pk(skCA)), ok())
+                |  ActionGroup
+                (Proto)_VerifiedRootKey/2
+                |  (auth, sha256(authPk))
+                |  ActionGroup
+                (Proto)_RootCertVerified/1
+                |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))
+                |  ActionGroup
+                (Proto)_LogInclusionVerified/2
+                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))))
+                |  ActionGroup
+                (Proto)_LogInclusionVerified/2
+                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))))
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_5/5
+                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+                |  StateGroup
+        
+
+        "Verifier"
+        rule VerifyAuthorityEndorsement StateRule "Verifier":
+            Pr: (St)_Verifier_5/5
+                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
+                |  StateGroup
+            Ac: (Proto)_Neq/2
+                |  (auth, oi)
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(endSignature, pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), authPk), ok())
+                |  ActionGroup
+                (Proto)_VerifiedAuthorityEndorsement/5
+                |  (rid, auth, authPk, oi, rootKey)
+                |  ActionGroup
+                (Proto)_UsedRootKey/2
+                |  (auth, authPk)
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_3/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pair(pubTerm(const_ENDORSED_pub()), auth))
+                |  EnvGroup EnvOut
+        
+
+==== Decomposition ==========
+
+    Environment Rules minus Setup Rules same as before
+    Protocol Rules with rid same as before
+    Environment part of IO Rules
+        rule In_InFact_Verifier EnvRule:
+            Pr: In/1
+                |  (new_x)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_slIn_InFact/2
+                |  (added_rid, new_x)
+                |  ActionGroup
+            Cncl:
+        
+
+        rule In_CA_Verifier EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (new_x, new_x_1)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_slIn_CA/3
+                |  (added_rid, new_x, new_x_1)
+                |  ActionGroup
+            Cncl:
+        
+
+        rule In_Log_Verifier EnvRule:
+            Pr: !(Proto)_Log/2
+                |  (new_x, new_x_1)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_slIn_Log/3
+                |  (added_rid, new_x, new_x_1)
+                |  ActionGroup
+            Cncl:
+        
+
+        rule In_Verifier_init EnvRule:
+            Pr: Fr/1
+                |  (rid)
+                |  EnvGroup Env
+            Ac: (Proto)_slIn_Setup_Verifier/1
+                |  (rid)
+                |  ActionGroup
+            Cncl:
+        
+
+        rule Out_OutFact_Verifier EnvRule:
+            Pr:
+            Ac: (Proto)_slOut_OutFact/2
+                |  (added_rid, new_x)
+                |  ActionGroup
+            Cncl:
+                Out/1
+                |  (new_x)
+                |  EnvGroup EnvOut
+        
+
+    Protocol part of Io Rules
+        "Verifier"
+        rule In_InFact_Verifier EnvRule:
+            Pr:
+            Ac: (Proto)_slIn_InFact/2
+                |  (added_rid, new_x)
+                |  ActionGroup
+            Cncl:
+                (Proto)_InFact_Verifier/2
+                |  (added_rid, new_x)
+                |  EnvGroup EnvIn
+        
+
+        "Verifier"
+        rule In_CA_Verifier EnvRule:
+            Pr:
+            Ac: (Proto)_slIn_CA/3
+                |  (added_rid, new_x, new_x_1)
+                |  ActionGroup
+            Cncl:
+                !(Proto)_CA_Verifier/3
+                |  (added_rid, new_x, new_x_1)
+                |  EnvGroup EnvIn
+        
+
+        "Verifier"
+        rule In_Log_Verifier EnvRule:
+            Pr:
+            Ac: (Proto)_slIn_Log/3
+                |  (added_rid, new_x, new_x_1)
+                |  ActionGroup
+            Cncl:
+                !(Proto)_Log_Verifier/3
+                |  (added_rid, new_x, new_x_1)
+                |  EnvGroup EnvIn
+        
+
+        "Verifier"
+        rule In_Verifier_init EnvRule:
+            Pr:
+            Ac: (Proto)_slIn_Setup_Verifier/1
+                |  (rid)
+                |  ActionGroup
+            Cncl:
+                (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+        
+
+        "Verifier"
+        rule Out_OutFact_Verifier EnvRule:
+            Pr: (Proto)_OutFact_Verifier/2
+                |  (added_rid, new_x)
+                |  EnvGroup EnvOut
+            Ac: (Proto)_slOut_OutFact/2
+                |  (added_rid, new_x)
+                |  ActionGroup
+            Cncl:
+        
+
+==== Permissions ====
+    Perm Internal_R "e_ReceiveInvalidEmblem"
+    Perm Internal_R "e_ReceiveUnsignedEmblem"
+    Perm Internal_R "e_ReceiveSignedEmblem"
+    Perm Internal_R "e_ReceiveOrganizationalEmblem"
+    Perm Internal_R "e_OrgRootKeyLearn"
+    Perm Internal_R "e_VerifyOrganizationalEmblem"
+    Perm Internal_R "e_VerifyAuthorityEndorsementsTerminate"
+    Perm Internal_R "e_ReceiveAuthorityEndorsement"
+    Perm Internal_R "e_AuthRootKeyLearn"
+    Perm Internal_R "e_VerifyAuthorityEndorsement"
+    Perm Out_RG "e_OutFact"
+    Perm In_RF "e_InFact"
+    Perm In_RF "e_CA"
+    Perm In_RF "e_Log"
+    Perm In_RF "e_Setup_Verifier"
+==== Restrictions ==========
+
+    Eq  (Eq(Bound_node_2, Bound_node_1)) ==> (Bound_node_2 == Bound_node_1)
+    Neq (Neq(Bound_node_2, Bound_node_1)) ==> (!(Bound_node_2 == Bound_node_1))

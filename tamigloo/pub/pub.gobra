@@ -1,0 +1,52 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
+package pub
+
+
+
+
+
+// pub encoding ---------------
+type Pub domain {
+    func const_domain_register_pub() Pub
+
+    func const_CA_pub() Pub
+
+    func const_tls_key_pub() Pub
+
+    func const_certificate_pub() Pub
+
+    func const_cert_pub() Pub
+
+    func const_MHTLeafReq_pub() Pub
+
+    func const_MHTLeaf_pub() Pub
+
+    func const_root_pub() Pub
+
+    func const_root_setup_pub() Pub
+
+    func const_asset_pub() Pub
+
+    func const_end_int_pub() Pub
+
+    func const_end_ext_pub() Pub
+
+    func const_emblem_pub() Pub
+
+    func const_INVALID_pub() Pub
+
+    func const_UNSIGNED_pub() Pub
+
+    func const_SIGNED_pub() Pub
+
+    func const_ORGANIZATIONAL_pub() Pub
+
+    func const_ENDORSED_pub() Pub
+
+    // TODO!: Add base constructors as uninterpreted functions
+    // Example:
+    func pub_msg(string) Pub
+    func pub_integer64(uint64) Pub
+}
+

@@ -1,0 +1,167 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
+package fact
+
+
+
+import . "github.com/adem-wg/adem-proto/term"
+import . "github.com/adem-wg/adem-proto/pub"
+import . "github.com/adem-wg/adem-proto/fresh"
+
+
+type Fact domain {
+    // tag 0
+    func Setup_Verifier(t1 Term) Fact
+    func getSetup_Verifier(f Fact) Term
+    axiom  {
+        forall t1 Term :: 
+            { Setup_Verifier(t1) } (
+                getSetup_Verifier(Setup_Verifier(t1)) ==
+                t1 &&
+                  getTag(Setup_Verifier(t1)) == 0)
+    }
+
+    // tag 1
+    func InFact_Verifier(t1 Term, t2 Term) Fact
+    func getInFact_Verifier(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { InFact_Verifier(t1, t2) } (
+                getInFact_Verifier(InFact_Verifier(t1, t2)) ==
+                seq[Term]{t1, t2} &&
+                                 getTag(InFact_Verifier(t1, t2)) == 1)
+    }
+
+    // tag 2
+    func St_Verifier_0(t1 Term) Fact
+    func getSt_Verifier_0(f Fact) Term
+    axiom  {
+        forall t1 Term :: 
+            { St_Verifier_0(t1) } (
+                getSt_Verifier_0(St_Verifier_0(t1)) ==
+                t1 &&
+                  getTag(St_Verifier_0(t1)) == 2)
+    }
+
+    // tag 3
+    func OutFact_Verifier(t1 Term, t2 Term) Fact
+    func getOutFact_Verifier(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { OutFact_Verifier(t1, t2) } (
+                getOutFact_Verifier(OutFact_Verifier(t1, t2)) ==
+                seq[Term]{t1, t2} &&
+                                 getTag(OutFact_Verifier(t1, t2)) == 3)
+    }
+
+    // tag 4
+    func CA_Verifier(t1 Term, t2 Term, t3 Term) Fact
+    func getCA_Verifier(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term :: 
+            { CA_Verifier(t1, t2, t3) } (
+                getCA_Verifier(CA_Verifier(t1, t2, t3)) ==
+                seq[Term]{t1, t2, t3} &&
+                                     getTag(CA_Verifier(t1, t2, t3)) == 4)
+    }
+
+    // tag 5
+    func Log_Verifier(t1 Term, t2 Term, t3 Term) Fact
+    func getLog_Verifier(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term :: 
+            { Log_Verifier(t1, t2, t3) } (
+                getLog_Verifier(Log_Verifier(t1, t2, t3)) ==
+                seq[Term]{t1, t2, t3} &&
+                                     getTag(Log_Verifier(t1, t2, t3)) == 5)
+    }
+
+    // tag 6
+    func St_Verifier_1(t1 Term, t2 Term, t3 Term) Fact
+    func getSt_Verifier_1(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term :: 
+            { St_Verifier_1(t1, t2, t3) } (
+                getSt_Verifier_1(St_Verifier_1(t1, t2, t3)) ==
+                seq[Term]{t1, t2, t3} &&
+                                     getTag(St_Verifier_1(t1, t2, t3)) == 6)
+    }
+
+    // tag 7
+    func St_Verifier_2(t1 Term, t2 Term, t3 Term) Fact
+    func getSt_Verifier_2(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term :: 
+            { St_Verifier_2(t1, t2, t3) } (
+                getSt_Verifier_2(St_Verifier_2(t1, t2, t3)) ==
+                seq[Term]{t1, t2, t3} &&
+                                     getTag(St_Verifier_2(t1, t2, t3)) == 7)
+    }
+
+    // tag 8
+    func St_Verifier_3(t1 Term, t2 Term, t3 Term, t4 Term) Fact
+    func getSt_Verifier_3(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term, t4 Term :: 
+            { St_Verifier_3(t1, t2, t3, t4) } (
+                getSt_Verifier_3(St_Verifier_3(t1, t2, t3, t4)) ==
+                seq[Term]{t1, t2, t3, t4} &&
+                                         getTag(St_Verifier_3(t1, t2, t3, t4)) == 8)
+    }
+
+    // tag 9
+    func St_Verifier_4(t1 Term, t2 Term, t3 Term, t4 Term, t5 Term) Fact
+    func getSt_Verifier_4(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term, t4 Term, t5 Term :: 
+            { St_Verifier_4(t1, t2, t3, t4, t5) } (
+                getSt_Verifier_4(St_Verifier_4(t1, t2, t3, t4, t5)) ==
+                seq[Term]{t1, t2, t3, t4, t5} &&
+                                             getTag(St_Verifier_4(t1, t2, t3, t4, t5)) == 9)
+    }
+
+    // tag 10
+    func St_Verifier_5(t1 Term, t2 Term, t3 Term, t4 Term, t5 Term) Fact
+    func getSt_Verifier_5(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term, t4 Term, t5 Term :: 
+            { St_Verifier_5(t1, t2, t3, t4, t5) } (
+                getSt_Verifier_5(St_Verifier_5(t1, t2, t3, t4, t5)) ==
+                seq[Term]{t1, t2, t3, t4, t5} &&
+                                             getTag(St_Verifier_5(t1, t2, t3, t4, t5)) == 10)
+    }
+
+    // each fact has a unique tag:
+    func getTag(f Fact) int
+
+    func persistent(f Fact) bool
+    axiom  {
+        forall f Fact :: 
+            { persistent(f) } (
+                persistent(f) ==
+                (getTag(f) == 4 || getTag(f) == 5))
+    }
+
+}
+ghost
+// returns a multiset containing just the persistent facts of l all with multiplicity 1
+ensures forall f Fact :: { f # result } (f # result) == (persistent(f) && (f # l) > 0 ? 1 : 0)
+pure func persistentFacts(l mset[Fact]) (result mset[Fact])
+
+ghost
+// returns a multiset containing just the non-persistent facts of l while retaining their multiplicity
+ensures forall f Fact :: { f # result } (f # result) == (persistent(f) ? 0 : (f # l))
+pure func linearFacts(l mset[Fact]) (result mset[Fact])
+
+ghost
+ensures res == (linearFacts(l) subset s && persistentFacts(l) subset s)
+pure func M(l mset[Fact], s mset[Fact]) (res bool) {
+    // non-persistent facts
+    return linearFacts(l) subset s &&
+        // persistent facts
+        persistentFacts(l) subset s
+}
+
+ghost
+ensures result == s setminus linearFacts(l) union r
+pure func U(l mset[Fact], r mset[Fact], s mset[Fact]) (result mset[Fact])

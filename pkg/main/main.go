@@ -9,6 +9,8 @@
 package main
 
 import (
+	"math/rand"
+
 	// @ importRequires vfy.PkgMem()
 	"github.com/adem-wg/adem-proto/pkg/vfy"
 
@@ -26,6 +28,7 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	// @ "github.com/lestrrat-go/jwx/v2/jwt"
+	// @ "place"
 )
 
 // @ requires vfy.PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem() &&
@@ -33,5 +36,7 @@ import (
 // @ 	acc(jwt.Custom, 1/2) &&
 // @ 	tokens.CustomFields(jwt.Custom)
 func main() {
-	vfy.VerifyTokens([][]byte{}, jwk.NewSet())
+	// @ ghost t := place.Place.place(0)
+	// fold place.token(t)
+	vfy.VerifyTokens(rand.Uint64(), [][]byte{}, jwk.NewSet() /*@, t @*/)
 }

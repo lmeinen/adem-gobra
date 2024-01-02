@@ -1,0 +1,93 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
+package claim
+
+
+
+import . "github.com/adem-wg/adem-proto/term"
+
+
+type Claim domain {
+    func Neq(t1 Term, t2 Term) Claim
+    func getNeq(f Claim) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { Neq(t1, t2) } (
+                getNeq(Neq(t1, t2)) ==
+                seq[Term]{t1, t2})
+    }
+
+    func Eq(t1 Term, t2 Term) Claim
+    func getEq(f Claim) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { Eq(t1, t2) } (
+                getEq(Eq(t1, t2)) ==
+                seq[Term]{t1, t2})
+    }
+
+    func VerifiedRootKey(t1 Term, t2 Term) Claim
+    func getVerifiedRootKey(f Claim) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { VerifiedRootKey(t1, t2) } (
+                getVerifiedRootKey(VerifiedRootKey(t1, t2)) ==
+                seq[Term]{t1, t2})
+    }
+
+    func RootCertVerified(t1 Term) Claim
+    func getRootCertVerified(f Claim) Term
+    axiom  {
+        forall t1 Term :: 
+            { RootCertVerified(t1) } (
+                getRootCertVerified(RootCertVerified(t1)) ==
+                t1)
+    }
+
+    func LogInclusionVerified(t1 Term, t2 Term) Claim
+    func getLogInclusionVerified(f Claim) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { LogInclusionVerified(t1, t2) } (
+                getLogInclusionVerified(LogInclusionVerified(t1, t2)) ==
+                seq[Term]{t1, t2})
+    }
+
+    func VerifiedEndorsed(t1 Term, t2 Term, t3 Term, t4 Term) Claim
+    func getVerifiedEndorsed(f Claim) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term, t4 Term :: 
+            { VerifiedEndorsed(t1, t2, t3, t4) } (
+                getVerifiedEndorsed(VerifiedEndorsed(t1, t2, t3, t4)) ==
+                seq[Term]{t1, t2, t3, t4})
+    }
+
+    func VerifiedRootEndorsement(t1 Term, t2 Term, t3 Term) Claim
+    func getVerifiedRootEndorsement(f Claim) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term :: 
+            { VerifiedRootEndorsement(t1, t2, t3) } (
+                getVerifiedRootEndorsement(VerifiedRootEndorsement(t1, t2, t3)) ==
+                seq[Term]{t1, t2, t3})
+    }
+
+    func UsedRootKey(t1 Term, t2 Term) Claim
+    func getUsedRootKey(f Claim) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { UsedRootKey(t1, t2) } (
+                getUsedRootKey(UsedRootKey(t1, t2)) ==
+                seq[Term]{t1, t2})
+    }
+
+    func VerifiedAuthorityEndorsement(t1 Term, t2 Term, t3 Term, t4 Term, t5 Term) Claim
+    func getVerifiedAuthorityEndorsement(f Claim) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term, t4 Term, t5 Term :: 
+            { VerifiedAuthorityEndorsement(t1, t2, t3, t4, t5) } (
+                getVerifiedAuthorityEndorsement(VerifiedAuthorityEndorsement(t1, t2, t3, t4, t5)) ==
+                seq[Term]{t1, t2, t3, t4, t5})
+    }
+
+
+}

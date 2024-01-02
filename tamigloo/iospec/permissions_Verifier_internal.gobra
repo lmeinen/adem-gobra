@@ -1,0 +1,143 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
+package iospec
+
+
+
+import . "github.com/adem-wg/adem-proto/claim"
+import . "github.com/adem-wg/adem-proto/fact"
+import . "github.com/adem-wg/adem-proto/term"
+import . "github.com/adem-wg/adem-proto/place"
+import . "github.com/adem-wg/adem-proto/pub"
+import . "github.com/adem-wg/adem-proto/fresh"
+
+
+// permission e_ReceiveInvalidEmblem
+pred e_ReceiveInvalidEmblem(ghost tami_p Place, ghost rid Term, ghost epk Term, ghost tail Term, ghost emblemSignature Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_ReceiveInvalidEmblem(tami_p, rid, epk, tail, emblemSignature, tami_lp, tami_ap, tami_rp)
+pure func get_e_ReceiveInvalidEmblem_placeDst(tami_p Place, rid Term, epk Term, tail Term, emblemSignature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_ReceiveInvalidEmblem(tami_p, rid, epk, tail, emblemSignature, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_ReceiveInvalidEmblem_placeDst(tami_p, rid, epk, tail, emblemSignature, tami_lp, tami_ap, tami_rp))
+func internBIO_e_ReceiveInvalidEmblem(tami_p Place, rid Term, epk Term, tail Term, emblemSignature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_ReceiveUnsignedEmblem
+pred e_ReceiveUnsignedEmblem(ghost tami_p Place, ghost rid Term, ghost E Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_ReceiveUnsignedEmblem(tami_p, rid, E, tami_lp, tami_ap, tami_rp)
+pure func get_e_ReceiveUnsignedEmblem_placeDst(tami_p Place, rid Term, E Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_ReceiveUnsignedEmblem(tami_p, rid, E, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_ReceiveUnsignedEmblem_placeDst(tami_p, rid, E, tami_lp, tami_ap, tami_rp))
+func internBIO_e_ReceiveUnsignedEmblem(tami_p Place, rid Term, E Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_ReceiveSignedEmblem
+pred e_ReceiveSignedEmblem(ghost tami_p Place, ghost rid Term, ghost epk Term, ghost E Term, ghost emblemSignature Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_ReceiveSignedEmblem(tami_p, rid, epk, E, emblemSignature, tami_lp, tami_ap, tami_rp)
+pure func get_e_ReceiveSignedEmblem_placeDst(tami_p Place, rid Term, epk Term, E Term, emblemSignature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_ReceiveSignedEmblem(tami_p, rid, epk, E, emblemSignature, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_ReceiveSignedEmblem_placeDst(tami_p, rid, epk, E, emblemSignature, tami_lp, tami_ap, tami_rp))
+func internBIO_e_ReceiveSignedEmblem(tami_p Place, rid Term, epk Term, E Term, emblemSignature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_ReceiveOrganizationalEmblem
+pred e_ReceiveOrganizationalEmblem(ghost tami_p Place, ghost rid Term, ghost CA Term, ghost skCA Term, ghost Log Term, ghost skCT Term, ghost epk Term, ghost E Term, ghost oi Term, ghost emblemSignature Term, ghost rootKey Term, ghost signature Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_ReceiveOrganizationalEmblem(tami_p, rid, CA, skCA, Log, skCT, epk, E, oi, emblemSignature, rootKey, signature, tami_lp, tami_ap, tami_rp)
+pure func get_e_ReceiveOrganizationalEmblem_placeDst(tami_p Place, rid Term, CA Term, skCA Term, Log Term, skCT Term, epk Term, E Term, oi Term, emblemSignature Term, rootKey Term, signature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_ReceiveOrganizationalEmblem(tami_p, rid, CA, skCA, Log, skCT, epk, E, oi, emblemSignature, rootKey, signature, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_ReceiveOrganizationalEmblem_placeDst(tami_p, rid, CA, skCA, Log, skCT, epk, E, oi, emblemSignature, rootKey, signature, tami_lp, tami_ap, tami_rp))
+func internBIO_e_ReceiveOrganizationalEmblem(tami_p Place, rid Term, CA Term, skCA Term, Log Term, skCT Term, epk Term, E Term, oi Term, emblemSignature Term, rootKey Term, signature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_OrgRootKeyLearn
+pred e_OrgRootKeyLearn(ghost tami_p Place, ghost rid Term, ghost epk Term, ghost E Term, ghost oi Term, ghost emblemSignature Term, ghost rootKey Term, ghost signature Term, ghost CA Term, ghost skCA Term, ghost Log Term, ghost skCT Term, ghost tlsPk Term, ghost certOiSig Term, ghost ctSigOi Term, ghost certRootDSig Term, ghost ctSigRootD Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_OrgRootKeyLearn(tami_p, rid, epk, E, oi, emblemSignature, rootKey, signature, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp)
+pure func get_e_OrgRootKeyLearn_placeDst(tami_p Place, rid Term, epk Term, E Term, oi Term, emblemSignature Term, rootKey Term, signature Term, CA Term, skCA Term, Log Term, skCT Term, tlsPk Term, certOiSig Term, ctSigOi Term, certRootDSig Term, ctSigRootD Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_OrgRootKeyLearn(tami_p, rid, epk, E, oi, emblemSignature, rootKey, signature, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_OrgRootKeyLearn_placeDst(tami_p, rid, epk, E, oi, emblemSignature, rootKey, signature, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp))
+func internBIO_e_OrgRootKeyLearn(tami_p Place, rid Term, epk Term, E Term, oi Term, emblemSignature Term, rootKey Term, signature Term, CA Term, skCA Term, Log Term, skCT Term, tlsPk Term, certOiSig Term, ctSigOi Term, certRootDSig Term, ctSigRootD Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_VerifyOrganizationalEmblem
+pred e_VerifyOrganizationalEmblem(ghost tami_p Place, ghost rid Term, ghost epk Term, ghost E Term, ghost oi Term, ghost emblemSignature Term, ghost rootKey Term, ghost signature Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_VerifyOrganizationalEmblem(tami_p, rid, epk, E, oi, emblemSignature, rootKey, signature, tami_lp, tami_ap, tami_rp)
+pure func get_e_VerifyOrganizationalEmblem_placeDst(tami_p Place, rid Term, epk Term, E Term, oi Term, emblemSignature Term, rootKey Term, signature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_VerifyOrganizationalEmblem(tami_p, rid, epk, E, oi, emblemSignature, rootKey, signature, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_VerifyOrganizationalEmblem_placeDst(tami_p, rid, epk, E, oi, emblemSignature, rootKey, signature, tami_lp, tami_ap, tami_rp))
+func internBIO_e_VerifyOrganizationalEmblem(tami_p Place, rid Term, epk Term, E Term, oi Term, emblemSignature Term, rootKey Term, signature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_VerifyAuthorityEndorsementsTerminate
+pred e_VerifyAuthorityEndorsementsTerminate(ghost tami_p Place, ghost rid Term, ghost oi Term, ghost rootKey Term, ghost E Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_VerifyAuthorityEndorsementsTerminate(tami_p, rid, oi, rootKey, E, tami_lp, tami_ap, tami_rp)
+pure func get_e_VerifyAuthorityEndorsementsTerminate_placeDst(tami_p Place, rid Term, oi Term, rootKey Term, E Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_VerifyAuthorityEndorsementsTerminate(tami_p, rid, oi, rootKey, E, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_VerifyAuthorityEndorsementsTerminate_placeDst(tami_p, rid, oi, rootKey, E, tami_lp, tami_ap, tami_rp))
+func internBIO_e_VerifyAuthorityEndorsementsTerminate(tami_p Place, rid Term, oi Term, rootKey Term, E Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_ReceiveAuthorityEndorsement
+pred e_ReceiveAuthorityEndorsement(ghost tami_p Place, ghost rid Term, ghost oi Term, ghost rootKey Term, ghost E Term, ghost CA Term, ghost skCA Term, ghost Log Term, ghost skCT Term, ghost authPk Term, ghost auth Term, ghost endSignature Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_ReceiveAuthorityEndorsement(tami_p, rid, oi, rootKey, E, CA, skCA, Log, skCT, authPk, auth, endSignature, tami_lp, tami_ap, tami_rp)
+pure func get_e_ReceiveAuthorityEndorsement_placeDst(tami_p Place, rid Term, oi Term, rootKey Term, E Term, CA Term, skCA Term, Log Term, skCT Term, authPk Term, auth Term, endSignature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_ReceiveAuthorityEndorsement(tami_p, rid, oi, rootKey, E, CA, skCA, Log, skCT, authPk, auth, endSignature, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_ReceiveAuthorityEndorsement_placeDst(tami_p, rid, oi, rootKey, E, CA, skCA, Log, skCT, authPk, auth, endSignature, tami_lp, tami_ap, tami_rp))
+func internBIO_e_ReceiveAuthorityEndorsement(tami_p Place, rid Term, oi Term, rootKey Term, E Term, CA Term, skCA Term, Log Term, skCT Term, authPk Term, auth Term, endSignature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_AuthRootKeyLearn
+pred e_AuthRootKeyLearn(ghost tami_p Place, ghost rid Term, ghost oi Term, ghost rootKey Term, ghost E Term, ghost authPk Term, ghost auth Term, ghost endSignature Term, ghost CA Term, ghost skCA Term, ghost Log Term, ghost skCT Term, ghost tlsPk Term, ghost certOiSig Term, ghost ctSigOi Term, ghost certRootDSig Term, ghost ctSigRootD Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_AuthRootKeyLearn(tami_p, rid, oi, rootKey, E, authPk, auth, endSignature, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp)
+pure func get_e_AuthRootKeyLearn_placeDst(tami_p Place, rid Term, oi Term, rootKey Term, E Term, authPk Term, auth Term, endSignature Term, CA Term, skCA Term, Log Term, skCT Term, tlsPk Term, certOiSig Term, ctSigOi Term, certRootDSig Term, ctSigRootD Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_AuthRootKeyLearn(tami_p, rid, oi, rootKey, E, authPk, auth, endSignature, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_AuthRootKeyLearn_placeDst(tami_p, rid, oi, rootKey, E, authPk, auth, endSignature, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp))
+func internBIO_e_AuthRootKeyLearn(tami_p Place, rid Term, oi Term, rootKey Term, E Term, authPk Term, auth Term, endSignature Term, CA Term, skCA Term, Log Term, skCT Term, tlsPk Term, certOiSig Term, ctSigOi Term, certRootDSig Term, ctSigRootD Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_VerifyAuthorityEndorsement
+pred e_VerifyAuthorityEndorsement(ghost tami_p Place, ghost rid Term, ghost oi Term, ghost rootKey Term, ghost E Term, ghost authPk Term, ghost auth Term, ghost endSignature Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_VerifyAuthorityEndorsement(tami_p, rid, oi, rootKey, E, authPk, auth, endSignature, tami_lp, tami_ap, tami_rp)
+pure func get_e_VerifyAuthorityEndorsement_placeDst(tami_p Place, rid Term, oi Term, rootKey Term, E Term, authPk Term, auth Term, endSignature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_VerifyAuthorityEndorsement(tami_p, rid, oi, rootKey, E, authPk, auth, endSignature, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_VerifyAuthorityEndorsement_placeDst(tami_p, rid, oi, rootKey, E, authPk, auth, endSignature, tami_lp, tami_ap, tami_rp))
+func internBIO_e_VerifyAuthorityEndorsement(tami_p Place, rid Term, oi Term, rootKey Term, E Term, authPk Term, auth Term, endSignature Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
