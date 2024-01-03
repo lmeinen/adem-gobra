@@ -145,6 +145,12 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 // @ requires trustedKeys.Mem()
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
 func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost t place.Place @*/) (res VerificationResults) {
+	// @ ghost ridT := term.freshTerm(fresh.fr_integer64(rid))
+	// @ ghost s := mset[fact.Fact]{}
+
+	// @ unfold iospec.P_Verifier(t, ridT, s)
+	// @ unfold iospec.phiRF_Verifier_14(t, ridT, s)
+	// @ assert acc(iospec.e_Setup_Verifier(t, ridT))
 
 	// Early termination for empty rawTokens slice
 	if len(rawTokens) == 0 {
