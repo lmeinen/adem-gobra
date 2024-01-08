@@ -22,17 +22,6 @@ type Fact domain {
     }
 
     // tag 1
-    func InFact_Verifier(t1 Term, t2 Term) Fact
-    func getInFact_Verifier(f Fact) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term :: 
-            { InFact_Verifier(t1, t2) } (
-                getInFact_Verifier(InFact_Verifier(t1, t2)) ==
-                seq[Term]{t1, t2} &&
-                                 getTag(InFact_Verifier(t1, t2)) == 1)
-    }
-
-    // tag 2
     func St_Verifier_0(t1 Term) Fact
     func getSt_Verifier_0(f Fact) Term
     axiom  {
@@ -40,10 +29,10 @@ type Fact domain {
             { St_Verifier_0(t1) } (
                 getSt_Verifier_0(St_Verifier_0(t1)) ==
                 t1 &&
-                  getTag(St_Verifier_0(t1)) == 2)
+                  getTag(St_Verifier_0(t1)) == 1)
     }
 
-    // tag 3
+    // tag 2
     func OutFact_Verifier(t1 Term, t2 Term) Fact
     func getOutFact_Verifier(f Fact) seq[Term]
     axiom  {
@@ -51,7 +40,18 @@ type Fact domain {
             { OutFact_Verifier(t1, t2) } (
                 getOutFact_Verifier(OutFact_Verifier(t1, t2)) ==
                 seq[Term]{t1, t2} &&
-                                 getTag(OutFact_Verifier(t1, t2)) == 3)
+                                 getTag(OutFact_Verifier(t1, t2)) == 2)
+    }
+
+    // tag 3
+    func InFact_Verifier(t1 Term, t2 Term) Fact
+    func getInFact_Verifier(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { InFact_Verifier(t1, t2) } (
+                getInFact_Verifier(InFact_Verifier(t1, t2)) ==
+                seq[Term]{t1, t2} &&
+                                 getTag(InFact_Verifier(t1, t2)) == 3)
     }
 
     // tag 4

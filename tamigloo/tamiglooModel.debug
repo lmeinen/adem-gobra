@@ -494,6 +494,21 @@ ADEM
     
 
 
+    rule ReceiveNoEmblem StateRule "Verifier":
+        Pr: (Setup)_Verifier/1
+            |  (rid)
+            |  EnvGroup EnvIn
+        Ac:
+        Cncl:
+            (St)_Verifier_0/1
+            |  (rid)
+            |  StateGroup
+            Out/1
+            |  (pubTerm(const_INVALID_pub()))
+            |  EnvGroup EnvOut
+    
+
+
     rule ReceiveInvalidEmblem StateRule "Verifier":
         Pr: (Setup)_Verifier/1
             |  (rid)
@@ -503,6 +518,32 @@ ADEM
             |  EnvGroup EnvIn
         Ac: (Proto)_Neq/2
             |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), tail), epk), ok())
+            |  ActionGroup
+        Cncl:
+            (St)_Verifier_0/1
+            |  (rid)
+            |  StateGroup
+            Out/1
+            |  (pubTerm(const_INVALID_pub()))
+            |  EnvGroup EnvOut
+    
+
+
+    rule ReceiveMultipleEmblem StateRule "Verifier":
+        Pr: (Setup)_Verifier/1
+            |  (rid)
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(epk0, pair(pair(pubTerm(const_emblem_pub()), E0), emblemSignature0)))
+            |  EnvGroup EnvIn
+            In/1
+            |  (pair(epk1, pair(pair(pubTerm(const_emblem_pub()), E1), emblemSignature1)))
+            |  EnvGroup EnvIn
+        Ac: (Proto)_Eq/2
+            |  (verify(emblemSignature0, pair(pubTerm(const_emblem_pub()), E0), epk0), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(emblemSignature1, pair(pubTerm(const_emblem_pub()), E1), epk1), ok())
             |  ActionGroup
         Cncl:
             (St)_Verifier_0/1
@@ -566,12 +607,12 @@ ADEM
             |  (pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)))
             |  EnvGroup EnvIn
             In/1
-            |  (pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+            |  (pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
             |  EnvGroup EnvIn
         Ac:
         Cncl:
             (St)_Verifier_1/3
-            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
             |  StateGroup
             Out/1
             |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, oi)))
@@ -584,7 +625,7 @@ ADEM
 
     rule OrgRootKeyLearn StateRule "Verifier":
         Pr: (St)_Verifier_1/3
-            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
             |  StateGroup
             !(Proto)_CA/2
             |  (CA, skCA)
@@ -624,7 +665,7 @@ ADEM
             |  ActionGroup
         Cncl:
             (St)_Verifier_2/3
-            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(body, signature)))
             |  StateGroup
     
 
@@ -1305,6 +1346,21 @@ ADEM
 
     Protocol Rules
         "Verifier"
+        rule ReceiveNoEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                Out/1
+                |  (pubTerm(const_INVALID_pub()))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
         rule ReceiveInvalidEmblem StateRule "Verifier":
             Pr: (Setup)_Verifier/1
                 |  (rid)
@@ -1314,6 +1370,32 @@ ADEM
                 |  EnvGroup EnvIn
             Ac: (Proto)_Neq/2
                 |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), tail), epk), ok())
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                Out/1
+                |  (pubTerm(const_INVALID_pub()))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule ReceiveMultipleEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(epk0, pair(pair(pubTerm(const_emblem_pub()), E0), emblemSignature0)))
+                |  EnvGroup EnvIn
+                In/1
+                |  (pair(epk1, pair(pair(pubTerm(const_emblem_pub()), E1), emblemSignature1)))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Eq/2
+                |  (verify(emblemSignature0, pair(pubTerm(const_emblem_pub()), E0), epk0), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(emblemSignature1, pair(pubTerm(const_emblem_pub()), E1), epk1), ok())
                 |  ActionGroup
             Cncl:
                 (St)_Verifier_0/1
@@ -1377,12 +1459,12 @@ ADEM
                 |  (pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)))
                 |  EnvGroup EnvIn
                 In/1
-                |  (pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  (pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
                 |  EnvGroup EnvIn
             Ac:
             Cncl:
                 (St)_Verifier_1/3
-                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
                 |  StateGroup
                 Out/1
                 |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, oi)))
@@ -1395,7 +1477,7 @@ ADEM
         "Verifier"
         rule OrgRootKeyLearn StateRule "Verifier":
             Pr: (St)_Verifier_1/3
-                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
                 |  StateGroup
                 !(Proto)_CA/2
                 |  (CA, skCA)
@@ -1435,7 +1517,7 @@ ADEM
                 |  ActionGroup
             Cncl:
                 (St)_Verifier_2/3
-                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(body, signature)))
                 |  StateGroup
         
 
@@ -2122,6 +2204,21 @@ ADEM
 
     Protocol Rules with rid
         "Verifier"
+        rule ReceiveNoEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pubTerm(const_INVALID_pub()))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
         rule ReceiveInvalidEmblem StateRule "Verifier":
             Pr: (Setup)_Verifier/1
                 |  (rid)
@@ -2131,6 +2228,32 @@ ADEM
                 |  EnvGroup EnvIn
             Ac: (Proto)_Neq/2
                 |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), tail), epk), ok())
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pubTerm(const_INVALID_pub()))
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule ReceiveMultipleEmblem StateRule "Verifier":
+            Pr: (Setup)_Verifier/1
+                |  (rid)
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(epk0, pair(pair(pubTerm(const_emblem_pub()), E0), emblemSignature0)))
+                |  EnvGroup EnvIn
+                (Proto)_InFact_Verifier/2
+                |  (rid, pair(epk1, pair(pair(pubTerm(const_emblem_pub()), E1), emblemSignature1)))
+                |  EnvGroup EnvIn
+            Ac: (Proto)_Eq/2
+                |  (verify(emblemSignature0, pair(pubTerm(const_emblem_pub()), E0), epk0), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(emblemSignature1, pair(pubTerm(const_emblem_pub()), E1), epk1), ok())
                 |  ActionGroup
             Cncl:
                 (St)_Verifier_0/1
@@ -2194,12 +2317,12 @@ ADEM
                 |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)))
                 |  EnvGroup EnvIn
                 (Proto)_InFact_Verifier/2
-                |  (rid, pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  (rid, pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
                 |  EnvGroup EnvIn
             Ac:
             Cncl:
                 (St)_Verifier_1/3
-                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
                 |  StateGroup
                 (Proto)_OutFact_Verifier/2
                 |  (rid, pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, oi)))
@@ -2212,7 +2335,7 @@ ADEM
         "Verifier"
         rule OrgRootKeyLearn StateRule "Verifier":
             Pr: (St)_Verifier_1/3
-                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
                 |  StateGroup
                 !(Proto)_CA_Verifier/3
                 |  (rid, CA, skCA)
@@ -2252,7 +2375,7 @@ ADEM
                 |  ActionGroup
             Cncl:
                 (St)_Verifier_2/3
-                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
+                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(body, signature)))
                 |  StateGroup
         
 
@@ -2517,7 +2640,9 @@ ADEM
         
 
 ==== Permissions ====
+    Perm Internal_R "e_ReceiveNoEmblem"
     Perm Internal_R "e_ReceiveInvalidEmblem"
+    Perm Internal_R "e_ReceiveMultipleEmblem"
     Perm Internal_R "e_ReceiveUnsignedEmblem"
     Perm Internal_R "e_ReceiveSignedEmblem"
     Perm Internal_R "e_ReceiveOrganizationalEmblem"

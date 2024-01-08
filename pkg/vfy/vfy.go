@@ -145,15 +145,29 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 // @ requires trustedKeys.Mem()
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
 func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost t place.Place @*/) (res VerificationResults) {
-	// @ ghost ridT := term.freshTerm(fresh.fr_integer64(rid))
-	// @ ghost s := mset[fact.Fact]{}
+	// @ ridT := term.freshTerm(fresh.fr_integer64(rid))
+	// @ s := mset[fact.Fact]{}
 
 	// @ unfold iospec.P_Verifier(t, ridT, s)
-	// @ unfold iospec.phiRF_Verifier_14(t, ridT, s)
+	// @ unfold iospec.phiRF_Verifier_16(t, ridT, s)
 	// @ assert acc(iospec.e_Setup_Verifier(t, ridT))
+	// @ t1 := iospec.get_e_Setup_Verifier_placeDst(t, ridT)
+	// @ s1 := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+	// TODO: Is there a better way to do this? Or is this just the assumption that library functions are allowed to make
+	// @ inhale place.token(t1)
+	// @ assert iospec.P_Verifier(t1, ridT, s1)
 
 	// Early termination for empty rawTokens slice
 	if len(rawTokens) == 0 {
+		// @ unfold iospec.P_Verifier(t1, ridT, s1)
+		// @ unfold iospec.phiR_Verifier_0(t1, ridT, s1)
+		/*@
+		l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+		a := mset[claim.Claim] {}
+		r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
+		@*/
+		// @ t2 := iospec.internBIO_e_ReceiveNoEmblem(t1, ridT, l, a, r)
+		// @ s2 := fact.U(l, r, s1)
 		return ResultInvalid()
 	}
 
@@ -347,9 +361,12 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			if emblem != nil {
 				// Multiple emblems
 				log.Print("Token set contains multiple emblems")
+				// TODO: Apply ReceiveInvalidEmblem rule --> Need a new rule for this
 				return ResultInvalid()
 			} else if err := jwt.Validate(t.Token, jwt.WithValidator(tokens.EmblemValidator)); err != nil {
 				log.Printf("Invalid emblem: %s", err)
+				// TODO: Apply ReceiveInvalidEmblem rule --> Need to show !(term.verify(...) == term.ok())
+				//  ==> Annotate library stub
 				return ResultInvalid()
 			} else {
 				emblem = t
@@ -360,6 +377,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			// @ unfold tokens.AssMem(protected)
 
 			if emblem.Headers.Algorithm() == jwa.NoSignature {
+				// TODO: Apply ReceiveUnsignedEmblem rule --> requires In fact of emblem body without signature
 				return VerificationResults{
 					results:   []consts.VerificationResult{consts.UNSIGNED},
 					protected: protected,
@@ -390,6 +408,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	if emblem == nil {
 		log.Print("no emblem found")
+		// TODO: Apply ReceiveInvalidEmblem rule --> Need a new rule for this
 		return ResultInvalid()
 	}
 
@@ -399,6 +418,8 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
 	vfyResults, root := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, perm(1/2) @*/)
 	if util.ContainsVerificationResult(vfyResults, consts.INVALID /*@, perm(1/2) @*/) {
+		// TODO: Apply ReceiveInvalidEmblem rule --> Endorsement constraints aren't modeled in Tami
+		//  --> What to do?
 		return ResultInvalid()
 	}
 
@@ -408,6 +429,8 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	endorsedResults, endorsedBy := verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, perm(1/4) @*/)
 	if util.ContainsVerificationResult(endorsedResults, consts.INVALID /*@, perm(1/2) @*/) {
+		// TODO: Apply ReceiveInvalidEmblem rule --> Endorsement constraints aren't modeled in Tami
+		//  --> What to do?
 		return ResultInvalid()
 	}
 
