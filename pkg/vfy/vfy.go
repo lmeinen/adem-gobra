@@ -361,12 +361,27 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			if emblem != nil {
 				// Multiple emblems
 				log.Print("Token set contains multiple emblems")
-				// TODO: Apply ReceiveInvalidEmblem rule --> Need a new rule for this
+				// @ unfold iospec.P_Verifier(t1, ridT, s1)
+				// @ unfold iospec.phiR_Verifier_0(t1, ridT, s1)
+				/*@
+				l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+				a := mset[claim.Claim] {}
+				r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
+				@*/
+				// @ t2 := iospec.internBIO_e_Invalid(t1, ridT, l, a, r)
+				// @ s2 := fact.U(l, r, s1)
 				return ResultInvalid()
 			} else if err := jwt.Validate(t.Token, jwt.WithValidator(tokens.EmblemValidator)); err != nil {
 				log.Printf("Invalid emblem: %s", err)
-				// TODO: Apply ReceiveInvalidEmblem rule --> Need to show !(term.verify(...) == term.ok())
-				//  ==> Annotate library stub
+				// @ unfold iospec.P_Verifier(t1, ridT, s1)
+				// @ unfold iospec.phiR_Verifier_0(t1, ridT, s1)
+				/*@
+				l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+				a := mset[claim.Claim] {}
+				r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
+				@*/
+				// @ t2 := iospec.internBIO_e_Invalid(t1, ridT, l, a, r)
+				// @ s2 := fact.U(l, r, s1)
 				return ResultInvalid()
 			} else {
 				emblem = t
@@ -408,7 +423,15 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	if emblem == nil {
 		log.Print("no emblem found")
-		// TODO: Apply ReceiveInvalidEmblem rule --> Need a new rule for this
+		// @ unfold iospec.P_Verifier(t1, ridT, s1)
+		// @ unfold iospec.phiR_Verifier_0(t1, ridT, s1)
+		/*@
+		l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+		a := mset[claim.Claim] {}
+		r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
+		@*/
+		// @ t2 := iospec.internBIO_e_Invalid(t1, ridT, l, a, r)
+		// @ s2 := fact.U(l, r, s1)
 		return ResultInvalid()
 	}
 
@@ -418,8 +441,15 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
 	vfyResults, root := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, perm(1/2) @*/)
 	if util.ContainsVerificationResult(vfyResults, consts.INVALID /*@, perm(1/2) @*/) {
-		// TODO: Apply ReceiveInvalidEmblem rule --> Endorsement constraints aren't modeled in Tami
-		//  --> What to do?
+		// @ unfold iospec.P_Verifier(t1, ridT, s1)
+		// @ unfold iospec.phiR_Verifier_0(t1, ridT, s1)
+		/*@
+		l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+		a := mset[claim.Claim] {}
+		r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
+		@*/
+		// @ t2 := iospec.internBIO_e_Invalid(t1, ridT, l, a, r)
+		// @ s2 := fact.U(l, r, s1)
 		return ResultInvalid()
 	}
 
@@ -429,8 +459,15 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	endorsedResults, endorsedBy := verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, perm(1/4) @*/)
 	if util.ContainsVerificationResult(endorsedResults, consts.INVALID /*@, perm(1/2) @*/) {
-		// TODO: Apply ReceiveInvalidEmblem rule --> Endorsement constraints aren't modeled in Tami
-		//  --> What to do?
+		// @ unfold iospec.P_Verifier(t1, ridT, s1)
+		// @ unfold iospec.phiR_Verifier_0(t1, ridT, s1)
+		/*@
+		l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+		a := mset[claim.Claim] {}
+		r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
+		@*/
+		// @ t2 := iospec.internBIO_e_Invalid(t1, ridT, l, a, r)
+		// @ s2 := fact.U(l, r, s1)
 		return ResultInvalid()
 	}
 
