@@ -494,57 +494,11 @@ ADEM
     
 
 
-    rule ReceiveNoEmblem StateRule "Verifier":
+    rule Invalid StateRule "Verifier":
         Pr: (Setup)_Verifier/1
             |  (rid)
             |  EnvGroup EnvIn
         Ac:
-        Cncl:
-            (St)_Verifier_0/1
-            |  (rid)
-            |  StateGroup
-            Out/1
-            |  (pubTerm(const_INVALID_pub()))
-            |  EnvGroup EnvOut
-    
-
-
-    rule ReceiveInvalidEmblem StateRule "Verifier":
-        Pr: (Setup)_Verifier/1
-            |  (rid)
-            |  EnvGroup EnvIn
-            In/1
-            |  (pair(epk, pair(pair(pubTerm(const_emblem_pub()), tail), emblemSignature)))
-            |  EnvGroup EnvIn
-        Ac: (Proto)_Neq/2
-            |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), tail), epk), ok())
-            |  ActionGroup
-        Cncl:
-            (St)_Verifier_0/1
-            |  (rid)
-            |  StateGroup
-            Out/1
-            |  (pubTerm(const_INVALID_pub()))
-            |  EnvGroup EnvOut
-    
-
-
-    rule ReceiveMultipleEmblem StateRule "Verifier":
-        Pr: (Setup)_Verifier/1
-            |  (rid)
-            |  EnvGroup EnvIn
-            In/1
-            |  (pair(epk0, pair(pair(pubTerm(const_emblem_pub()), E0), emblemSignature0)))
-            |  EnvGroup EnvIn
-            In/1
-            |  (pair(epk1, pair(pair(pubTerm(const_emblem_pub()), E1), emblemSignature1)))
-            |  EnvGroup EnvIn
-        Ac: (Proto)_Eq/2
-            |  (verify(emblemSignature0, pair(pubTerm(const_emblem_pub()), E0), epk0), ok())
-            |  ActionGroup
-            (Proto)_Eq/2
-            |  (verify(emblemSignature1, pair(pubTerm(const_emblem_pub()), E1), epk1), ok())
-            |  ActionGroup
         Cncl:
             (St)_Verifier_0/1
             |  (rid)
@@ -614,16 +568,37 @@ ADEM
             (St)_Verifier_1/3
             |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
             |  StateGroup
-            Out/1
-            |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, oi)))
-            |  EnvGroup EnvOut
-            Out/1
-            |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(oi, sha256(rootKey)))))
+            (Proto)_PermitAuthorityVerificationOut/3
+            |  (oi, rootKey, E)
             |  EnvGroup EnvOut
     
 
 
-    rule OrgRootKeyLearn StateRule "Verifier":
+    rule PersistPermitAuthorityVerification EnvRule:
+        Pr: (Proto)_PermitAuthorityVerificationOut/3
+            |  (oi, rootKey, E)
+            |  EnvGroup EnvOut
+        Ac:
+        Cncl:
+            !(Proto)_PermitAuthorityVerification/3
+            |  (oi, rootKey, E)
+            |  EnvGroup Env
+    
+
+
+    rule LinearizePermitAuthorityVerification EnvRule:
+        Pr: !(Proto)_PermitAuthorityVerification/3
+            |  (oi, rootKey, E)
+            |  EnvGroup Env
+        Ac:
+        Cncl:
+            (Proto)_PermitAuthorityVerificationIn/3
+            |  (oi, rootKey, E)
+            |  EnvGroup Env
+    
+
+
+    rule VerifyOrganizationalEmblem StateRule "Verifier":
         Pr: (St)_Verifier_1/3
             |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
             |  StateGroup
@@ -651,30 +626,16 @@ ADEM
             (Proto)_Eq/2
             |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), pk(skCA)), ok())
             |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), pair(E, oi)), epk), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
+            |  (verify(endSignature, pair(pubTerm(const_end_int_pub()), pair(oi, epk)), rootKey), ok())
+            |  ActionGroup
             (Proto)_VerifiedRootKey/2
             |  (oi, sha256(rootKey))
             |  ActionGroup
-            (Proto)_RootCertVerified/1
-            |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))
-            |  ActionGroup
-            (Proto)_LogInclusionVerified/2
-            |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))))
-            |  ActionGroup
-            (Proto)_LogInclusionVerified/2
-            |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))))
-            |  ActionGroup
-        Cncl:
-            (St)_Verifier_2/3
-            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(body, signature)))
-            |  StateGroup
-    
-
-
-    rule VerifyOrganizationalEmblem StateRule "Verifier":
-        Pr: (St)_Verifier_2/3
-            |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
-            |  StateGroup
-        Ac: (Proto)_VerifiedEndorsed/4
+            (Proto)_VerifiedEndorsed/4
             |  (rid, oi, E, epk)
             |  ActionGroup
             (Proto)_VerifiedRootEndorsement/3
@@ -683,14 +644,8 @@ ADEM
             (Proto)_UsedRootKey/2
             |  (oi, rootKey)
             |  ActionGroup
-            (Proto)_Eq/2
-            |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), pair(E, oi)), epk), ok())
-            |  ActionGroup
-            (Proto)_Eq/2
-            |  (verify(signature, pair(pubTerm(const_end_int_pub()), pair(oi, epk)), rootKey), ok())
-            |  ActionGroup
         Cncl:
-            (St)_Verifier_3/4
+            (St)_Verifier_2/4
             |  (rid, oi, rootKey, E)
             |  StateGroup
             Out/1
@@ -702,22 +657,31 @@ ADEM
     
 
 
-    rule VerifyAuthorityEndorsementsTerminate StateRule "Verifier":
-        Pr: (St)_Verifier_3/4
-            |  (rid, oi, rootKey, E)
-            |  StateGroup
+    rule VerifyAuthorityEndorsementRoleInit EnvRule:
+        Pr: Fr/1
+            |  (rid)
+            |  EnvGroup Env
+            (Proto)_PermitAuthorityVerificationIn/3
+            |  (oi, rootKey, E)
+            |  EnvGroup Env
         Ac:
         Cncl:
-            (St)_Verifier_0/1
-            |  (rid)
-            |  StateGroup
+            (Setup)_AuthorityVerifier/4
+            |  (rid, oi, rootKey, E)
+            |  EnvGroup EnvIn
     
 
 
-    rule ReceiveAuthorityEndorsement StateRule "Verifier":
-        Pr: (St)_Verifier_3/4
+    rule VerifyAuthorityEndorsement StateRule "AuthorityVerifier":
+        Pr: (Setup)_AuthorityVerifier/4
             |  (rid, oi, rootKey, E)
-            |  StateGroup
+            |  EnvGroup EnvIn
+            !(Proto)_CA/2
+            |  (CA, skCA)
+            |  EnvGroup EnvIn
+            !(Proto)_Log/2
+            |  (Log, skCT)
+            |  EnvGroup EnvIn
             !(Proto)_CA/2
             |  (CA, skCA)
             |  EnvGroup EnvIn
@@ -727,30 +691,6 @@ ADEM
             In/1
             |  (pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
             |  EnvGroup EnvIn
-        Ac:
-        Cncl:
-            (St)_Verifier_4/5
-            |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-            |  StateGroup
-            Out/1
-            |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, auth)))
-            |  EnvGroup EnvOut
-            Out/1
-            |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(auth, sha256(authPk)))))
-            |  EnvGroup EnvOut
-    
-
-
-    rule AuthRootKeyLearn StateRule "Verifier":
-        Pr: (St)_Verifier_4/5
-            |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-            |  StateGroup
-            !(Proto)_CA/2
-            |  (CA, skCA)
-            |  EnvGroup EnvIn
-            !(Proto)_Log/2
-            |  (Log, skCT)
-            |  EnvGroup EnvIn
             In/1
             |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), ctSigOi))
             |  EnvGroup EnvIn
@@ -758,6 +698,9 @@ ADEM
             |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))), ctSigRootD))
             |  EnvGroup EnvIn
         Ac: (Proto)_Eq/2
+            |  (verify(endSignature, pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), authPk), ok())
+            |  ActionGroup
+            (Proto)_Eq/2
             |  (verify(ctSigOi, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), pk(skCT)), ok())
             |  ActionGroup
             (Proto)_Eq/2
@@ -769,48 +712,78 @@ ADEM
             (Proto)_Eq/2
             |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), pk(skCA)), ok())
             |  ActionGroup
-            (Proto)_VerifiedRootKey/2
-            |  (auth, sha256(authPk))
-            |  ActionGroup
-            (Proto)_RootCertVerified/1
-            |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))
-            |  ActionGroup
-            (Proto)_LogInclusionVerified/2
-            |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))))
-            |  ActionGroup
-            (Proto)_LogInclusionVerified/2
-            |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))))
-            |  ActionGroup
-        Cncl:
-            (St)_Verifier_5/5
-            |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-            |  StateGroup
-    
-
-
-    rule VerifyAuthorityEndorsement StateRule "Verifier":
-        Pr: (St)_Verifier_5/5
-            |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-            |  StateGroup
-        Ac: (Proto)_Neq/2
+            (Proto)_Neq/2
             |  (auth, oi)
             |  ActionGroup
-            (Proto)_Eq/2
-            |  (verify(endSignature, pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), authPk), ok())
-            |  ActionGroup
-            (Proto)_VerifiedAuthorityEndorsement/5
-            |  (rid, auth, authPk, oi, rootKey)
+            (Proto)_VerifiedRootKey/2
+            |  (auth, sha256(authPk))
             |  ActionGroup
             (Proto)_UsedRootKey/2
             |  (auth, authPk)
             |  ActionGroup
         Cncl:
-            (St)_Verifier_3/4
+            (St)_AuthorityVerifier_0/1
+            |  (rid)
+            |  StateGroup
+            (Proto)_AuthorityVerificationFinishedOut/5
+            |  (oi, rootKey, E, auth, authPk)
+            |  EnvGroup EnvOut
+    
+
+
+    rule PersistAuthorityVerificationFinished EnvRule:
+        Pr: (Proto)_AuthorityVerificationFinishedOut/5
+            |  (oi, rootKey, E, auth, authPk)
+            |  EnvGroup EnvOut
+        Ac:
+        Cncl:
+            !(Proto)_AuthorityVerificationFinished/5
+            |  (oi, rootKey, E, auth, authPk)
+            |  EnvGroup Env
+    
+
+
+    rule LinearizeAuthorityVerificationFinished EnvRule:
+        Pr: !(Proto)_AuthorityVerificationFinished/5
+            |  (oi, rootKey, E, auth, authPk)
+            |  EnvGroup Env
+        Ac:
+        Cncl:
+            (Proto)_AuthorityVerificationFinishedIn/5
+            |  (oi, rootKey, E, auth, authPk)
+            |  EnvGroup EnvIn
+    
+
+
+    rule VerifyAuthorityEndorsementsOut StateRule "Verifier":
+        Pr: (St)_Verifier_2/4
+            |  (rid, oi, rootKey, E)
+            |  StateGroup
+            (Proto)_AuthorityVerificationFinishedIn/5
+            |  (oi, rootKey, E, auth, authPk)
+            |  EnvGroup EnvIn
+        Ac: (Proto)_VerifiedAuthorityEndorsement/5
+            |  (rid, auth, authPk, oi, rootKey)
+            |  ActionGroup
+        Cncl:
+            (St)_Verifier_2/4
             |  (rid, oi, rootKey, E)
             |  StateGroup
             Out/1
             |  (pair(pubTerm(const_ENDORSED_pub()), auth))
             |  EnvGroup EnvOut
+    
+
+
+    rule VerifyAuthorityEndorsementsTerminate StateRule "Verifier":
+        Pr: (St)_Verifier_2/4
+            |  (rid, oi, rootKey, E)
+            |  StateGroup
+        Ac:
+        Cncl:
+            (St)_Verifier_0/1
+            |  (rid)
+            |  StateGroup
     
 
 ==== Protocol Format ==========
@@ -831,6 +804,13 @@ ADEM
         !(Proto)_RootSetup/4
         !(Proto)_AssetOf/3
         (Setup)_Verifier/1
+        (Proto)_PermitAuthorityVerificationOut/3
+        !(Proto)_PermitAuthorityVerification/3
+        (Proto)_PermitAuthorityVerificationIn/3
+        (Setup)_AuthorityVerifier/4
+        (Proto)_AuthorityVerificationFinishedOut/5
+        !(Proto)_AuthorityVerificationFinished/5
+        (Proto)_AuthorityVerificationFinishedIn/5
     
 
     Fact signature Action
@@ -857,8 +837,6 @@ ADEM
         (Proto)_Dispute/5
         (Proto)_IsAsset/3
         (Proto)_VerifiedRootKey/2
-        (Proto)_RootCertVerified/1
-        (Proto)_LogInclusionVerified/2
         (Proto)_VerifiedEndorsed/4
         (Proto)_VerifiedRootEndorsement/3
         (Proto)_UsedRootKey/2
@@ -869,10 +847,9 @@ ADEM
         Verifier:
             (St)_Verifier_0/1
             (St)_Verifier_1/3
-            (St)_Verifier_2/3
-            (St)_Verifier_3/4
-            (St)_Verifier_4/5
-            (St)_Verifier_5/5
+            (St)_Verifier_2/4
+        AuthorityVerifier:
+            (St)_AuthorityVerifier_0/1
     
 
     Environment Rules
@@ -1344,59 +1321,71 @@ ADEM
                 |  EnvGroup EnvIn
         
 
+        rule PersistPermitAuthorityVerification EnvRule:
+            Pr: (Proto)_PermitAuthorityVerificationOut/3
+                |  (oi, rootKey, E)
+                |  EnvGroup EnvOut
+            Ac:
+            Cncl:
+                !(Proto)_PermitAuthorityVerification/3
+                |  (oi, rootKey, E)
+                |  EnvGroup Env
+        
+
+        rule LinearizePermitAuthorityVerification EnvRule:
+            Pr: !(Proto)_PermitAuthorityVerification/3
+                |  (oi, rootKey, E)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                (Proto)_PermitAuthorityVerificationIn/3
+                |  (oi, rootKey, E)
+                |  EnvGroup Env
+        
+
+        rule VerifyAuthorityEndorsementRoleInit EnvRule:
+            Pr: Fr/1
+                |  (rid)
+                |  EnvGroup Env
+                (Proto)_PermitAuthorityVerificationIn/3
+                |  (oi, rootKey, E)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                (Setup)_AuthorityVerifier/4
+                |  (rid, oi, rootKey, E)
+                |  EnvGroup EnvIn
+        
+
+        rule PersistAuthorityVerificationFinished EnvRule:
+            Pr: (Proto)_AuthorityVerificationFinishedOut/5
+                |  (oi, rootKey, E, auth, authPk)
+                |  EnvGroup EnvOut
+            Ac:
+            Cncl:
+                !(Proto)_AuthorityVerificationFinished/5
+                |  (oi, rootKey, E, auth, authPk)
+                |  EnvGroup Env
+        
+
+        rule LinearizeAuthorityVerificationFinished EnvRule:
+            Pr: !(Proto)_AuthorityVerificationFinished/5
+                |  (oi, rootKey, E, auth, authPk)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                (Proto)_AuthorityVerificationFinishedIn/5
+                |  (oi, rootKey, E, auth, authPk)
+                |  EnvGroup EnvIn
+        
+
     Protocol Rules
         "Verifier"
-        rule ReceiveNoEmblem StateRule "Verifier":
+        rule Invalid StateRule "Verifier":
             Pr: (Setup)_Verifier/1
                 |  (rid)
                 |  EnvGroup EnvIn
             Ac:
-            Cncl:
-                (St)_Verifier_0/1
-                |  (rid)
-                |  StateGroup
-                Out/1
-                |  (pubTerm(const_INVALID_pub()))
-                |  EnvGroup EnvOut
-        
-
-        "Verifier"
-        rule ReceiveInvalidEmblem StateRule "Verifier":
-            Pr: (Setup)_Verifier/1
-                |  (rid)
-                |  EnvGroup EnvIn
-                In/1
-                |  (pair(epk, pair(pair(pubTerm(const_emblem_pub()), tail), emblemSignature)))
-                |  EnvGroup EnvIn
-            Ac: (Proto)_Neq/2
-                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), tail), epk), ok())
-                |  ActionGroup
-            Cncl:
-                (St)_Verifier_0/1
-                |  (rid)
-                |  StateGroup
-                Out/1
-                |  (pubTerm(const_INVALID_pub()))
-                |  EnvGroup EnvOut
-        
-
-        "Verifier"
-        rule ReceiveMultipleEmblem StateRule "Verifier":
-            Pr: (Setup)_Verifier/1
-                |  (rid)
-                |  EnvGroup EnvIn
-                In/1
-                |  (pair(epk0, pair(pair(pubTerm(const_emblem_pub()), E0), emblemSignature0)))
-                |  EnvGroup EnvIn
-                In/1
-                |  (pair(epk1, pair(pair(pubTerm(const_emblem_pub()), E1), emblemSignature1)))
-                |  EnvGroup EnvIn
-            Ac: (Proto)_Eq/2
-                |  (verify(emblemSignature0, pair(pubTerm(const_emblem_pub()), E0), epk0), ok())
-                |  ActionGroup
-                (Proto)_Eq/2
-                |  (verify(emblemSignature1, pair(pubTerm(const_emblem_pub()), E1), epk1), ok())
-                |  ActionGroup
             Cncl:
                 (St)_Verifier_0/1
                 |  (rid)
@@ -1466,16 +1455,13 @@ ADEM
                 (St)_Verifier_1/3
                 |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
                 |  StateGroup
-                Out/1
-                |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, oi)))
-                |  EnvGroup EnvOut
-                Out/1
-                |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(oi, sha256(rootKey)))))
+                (Proto)_PermitAuthorityVerificationOut/3
+                |  (oi, rootKey, E)
                 |  EnvGroup EnvOut
         
 
         "Verifier"
-        rule OrgRootKeyLearn StateRule "Verifier":
+        rule VerifyOrganizationalEmblem StateRule "Verifier":
             Pr: (St)_Verifier_1/3
                 |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
                 |  StateGroup
@@ -1503,30 +1489,16 @@ ADEM
                 (Proto)_Eq/2
                 |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), pk(skCA)), ok())
                 |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), pair(E, oi)), epk), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(endSignature, pair(pubTerm(const_end_int_pub()), pair(oi, epk)), rootKey), ok())
+                |  ActionGroup
                 (Proto)_VerifiedRootKey/2
                 |  (oi, sha256(rootKey))
                 |  ActionGroup
-                (Proto)_RootCertVerified/1
-                |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))
-                |  ActionGroup
-                (Proto)_LogInclusionVerified/2
-                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))))
-                |  ActionGroup
-                (Proto)_LogInclusionVerified/2
-                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))))
-                |  ActionGroup
-            Cncl:
-                (St)_Verifier_2/3
-                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(body, signature)))
-                |  StateGroup
-        
-
-        "Verifier"
-        rule VerifyOrganizationalEmblem StateRule "Verifier":
-            Pr: (St)_Verifier_2/3
-                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
-                |  StateGroup
-            Ac: (Proto)_VerifiedEndorsed/4
+                (Proto)_VerifiedEndorsed/4
                 |  (rid, oi, E, epk)
                 |  ActionGroup
                 (Proto)_VerifiedRootEndorsement/3
@@ -1535,14 +1507,8 @@ ADEM
                 (Proto)_UsedRootKey/2
                 |  (oi, rootKey)
                 |  ActionGroup
-                (Proto)_Eq/2
-                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), pair(E, oi)), epk), ok())
-                |  ActionGroup
-                (Proto)_Eq/2
-                |  (verify(signature, pair(pubTerm(const_end_int_pub()), pair(oi, epk)), rootKey), ok())
-                |  ActionGroup
             Cncl:
-                (St)_Verifier_3/4
+                (St)_Verifier_2/4
                 |  (rid, oi, rootKey, E)
                 |  StateGroup
                 Out/1
@@ -1553,23 +1519,17 @@ ADEM
                 |  EnvGroup EnvOut
         
 
-        "Verifier"
-        rule VerifyAuthorityEndorsementsTerminate StateRule "Verifier":
-            Pr: (St)_Verifier_3/4
+        "AuthorityVerifier"
+        rule VerifyAuthorityEndorsement StateRule "AuthorityVerifier":
+            Pr: (Setup)_AuthorityVerifier/4
                 |  (rid, oi, rootKey, E)
-                |  StateGroup
-            Ac:
-            Cncl:
-                (St)_Verifier_0/1
-                |  (rid)
-                |  StateGroup
-        
-
-        "Verifier"
-        rule ReceiveAuthorityEndorsement StateRule "Verifier":
-            Pr: (St)_Verifier_3/4
-                |  (rid, oi, rootKey, E)
-                |  StateGroup
+                |  EnvGroup EnvIn
+                !(Proto)_CA/2
+                |  (CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log/2
+                |  (Log, skCT)
+                |  EnvGroup EnvIn
                 !(Proto)_CA/2
                 |  (CA, skCA)
                 |  EnvGroup EnvIn
@@ -1579,30 +1539,6 @@ ADEM
                 In/1
                 |  (pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
                 |  EnvGroup EnvIn
-            Ac:
-            Cncl:
-                (St)_Verifier_4/5
-                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-                |  StateGroup
-                Out/1
-                |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, auth)))
-                |  EnvGroup EnvOut
-                Out/1
-                |  (pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(auth, sha256(authPk)))))
-                |  EnvGroup EnvOut
-        
-
-        "Verifier"
-        rule AuthRootKeyLearn StateRule "Verifier":
-            Pr: (St)_Verifier_4/5
-                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-                |  StateGroup
-                !(Proto)_CA/2
-                |  (CA, skCA)
-                |  EnvGroup EnvIn
-                !(Proto)_Log/2
-                |  (Log, skCT)
-                |  EnvGroup EnvIn
                 In/1
                 |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), ctSigOi))
                 |  EnvGroup EnvIn
@@ -1610,6 +1546,9 @@ ADEM
                 |  (pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))), ctSigRootD))
                 |  EnvGroup EnvIn
             Ac: (Proto)_Eq/2
+                |  (verify(endSignature, pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), authPk), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
                 |  (verify(ctSigOi, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), pk(skCT)), ok())
                 |  ActionGroup
                 (Proto)_Eq/2
@@ -1621,48 +1560,54 @@ ADEM
                 (Proto)_Eq/2
                 |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), pk(skCA)), ok())
                 |  ActionGroup
-                (Proto)_VerifiedRootKey/2
-                |  (auth, sha256(authPk))
-                |  ActionGroup
-                (Proto)_RootCertVerified/1
-                |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))
-                |  ActionGroup
-                (Proto)_LogInclusionVerified/2
-                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))))
-                |  ActionGroup
-                (Proto)_LogInclusionVerified/2
-                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))))
-                |  ActionGroup
-            Cncl:
-                (St)_Verifier_5/5
-                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-                |  StateGroup
-        
-
-        "Verifier"
-        rule VerifyAuthorityEndorsement StateRule "Verifier":
-            Pr: (St)_Verifier_5/5
-                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-                |  StateGroup
-            Ac: (Proto)_Neq/2
+                (Proto)_Neq/2
                 |  (auth, oi)
                 |  ActionGroup
-                (Proto)_Eq/2
-                |  (verify(endSignature, pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), authPk), ok())
-                |  ActionGroup
-                (Proto)_VerifiedAuthorityEndorsement/5
-                |  (rid, auth, authPk, oi, rootKey)
+                (Proto)_VerifiedRootKey/2
+                |  (auth, sha256(authPk))
                 |  ActionGroup
                 (Proto)_UsedRootKey/2
                 |  (auth, authPk)
                 |  ActionGroup
             Cncl:
-                (St)_Verifier_3/4
+                (St)_AuthorityVerifier_0/1
+                |  (rid)
+                |  StateGroup
+                (Proto)_AuthorityVerificationFinishedOut/5
+                |  (oi, rootKey, E, auth, authPk)
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule VerifyAuthorityEndorsementsOut StateRule "Verifier":
+            Pr: (St)_Verifier_2/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+                (Proto)_AuthorityVerificationFinishedIn/5
+                |  (oi, rootKey, E, auth, authPk)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_VerifiedAuthorityEndorsement/5
+                |  (rid, auth, authPk, oi, rootKey)
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_2/4
                 |  (rid, oi, rootKey, E)
                 |  StateGroup
                 Out/1
                 |  (pair(pubTerm(const_ENDORSED_pub()), auth))
                 |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule VerifyAuthorityEndorsementsTerminate StateRule "Verifier":
+            Pr: (St)_Verifier_2/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+            Ac:
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
         
 
 ==== Interface Model ==========
@@ -1678,8 +1623,27 @@ ADEM
             !(Proto)_Log_Verifier/3
             |  (added_rid, new_x, new_x_1)
             |  EnvGroup EnvIn
+            (Proto)_AuthorityVerificationFinishedIn_Verifier/6
+            |  (added_rid, new_x, new_x_1, new_x_2, new_x_3, new_x_4)
+            |  EnvGroup EnvIn
             (Proto)_OutFact_Verifier/2
             |  (added_rid, new_x)
+            |  EnvGroup EnvOut
+            (Proto)_PermitAuthorityVerificationOut_Verifier/4
+            |  (added_rid, new_x, new_x_1, new_x_2)
+            |  EnvGroup EnvOut
+        AuthorityVerifier:
+            !(Proto)_CA_AuthorityVerifier/3
+            |  (added_rid, new_x, new_x_1)
+            |  EnvGroup EnvIn
+            !(Proto)_Log_AuthorityVerifier/3
+            |  (added_rid, new_x, new_x_1)
+            |  EnvGroup EnvIn
+            (Proto)_InFact_AuthorityVerifier/2
+            |  (added_rid, new_x)
+            |  EnvGroup EnvIn
+            (Proto)_AuthorityVerificationFinishedOut_AuthorityVerifier/6
+            |  (added_rid, new_x, new_x_1, new_x_2, new_x_3, new_x_4)
             |  EnvGroup EnvOut
     
 
@@ -2141,6 +2105,50 @@ ADEM
                 |  EnvGroup EnvOut
         
 
+        rule PersistPermitAuthorityVerification EnvRule:
+            Pr: (Proto)_PermitAuthorityVerificationOut/3
+                |  (oi, rootKey, E)
+                |  EnvGroup EnvOut
+            Ac:
+            Cncl:
+                !(Proto)_PermitAuthorityVerification/3
+                |  (oi, rootKey, E)
+                |  EnvGroup Env
+        
+
+        rule LinearizePermitAuthorityVerification EnvRule:
+            Pr: !(Proto)_PermitAuthorityVerification/3
+                |  (oi, rootKey, E)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                (Proto)_PermitAuthorityVerificationIn/3
+                |  (oi, rootKey, E)
+                |  EnvGroup Env
+        
+
+        rule PersistAuthorityVerificationFinished EnvRule:
+            Pr: (Proto)_AuthorityVerificationFinishedOut/5
+                |  (oi, rootKey, E, auth, authPk)
+                |  EnvGroup EnvOut
+            Ac:
+            Cncl:
+                !(Proto)_AuthorityVerificationFinished/5
+                |  (oi, rootKey, E, auth, authPk)
+                |  EnvGroup Env
+        
+
+        rule LinearizeAuthorityVerificationFinished EnvRule:
+            Pr: !(Proto)_AuthorityVerificationFinished/5
+                |  (oi, rootKey, E, auth, authPk)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                (Proto)_AuthorityVerificationFinishedIn/5
+                |  (oi, rootKey, E, auth, authPk)
+                |  EnvGroup EnvIn
+        
+
     IO Rules
         "Verifier"
         rule InIntf_InFact_Verifier EnvRule:
@@ -2178,6 +2186,54 @@ ADEM
                 |  EnvGroup EnvIn
         
 
+        "AuthorityVerifier"
+        rule InIntf_CA_AuthorityVerifier EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (new_x, new_x_1)
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                !(Proto)_CA_AuthorityVerifier/3
+                |  (added_rid, new_x, new_x_1)
+                |  EnvGroup EnvIn
+        
+
+        "AuthorityVerifier"
+        rule InIntf_Log_AuthorityVerifier EnvRule:
+            Pr: !(Proto)_Log/2
+                |  (new_x, new_x_1)
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                !(Proto)_Log_AuthorityVerifier/3
+                |  (added_rid, new_x, new_x_1)
+                |  EnvGroup EnvIn
+        
+
+        "AuthorityVerifier"
+        rule InIntf_InFact_AuthorityVerifier EnvRule:
+            Pr: In/1
+                |  (new_x)
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                (Proto)_InFact_AuthorityVerifier/2
+                |  (added_rid, new_x)
+                |  EnvGroup EnvIn
+        
+
+        "Verifier"
+        rule InIntf_AuthorityVerificationFinishedIn_Verifier EnvRule:
+            Pr: (Proto)_AuthorityVerificationFinishedIn/5
+                |  (new_x, new_x_1, new_x_2, new_x_3, new_x_4)
+                |  EnvGroup EnvIn
+            Ac:
+            Cncl:
+                (Proto)_AuthorityVerificationFinishedIn_Verifier/6
+                |  (added_rid, new_x, new_x_1, new_x_2, new_x_3, new_x_4)
+                |  EnvGroup EnvIn
+        
+
         "Verifier"
         rule OutIntf_OutFact_Verifier EnvRule:
             Pr: (Proto)_OutFact_Verifier/2
@@ -2187,6 +2243,30 @@ ADEM
             Cncl:
                 Out/1
                 |  (new_x)
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule OutIntf_PermitAuthorityVerificationOut_Verifier EnvRule:
+            Pr: (Proto)_PermitAuthorityVerificationOut_Verifier/4
+                |  (added_rid, new_x, new_x_1, new_x_2)
+                |  EnvGroup EnvOut
+            Ac:
+            Cncl:
+                (Proto)_PermitAuthorityVerificationOut/3
+                |  (new_x, new_x_1, new_x_2)
+                |  EnvGroup EnvOut
+        
+
+        "AuthorityVerifier"
+        rule OutIntf_AuthorityVerificationFinishedOut_AuthorityVerifier EnvRule:
+            Pr: (Proto)_AuthorityVerificationFinishedOut_AuthorityVerifier/6
+                |  (added_rid, new_x, new_x_1, new_x_2, new_x_3, new_x_4)
+                |  EnvGroup EnvOut
+            Ac:
+            Cncl:
+                (Proto)_AuthorityVerificationFinishedOut/5
+                |  (new_x, new_x_1, new_x_2, new_x_3, new_x_4)
                 |  EnvGroup EnvOut
         
 
@@ -2202,59 +2282,28 @@ ADEM
                 |  EnvGroup EnvIn
         
 
+        "AuthorityVerifier"
+        rule IoInIntf_VerifyAuthorityEndorsementRoleInit EnvRule:
+            Pr: Fr/1
+                |  (rid)
+                |  EnvGroup Env
+                (Proto)_PermitAuthorityVerificationIn/3
+                |  (oi, rootKey, E)
+                |  EnvGroup Env
+            Ac:
+            Cncl:
+                (Setup)_AuthorityVerifier/4
+                |  (rid, oi, rootKey, E)
+                |  EnvGroup EnvIn
+        
+
     Protocol Rules with rid
         "Verifier"
-        rule ReceiveNoEmblem StateRule "Verifier":
+        rule Invalid StateRule "Verifier":
             Pr: (Setup)_Verifier/1
                 |  (rid)
                 |  EnvGroup EnvIn
             Ac:
-            Cncl:
-                (St)_Verifier_0/1
-                |  (rid)
-                |  StateGroup
-                (Proto)_OutFact_Verifier/2
-                |  (rid, pubTerm(const_INVALID_pub()))
-                |  EnvGroup EnvOut
-        
-
-        "Verifier"
-        rule ReceiveInvalidEmblem StateRule "Verifier":
-            Pr: (Setup)_Verifier/1
-                |  (rid)
-                |  EnvGroup EnvIn
-                (Proto)_InFact_Verifier/2
-                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), tail), emblemSignature)))
-                |  EnvGroup EnvIn
-            Ac: (Proto)_Neq/2
-                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), tail), epk), ok())
-                |  ActionGroup
-            Cncl:
-                (St)_Verifier_0/1
-                |  (rid)
-                |  StateGroup
-                (Proto)_OutFact_Verifier/2
-                |  (rid, pubTerm(const_INVALID_pub()))
-                |  EnvGroup EnvOut
-        
-
-        "Verifier"
-        rule ReceiveMultipleEmblem StateRule "Verifier":
-            Pr: (Setup)_Verifier/1
-                |  (rid)
-                |  EnvGroup EnvIn
-                (Proto)_InFact_Verifier/2
-                |  (rid, pair(epk0, pair(pair(pubTerm(const_emblem_pub()), E0), emblemSignature0)))
-                |  EnvGroup EnvIn
-                (Proto)_InFact_Verifier/2
-                |  (rid, pair(epk1, pair(pair(pubTerm(const_emblem_pub()), E1), emblemSignature1)))
-                |  EnvGroup EnvIn
-            Ac: (Proto)_Eq/2
-                |  (verify(emblemSignature0, pair(pubTerm(const_emblem_pub()), E0), epk0), ok())
-                |  ActionGroup
-                (Proto)_Eq/2
-                |  (verify(emblemSignature1, pair(pubTerm(const_emblem_pub()), E1), epk1), ok())
-                |  ActionGroup
             Cncl:
                 (St)_Verifier_0/1
                 |  (rid)
@@ -2324,16 +2373,13 @@ ADEM
                 (St)_Verifier_1/3
                 |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
                 |  StateGroup
-                (Proto)_OutFact_Verifier/2
-                |  (rid, pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, oi)))
-                |  EnvGroup EnvOut
-                (Proto)_OutFact_Verifier/2
-                |  (rid, pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(oi, sha256(rootKey)))))
+                (Proto)_PermitAuthorityVerificationOut_Verifier/4
+                |  (rid, oi, rootKey, E)
                 |  EnvGroup EnvOut
         
 
         "Verifier"
-        rule OrgRootKeyLearn StateRule "Verifier":
+        rule VerifyOrganizationalEmblem StateRule "Verifier":
             Pr: (St)_Verifier_1/3
                 |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), endSignature)))
                 |  StateGroup
@@ -2361,30 +2407,16 @@ ADEM
                 (Proto)_Eq/2
                 |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), pk(skCA)), ok())
                 |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), pair(E, oi)), epk), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
+                |  (verify(endSignature, pair(pubTerm(const_end_int_pub()), pair(oi, epk)), rootKey), ok())
+                |  ActionGroup
                 (Proto)_VerifiedRootKey/2
                 |  (oi, sha256(rootKey))
                 |  ActionGroup
-                (Proto)_RootCertVerified/1
-                |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))), certRootDSig))
-                |  ActionGroup
-                (Proto)_LogInclusionVerified/2
-                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))))
-                |  ActionGroup
-                (Proto)_LogInclusionVerified/2
-                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(rootKey)), tlsPk))))
-                |  ActionGroup
-            Cncl:
-                (St)_Verifier_2/3
-                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(body, signature)))
-                |  StateGroup
-        
-
-        "Verifier"
-        rule VerifyOrganizationalEmblem StateRule "Verifier":
-            Pr: (St)_Verifier_2/3
-                |  (rid, pair(epk, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSignature)), pair(rootKey, pair(pair(pubTerm(const_end_int_pub()), pair(oi, epk)), signature)))
-                |  StateGroup
-            Ac: (Proto)_VerifiedEndorsed/4
+                (Proto)_VerifiedEndorsed/4
                 |  (rid, oi, E, epk)
                 |  ActionGroup
                 (Proto)_VerifiedRootEndorsement/3
@@ -2393,14 +2425,8 @@ ADEM
                 (Proto)_UsedRootKey/2
                 |  (oi, rootKey)
                 |  ActionGroup
-                (Proto)_Eq/2
-                |  (verify(emblemSignature, pair(pubTerm(const_emblem_pub()), pair(E, oi)), epk), ok())
-                |  ActionGroup
-                (Proto)_Eq/2
-                |  (verify(signature, pair(pubTerm(const_end_int_pub()), pair(oi, epk)), rootKey), ok())
-                |  ActionGroup
             Cncl:
-                (St)_Verifier_3/4
+                (St)_Verifier_2/4
                 |  (rid, oi, rootKey, E)
                 |  StateGroup
                 (Proto)_OutFact_Verifier/2
@@ -2411,63 +2437,36 @@ ADEM
                 |  EnvGroup EnvOut
         
 
-        "Verifier"
-        rule VerifyAuthorityEndorsementsTerminate StateRule "Verifier":
-            Pr: (St)_Verifier_3/4
+        "AuthorityVerifier"
+        rule VerifyAuthorityEndorsement StateRule "AuthorityVerifier":
+            Pr: (Setup)_AuthorityVerifier/4
                 |  (rid, oi, rootKey, E)
-                |  StateGroup
-            Ac:
-            Cncl:
-                (St)_Verifier_0/1
-                |  (rid)
-                |  StateGroup
-        
-
-        "Verifier"
-        rule ReceiveAuthorityEndorsement StateRule "Verifier":
-            Pr: (St)_Verifier_3/4
-                |  (rid, oi, rootKey, E)
-                |  StateGroup
-                !(Proto)_CA_Verifier/3
+                |  EnvGroup EnvIn
+                !(Proto)_CA_AuthorityVerifier/3
                 |  (rid, CA, skCA)
                 |  EnvGroup EnvIn
-                !(Proto)_Log_Verifier/3
+                !(Proto)_Log_AuthorityVerifier/3
                 |  (rid, Log, skCT)
                 |  EnvGroup EnvIn
-                (Proto)_InFact_Verifier/2
+                !(Proto)_CA_AuthorityVerifier/3
+                |  (rid, CA, skCA)
+                |  EnvGroup EnvIn
+                !(Proto)_Log_AuthorityVerifier/3
+                |  (rid, Log, skCT)
+                |  EnvGroup EnvIn
+                (Proto)_InFact_AuthorityVerifier/2
                 |  (rid, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
                 |  EnvGroup EnvIn
-            Ac:
-            Cncl:
-                (St)_Verifier_4/5
-                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-                |  StateGroup
-                (Proto)_OutFact_Verifier/2
-                |  (rid, pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, auth)))
-                |  EnvGroup EnvOut
-                (Proto)_OutFact_Verifier/2
-                |  (rid, pair(pubTerm(const_MHTLeafReq_pub()), pair(Log, pair(auth, sha256(authPk)))))
-                |  EnvGroup EnvOut
-        
-
-        "Verifier"
-        rule AuthRootKeyLearn StateRule "Verifier":
-            Pr: (St)_Verifier_4/5
-                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-                |  StateGroup
-                !(Proto)_CA_Verifier/3
-                |  (rid, CA, skCA)
-                |  EnvGroup EnvIn
-                !(Proto)_Log_Verifier/3
-                |  (rid, Log, skCT)
-                |  EnvGroup EnvIn
-                (Proto)_InFact_Verifier/2
+                (Proto)_InFact_AuthorityVerifier/2
                 |  (rid, pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), ctSigOi))
                 |  EnvGroup EnvIn
-                (Proto)_InFact_Verifier/2
+                (Proto)_InFact_AuthorityVerifier/2
                 |  (rid, pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))), ctSigRootD))
                 |  EnvGroup EnvIn
             Ac: (Proto)_Eq/2
+                |  (verify(endSignature, pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), authPk), ok())
+                |  ActionGroup
+                (Proto)_Eq/2
                 |  (verify(ctSigOi, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))), certOiSig))), pk(skCT)), ok())
                 |  ActionGroup
                 (Proto)_Eq/2
@@ -2479,48 +2478,54 @@ ADEM
                 (Proto)_Eq/2
                 |  (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), pk(skCA)), ok())
                 |  ActionGroup
-                (Proto)_VerifiedRootKey/2
-                |  (auth, sha256(authPk))
-                |  ActionGroup
-                (Proto)_RootCertVerified/1
-                |  (pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))), certRootDSig))
-                |  ActionGroup
-                (Proto)_LogInclusionVerified/2
-                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(auth, tlsPk))))
-                |  ActionGroup
-                (Proto)_LogInclusionVerified/2
-                |  (Log, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(auth, sha256(authPk)), tlsPk))))
-                |  ActionGroup
-            Cncl:
-                (St)_Verifier_5/5
-                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-                |  StateGroup
-        
-
-        "Verifier"
-        rule VerifyAuthorityEndorsement StateRule "Verifier":
-            Pr: (St)_Verifier_5/5
-                |  (rid, oi, rootKey, E, pair(authPk, pair(pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), endSignature)))
-                |  StateGroup
-            Ac: (Proto)_Neq/2
+                (Proto)_Neq/2
                 |  (auth, oi)
                 |  ActionGroup
-                (Proto)_Eq/2
-                |  (verify(endSignature, pair(pubTerm(const_end_ext_pub()), pair(auth, pair(oi, rootKey))), authPk), ok())
-                |  ActionGroup
-                (Proto)_VerifiedAuthorityEndorsement/5
-                |  (rid, auth, authPk, oi, rootKey)
+                (Proto)_VerifiedRootKey/2
+                |  (auth, sha256(authPk))
                 |  ActionGroup
                 (Proto)_UsedRootKey/2
                 |  (auth, authPk)
                 |  ActionGroup
             Cncl:
-                (St)_Verifier_3/4
+                (St)_AuthorityVerifier_0/1
+                |  (rid)
+                |  StateGroup
+                (Proto)_AuthorityVerificationFinishedOut_AuthorityVerifier/6
+                |  (rid, oi, rootKey, E, auth, authPk)
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule VerifyAuthorityEndorsementsOut StateRule "Verifier":
+            Pr: (St)_Verifier_2/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+                (Proto)_AuthorityVerificationFinishedIn_Verifier/6
+                |  (rid, oi, rootKey, E, auth, authPk)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_VerifiedAuthorityEndorsement/5
+                |  (rid, auth, authPk, oi, rootKey)
+                |  ActionGroup
+            Cncl:
+                (St)_Verifier_2/4
                 |  (rid, oi, rootKey, E)
                 |  StateGroup
                 (Proto)_OutFact_Verifier/2
                 |  (rid, pair(pubTerm(const_ENDORSED_pub()), auth))
                 |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule VerifyAuthorityEndorsementsTerminate StateRule "Verifier":
+            Pr: (St)_Verifier_2/4
+                |  (rid, oi, rootKey, E)
+                |  StateGroup
+            Ac:
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
         
 
 ==== Decomposition ==========
@@ -2558,12 +2563,65 @@ ADEM
             Cncl:
         
 
+        rule In_CA_AuthorityVerifier EnvRule:
+            Pr: !(Proto)_CA/2
+                |  (new_x, new_x_1)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_slIn_CA/3
+                |  (added_rid, new_x, new_x_1)
+                |  ActionGroup
+            Cncl:
+        
+
+        rule In_Log_AuthorityVerifier EnvRule:
+            Pr: !(Proto)_Log/2
+                |  (new_x, new_x_1)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_slIn_Log/3
+                |  (added_rid, new_x, new_x_1)
+                |  ActionGroup
+            Cncl:
+        
+
+        rule In_InFact_AuthorityVerifier EnvRule:
+            Pr: In/1
+                |  (new_x)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_slIn_InFact/2
+                |  (added_rid, new_x)
+                |  ActionGroup
+            Cncl:
+        
+
+        rule In_AuthorityVerificationFinishedIn_Verifier EnvRule:
+            Pr: (Proto)_AuthorityVerificationFinishedIn/5
+                |  (new_x, new_x_1, new_x_2, new_x_3, new_x_4)
+                |  EnvGroup EnvIn
+            Ac: (Proto)_slIn_AuthorityVerificationFinishedIn/6
+                |  (added_rid, new_x, new_x_1, new_x_2, new_x_3, new_x_4)
+                |  ActionGroup
+            Cncl:
+        
+
         rule In_Verifier_init EnvRule:
             Pr: Fr/1
                 |  (rid)
                 |  EnvGroup Env
             Ac: (Proto)_slIn_Setup_Verifier/1
                 |  (rid)
+                |  ActionGroup
+            Cncl:
+        
+
+        rule In_VerifyAuthorityEndorsementRoleInit EnvRule:
+            Pr: Fr/1
+                |  (rid)
+                |  EnvGroup Env
+                (Proto)_PermitAuthorityVerificationIn/3
+                |  (oi, rootKey, E)
+                |  EnvGroup Env
+            Ac: (Proto)_slIn_Setup_AuthorityVerifier/4
+                |  (rid, oi, rootKey, E)
                 |  ActionGroup
             Cncl:
         
@@ -2576,6 +2634,28 @@ ADEM
             Cncl:
                 Out/1
                 |  (new_x)
+                |  EnvGroup EnvOut
+        
+
+        rule Out_PermitAuthorityVerificationOut_Verifier EnvRule:
+            Pr:
+            Ac: (Proto)_slOut_PermitAuthorityVerificationOut/4
+                |  (added_rid, new_x, new_x_1, new_x_2)
+                |  ActionGroup
+            Cncl:
+                (Proto)_PermitAuthorityVerificationOut/3
+                |  (new_x, new_x_1, new_x_2)
+                |  EnvGroup EnvOut
+        
+
+        rule Out_AuthorityVerificationFinishedOut_AuthorityVerifier EnvRule:
+            Pr:
+            Ac: (Proto)_slOut_AuthorityVerificationFinishedOut/6
+                |  (added_rid, new_x, new_x_1, new_x_2, new_x_3, new_x_4)
+                |  ActionGroup
+            Cncl:
+                (Proto)_AuthorityVerificationFinishedOut/5
+                |  (new_x, new_x_1, new_x_2, new_x_3, new_x_4)
                 |  EnvGroup EnvOut
         
 
@@ -2616,6 +2696,54 @@ ADEM
                 |  EnvGroup EnvIn
         
 
+        "AuthorityVerifier"
+        rule In_CA_AuthorityVerifier EnvRule:
+            Pr:
+            Ac: (Proto)_slIn_CA/3
+                |  (added_rid, new_x, new_x_1)
+                |  ActionGroup
+            Cncl:
+                !(Proto)_CA_AuthorityVerifier/3
+                |  (added_rid, new_x, new_x_1)
+                |  EnvGroup EnvIn
+        
+
+        "AuthorityVerifier"
+        rule In_Log_AuthorityVerifier EnvRule:
+            Pr:
+            Ac: (Proto)_slIn_Log/3
+                |  (added_rid, new_x, new_x_1)
+                |  ActionGroup
+            Cncl:
+                !(Proto)_Log_AuthorityVerifier/3
+                |  (added_rid, new_x, new_x_1)
+                |  EnvGroup EnvIn
+        
+
+        "AuthorityVerifier"
+        rule In_InFact_AuthorityVerifier EnvRule:
+            Pr:
+            Ac: (Proto)_slIn_InFact/2
+                |  (added_rid, new_x)
+                |  ActionGroup
+            Cncl:
+                (Proto)_InFact_AuthorityVerifier/2
+                |  (added_rid, new_x)
+                |  EnvGroup EnvIn
+        
+
+        "Verifier"
+        rule In_AuthorityVerificationFinishedIn_Verifier EnvRule:
+            Pr:
+            Ac: (Proto)_slIn_AuthorityVerificationFinishedIn/6
+                |  (added_rid, new_x, new_x_1, new_x_2, new_x_3, new_x_4)
+                |  ActionGroup
+            Cncl:
+                (Proto)_AuthorityVerificationFinishedIn_Verifier/6
+                |  (added_rid, new_x, new_x_1, new_x_2, new_x_3, new_x_4)
+                |  EnvGroup EnvIn
+        
+
         "Verifier"
         rule In_Verifier_init EnvRule:
             Pr:
@@ -2625,6 +2753,18 @@ ADEM
             Cncl:
                 (Setup)_Verifier/1
                 |  (rid)
+                |  EnvGroup EnvIn
+        
+
+        "AuthorityVerifier"
+        rule In_VerifyAuthorityEndorsementRoleInit EnvRule:
+            Pr:
+            Ac: (Proto)_slIn_Setup_AuthorityVerifier/4
+                |  (rid, oi, rootKey, E)
+                |  ActionGroup
+            Cncl:
+                (Setup)_AuthorityVerifier/4
+                |  (rid, oi, rootKey, E)
                 |  EnvGroup EnvIn
         
 
@@ -2639,24 +2779,46 @@ ADEM
             Cncl:
         
 
+        "Verifier"
+        rule Out_PermitAuthorityVerificationOut_Verifier EnvRule:
+            Pr: (Proto)_PermitAuthorityVerificationOut_Verifier/4
+                |  (added_rid, new_x, new_x_1, new_x_2)
+                |  EnvGroup EnvOut
+            Ac: (Proto)_slOut_PermitAuthorityVerificationOut/4
+                |  (added_rid, new_x, new_x_1, new_x_2)
+                |  ActionGroup
+            Cncl:
+        
+
+        "AuthorityVerifier"
+        rule Out_AuthorityVerificationFinishedOut_AuthorityVerifier EnvRule:
+            Pr: (Proto)_AuthorityVerificationFinishedOut_AuthorityVerifier/6
+                |  (added_rid, new_x, new_x_1, new_x_2, new_x_3, new_x_4)
+                |  EnvGroup EnvOut
+            Ac: (Proto)_slOut_AuthorityVerificationFinishedOut/6
+                |  (added_rid, new_x, new_x_1, new_x_2, new_x_3, new_x_4)
+                |  ActionGroup
+            Cncl:
+        
+
 ==== Permissions ====
-    Perm Internal_R "e_ReceiveNoEmblem"
-    Perm Internal_R "e_ReceiveInvalidEmblem"
-    Perm Internal_R "e_ReceiveMultipleEmblem"
+    Perm Internal_R "e_Invalid"
     Perm Internal_R "e_ReceiveUnsignedEmblem"
     Perm Internal_R "e_ReceiveSignedEmblem"
     Perm Internal_R "e_ReceiveOrganizationalEmblem"
-    Perm Internal_R "e_OrgRootKeyLearn"
     Perm Internal_R "e_VerifyOrganizationalEmblem"
+    Perm Internal_R "e_VerifyAuthorityEndorsementsOut"
     Perm Internal_R "e_VerifyAuthorityEndorsementsTerminate"
-    Perm Internal_R "e_ReceiveAuthorityEndorsement"
-    Perm Internal_R "e_AuthRootKeyLearn"
-    Perm Internal_R "e_VerifyAuthorityEndorsement"
     Perm Out_RG "e_OutFact"
+    Perm Out_RG "e_PermitAuthorityVerificationOut"
     Perm In_RF "e_InFact"
     Perm In_RF "e_CA"
     Perm In_RF "e_Log"
+    Perm In_RF "e_AuthorityVerificationFinishedIn"
     Perm In_RF "e_Setup_Verifier"
+    Perm Internal_R "e_VerifyAuthorityEndorsement"
+    Perm Out_RG "e_AuthorityVerificationFinishedOut"
+    Perm In_RF "e_Setup_AuthorityVerifier"
 ==== Restrictions ==========
 
     Eq  (Eq(Bound_node_2, Bound_node_1)) ==> (Bound_node_2 == Bound_node_1)

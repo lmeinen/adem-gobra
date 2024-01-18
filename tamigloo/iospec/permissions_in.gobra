@@ -56,10 +56,58 @@ requires e_Log(tami_p, tami_rid)
 pure func get_e_Log_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
 
 
+// permission e_AuthorityVerificationFinishedIn
+pred e_AuthorityVerificationFinishedIn(ghost tami_p Place, ghost tami_rid Term)
+
+ghost
+requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
+pure func get_e_AuthorityVerificationFinishedIn_r1(tami_p Place, tami_rid Term) (r1 Term)
+
+ghost
+requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
+pure func get_e_AuthorityVerificationFinishedIn_r2(tami_p Place, tami_rid Term) (r2 Term)
+
+ghost
+requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
+pure func get_e_AuthorityVerificationFinishedIn_r3(tami_p Place, tami_rid Term) (r3 Term)
+
+ghost
+requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
+pure func get_e_AuthorityVerificationFinishedIn_r4(tami_p Place, tami_rid Term) (r4 Term)
+
+ghost
+requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
+pure func get_e_AuthorityVerificationFinishedIn_r5(tami_p Place, tami_rid Term) (r5 Term)
+
+ghost
+requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
+pure func get_e_AuthorityVerificationFinishedIn_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
+
+
 // permission e_Setup_Verifier
 pred e_Setup_Verifier(ghost tami_p Place, ghost tami_rid Term)
 
 ghost
 requires e_Setup_Verifier(tami_p, tami_rid)
 pure func get_e_Setup_Verifier_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
+
+
+// permission e_Setup_AuthorityVerifier
+pred e_Setup_AuthorityVerifier(ghost tami_p Place, ghost tami_rid Term)
+
+ghost
+requires e_Setup_AuthorityVerifier(tami_p, tami_rid)
+pure func get_e_Setup_AuthorityVerifier_r1(tami_p Place, tami_rid Term) (r1 Term)
+
+ghost
+requires e_Setup_AuthorityVerifier(tami_p, tami_rid)
+pure func get_e_Setup_AuthorityVerifier_r2(tami_p Place, tami_rid Term) (r2 Term)
+
+ghost
+requires e_Setup_AuthorityVerifier(tami_p, tami_rid)
+pure func get_e_Setup_AuthorityVerifier_r3(tami_p Place, tami_rid Term) (r3 Term)
+
+ghost
+requires e_Setup_AuthorityVerifier(tami_p, tami_rid)
+pure func get_e_Setup_AuthorityVerifier_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
 

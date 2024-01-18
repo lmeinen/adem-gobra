@@ -28,7 +28,11 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	// @ "github.com/lestrrat-go/jwx/v2/jwt"
+	// @ "fact"
+	// @ "fresh"
+	// @ "iospec"
 	// @ "place"
+	// @ "term"
 )
 
 // @ requires vfy.PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem() &&
@@ -36,7 +40,9 @@ import (
 // @ 	acc(jwt.Custom, 1/2) &&
 // @ 	tokens.CustomFields(jwt.Custom)
 func main() {
+	rid := rand.Uint64()
 	// @ ghost t := place.Place.place(0)
-	// fold place.token(t)
-	vfy.VerifyTokens(rand.Uint64(), [][]byte{}, jwk.NewSet() /*@, t @*/)
+	// @ inhale place.token(t)
+	// @ inhale iospec.P_Verifier(t, term.freshTerm(fresh.fr_integer64(rid)), mset[fact.Fact]{})
+	vfy.VerifyTokens(rid, [][]byte{}, jwk.NewSet() /*@, t @*/)
 }

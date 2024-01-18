@@ -8,15 +8,6 @@ import . "github.com/adem-wg/adem-proto/term"
 
 
 type Claim domain {
-    func Neq(t1 Term, t2 Term) Claim
-    func getNeq(f Claim) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term :: 
-            { Neq(t1, t2) } (
-                getNeq(Neq(t1, t2)) ==
-                seq[Term]{t1, t2})
-    }
-
     func Eq(t1 Term, t2 Term) Claim
     func getEq(f Claim) seq[Term]
     axiom  {
@@ -32,24 +23,6 @@ type Claim domain {
         forall t1 Term, t2 Term :: 
             { VerifiedRootKey(t1, t2) } (
                 getVerifiedRootKey(VerifiedRootKey(t1, t2)) ==
-                seq[Term]{t1, t2})
-    }
-
-    func RootCertVerified(t1 Term) Claim
-    func getRootCertVerified(f Claim) Term
-    axiom  {
-        forall t1 Term :: 
-            { RootCertVerified(t1) } (
-                getRootCertVerified(RootCertVerified(t1)) ==
-                t1)
-    }
-
-    func LogInclusionVerified(t1 Term, t2 Term) Claim
-    func getLogInclusionVerified(f Claim) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term :: 
-            { LogInclusionVerified(t1, t2) } (
-                getLogInclusionVerified(LogInclusionVerified(t1, t2)) ==
                 seq[Term]{t1, t2})
     }
 
@@ -87,6 +60,15 @@ type Claim domain {
             { VerifiedAuthorityEndorsement(t1, t2, t3, t4, t5) } (
                 getVerifiedAuthorityEndorsement(VerifiedAuthorityEndorsement(t1, t2, t3, t4, t5)) ==
                 seq[Term]{t1, t2, t3, t4, t5})
+    }
+
+    func Neq(t1 Term, t2 Term) Claim
+    func getNeq(f Claim) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { Neq(t1, t2) } (
+                getNeq(Neq(t1, t2)) ==
+                seq[Term]{t1, t2})
     }
 
 

@@ -149,7 +149,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ s := mset[fact.Fact]{}
 
 	// @ unfold iospec.P_Verifier(t, ridT, s)
-	// @ unfold iospec.phiRF_Verifier_16(t, ridT, s)
+	// @ unfold iospec.phiRF_Verifier_13(t, ridT, s)
 	// @ assert acc(iospec.e_Setup_Verifier(t, ridT))
 	// @ t1 := iospec.get_e_Setup_Verifier_placeDst(t, ridT)
 	// @ s1 := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
@@ -166,7 +166,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		a := mset[claim.Claim] {}
 		r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
 		@*/
-		// @ t2 := iospec.internBIO_e_ReceiveNoEmblem(t1, ridT, l, a, r)
+		// @ t2 := iospec.internBIO_e_Invalid(t1, ridT, l, a, r)
 		// @ s2 := fact.U(l, r, s1)
 		return ResultInvalid()
 	}
