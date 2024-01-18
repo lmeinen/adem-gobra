@@ -5,9 +5,15 @@ package roots
 import (
 	"errors"
 	"log"
+	"math/rand"
 
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	// @ "fact"
+	// @ "fresh"
+	// @ "iospec"
+	// @ "place"
+	// @ "term"
 )
 
 var ErrNoLogConfig = errors.New("no log claim")
@@ -45,7 +51,13 @@ func VerifyBindingCerts(iss string, key jwk.Key, logs []*tokens.LogConfig) (r []
 			result.Ok = false
 		} else {
 			result.LogURL = cl.BaseURI()
-			err := VerifyBinding(cl, logConfig.Hash.Raw, iss, key)
+
+			// FIXME: (lmeinen) We `sort of' guarantee soundness by only inhaling the IOspec at the subrole's call site
+			rid := rand.Uint64()
+			// @ ghost t := place.Place.place(0)
+			// @ inhale place.token(t)
+			// @ inhale iospec.P_AuthorityVerifier(t, term.freshTerm(fresh.fr_integer64(rid)), mset[fact.Fact]{})
+			err := VerifyBinding(rid, cl, logConfig.Hash.Raw, iss, key /*@, t @*/)
 			if err != nil {
 				log.Printf("not verify binding: %s", err)
 			}

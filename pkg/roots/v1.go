@@ -24,6 +24,11 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/transparency-dev/merkle/proof"
 	"github.com/transparency-dev/merkle/rfc6962"
+	// @ "fact"
+	// @ "fresh"
+	// @ "iospec"
+	// @ "place"
+	// @ "term"
 )
 
 var ErrIssNoHostName = errors.New("issuer has no hostname")
@@ -38,7 +43,24 @@ var ErrWrongEntryType = errors.New("do not recognize entry type")
 // @ preserves acc(hash)
 // @ preserves acc(cl) && acc(cl.jsonClient)
 // @ preserves rootKey != nil && rootKey.Mem()
-func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk.Key) error {
+// @ requires place.token(t) && iospec.P_AuthorityVerifier(t, term.freshTerm(fresh.fr_integer64(rid)), mset[fact.Fact]{})
+// ensures err == nil ==> iospec.e_AuthorityVerificationFinishedOut(t, rid, oi, rootKey, E, auth, authPk)
+func VerifyBinding(rid uint64, cl *client.LogClient, hash []byte, issuer string, rootKey jwk.Key /*@, ghost t place.Place @*/) error {
+	// @ ridT := term.freshTerm(fresh.fr_integer64(rid))
+	// @ s := mset[fact.Fact]{}
+
+	// @ unfold iospec.P_AuthorityVerifier(t, ridT, s)
+	// @ unfold iospec.phiRF_AuthorityVerifier_5(t, ridT, s)
+	// @ assert acc(iospec.e_Setup_AuthorityVerifier(t, ridT))
+	// @ oiT := iospec.get_e_Setup_AuthorityVerifier_r1(t, ridT)
+	// @ rootKeyT := iospec.get_e_Setup_AuthorityVerifier_r2(t, ridT)
+	// @ ET := iospec.get_e_Setup_AuthorityVerifier_r3(t, ridT)
+	// @ t1 := iospec.get_e_Setup_AuthorityVerifier_placeDst(t, ridT)
+	// @ s1 := mset[fact.Fact] { fact.Setup_AuthorityVerifier(ridT, oiT, rootKeyT, ET) }
+	// TODO: Is there a better way to do this? Or is this just the assumption that library functions are allowed to make
+	// @ inhale place.token(t1)
+	// @ assert iospec.P_AuthorityVerifier(t1, ridT, s1)
+
 	kid, err := tokens.CalcKID(rootKey /*@, some(perm(1/2)) @*/)
 	if err != nil {
 		log.Print("could not calculate KID")
