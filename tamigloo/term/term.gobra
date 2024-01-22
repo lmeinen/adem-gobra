@@ -1,5 +1,6 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
+// ##(--disablePureFunctsTerminationRequirement)
 package term
 
 

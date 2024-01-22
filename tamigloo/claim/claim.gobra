@@ -1,5 +1,6 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
+// ##(--disablePureFunctsTerminationRequirement)
 package claim
 
 
@@ -26,6 +27,15 @@ type Claim domain {
                 seq[Term]{t1, t2})
     }
 
+    func UsedRootKey(t1 Term, t2 Term) Claim
+    func getUsedRootKey(f Claim) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { UsedRootKey(t1, t2) } (
+                getUsedRootKey(UsedRootKey(t1, t2)) ==
+                seq[Term]{t1, t2})
+    }
+
     func VerifiedEndorsed(t1 Term, t2 Term, t3 Term, t4 Term) Claim
     func getVerifiedEndorsed(f Claim) seq[Term]
     axiom  {
@@ -44,12 +54,12 @@ type Claim domain {
                 seq[Term]{t1, t2, t3})
     }
 
-    func UsedRootKey(t1 Term, t2 Term) Claim
-    func getUsedRootKey(f Claim) seq[Term]
+    func Neq(t1 Term, t2 Term) Claim
+    func getNeq(f Claim) seq[Term]
     axiom  {
         forall t1 Term, t2 Term :: 
-            { UsedRootKey(t1, t2) } (
-                getUsedRootKey(UsedRootKey(t1, t2)) ==
+            { Neq(t1, t2) } (
+                getNeq(Neq(t1, t2)) ==
                 seq[Term]{t1, t2})
     }
 
@@ -60,15 +70,6 @@ type Claim domain {
             { VerifiedAuthorityEndorsement(t1, t2, t3, t4, t5) } (
                 getVerifiedAuthorityEndorsement(VerifiedAuthorityEndorsement(t1, t2, t3, t4, t5)) ==
                 seq[Term]{t1, t2, t3, t4, t5})
-    }
-
-    func Neq(t1 Term, t2 Term) Claim
-    func getNeq(f Claim) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term :: 
-            { Neq(t1, t2) } (
-                getNeq(Neq(t1, t2)) ==
-                seq[Term]{t1, t2})
     }
 
 

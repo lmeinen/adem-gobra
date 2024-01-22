@@ -8,6 +8,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
 )
 
 type ADEMToken struct {
@@ -77,5 +78,9 @@ pred EndorsementList(ts []*ADEMToken) {
 	acc(ts) &&
 	forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> EndListElem(i, ts[i])
 }
+
+ghost
+requires acc(ValidToken(t), _)
+pure func Abs(t *ADEMToken) (res goblib.AbsToken)
 
 @*/

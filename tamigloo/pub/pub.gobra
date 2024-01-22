@@ -1,5 +1,6 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
+// ##(--disablePureFunctsTerminationRequirement)
 package pub
 
 
@@ -17,8 +18,6 @@ type Pub domain {
     func const_certificate_pub() Pub
 
     func const_cert_pub() Pub
-
-    func const_MHTLeafReq_pub() Pub
 
     func const_MHTLeaf_pub() Pub
 

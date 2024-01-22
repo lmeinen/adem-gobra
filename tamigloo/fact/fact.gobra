@@ -1,5 +1,6 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
+// ##(--disablePureFunctsTerminationRequirement)
 package fact
 
 
@@ -11,6 +12,94 @@ import . "github.com/adem-wg/adem-proto/fresh"
 
 type Fact domain {
     // tag 0
+    func Setup_TokenVerifier(t1 Term) Fact
+    func getSetup_TokenVerifier(f Fact) Term
+    axiom  {
+        forall t1 Term :: 
+            { Setup_TokenVerifier(t1) } (
+                getSetup_TokenVerifier(Setup_TokenVerifier(t1)) ==
+                t1 &&
+                  getTag(Setup_TokenVerifier(t1)) == 0)
+    }
+
+    // tag 1
+    func PermitTokenVerificationIn_TokenVerifier(t1 Term, t2 Term) Fact
+    func getPermitTokenVerificationIn_TokenVerifier(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { PermitTokenVerificationIn_TokenVerifier(t1, t2) } (
+                getPermitTokenVerificationIn_TokenVerifier(PermitTokenVerificationIn_TokenVerifier(t1, t2)) ==
+                seq[Term]{t1, t2} &&
+                                 getTag(PermitTokenVerificationIn_TokenVerifier(t1, t2)) == 1)
+    }
+
+    // tag 2
+    func St_TokenVerifier_0(t1 Term) Fact
+    func getSt_TokenVerifier_0(f Fact) Term
+    axiom  {
+        forall t1 Term :: 
+            { St_TokenVerifier_0(t1) } (
+                getSt_TokenVerifier_0(St_TokenVerifier_0(t1)) ==
+                t1 &&
+                  getTag(St_TokenVerifier_0(t1)) == 2)
+    }
+
+    // tag 3
+    func ValidTokenOut_TokenVerifier(t1 Term, t2 Term) Fact
+    func getValidTokenOut_TokenVerifier(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { ValidTokenOut_TokenVerifier(t1, t2) } (
+                getValidTokenOut_TokenVerifier(ValidTokenOut_TokenVerifier(t1, t2)) ==
+                seq[Term]{t1, t2} &&
+                                 getTag(ValidTokenOut_TokenVerifier(t1, t2)) == 3)
+    }
+
+    // tag 4
+    func CA_TokenVerifier(t1 Term, t2 Term, t3 Term) Fact
+    func getCA_TokenVerifier(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term :: 
+            { CA_TokenVerifier(t1, t2, t3) } (
+                getCA_TokenVerifier(CA_TokenVerifier(t1, t2, t3)) ==
+                seq[Term]{t1, t2, t3} &&
+                                     getTag(CA_TokenVerifier(t1, t2, t3)) == 4)
+    }
+
+    // tag 5
+    func Log_TokenVerifier(t1 Term, t2 Term, t3 Term) Fact
+    func getLog_TokenVerifier(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term :: 
+            { Log_TokenVerifier(t1, t2, t3) } (
+                getLog_TokenVerifier(Log_TokenVerifier(t1, t2, t3)) ==
+                seq[Term]{t1, t2, t3} &&
+                                     getTag(Log_TokenVerifier(t1, t2, t3)) == 5)
+    }
+
+    // tag 6
+    func InFact_TokenVerifier(t1 Term, t2 Term) Fact
+    func getInFact_TokenVerifier(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { InFact_TokenVerifier(t1, t2) } (
+                getInFact_TokenVerifier(InFact_TokenVerifier(t1, t2)) ==
+                seq[Term]{t1, t2} &&
+                                 getTag(InFact_TokenVerifier(t1, t2)) == 6)
+    }
+
+    // tag 7
+    func VerifiedPk_TokenVerifier(t1 Term, t2 Term) Fact
+    func getVerifiedPk_TokenVerifier(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { VerifiedPk_TokenVerifier(t1, t2) } (
+                getVerifiedPk_TokenVerifier(VerifiedPk_TokenVerifier(t1, t2)) ==
+                seq[Term]{t1, t2} &&
+                                 getTag(VerifiedPk_TokenVerifier(t1, t2)) == 7)
+    }
+
+    // tag 8
     func Setup_Verifier(t1 Term) Fact
     func getSetup_Verifier(f Fact) Term
     axiom  {
@@ -18,10 +107,10 @@ type Fact domain {
             { Setup_Verifier(t1) } (
                 getSetup_Verifier(Setup_Verifier(t1)) ==
                 t1 &&
-                  getTag(Setup_Verifier(t1)) == 0)
+                  getTag(Setup_Verifier(t1)) == 8)
     }
 
-    // tag 1
+    // tag 9
     func St_Verifier_0(t1 Term) Fact
     func getSt_Verifier_0(f Fact) Term
     axiom  {
@@ -29,10 +118,10 @@ type Fact domain {
             { St_Verifier_0(t1) } (
                 getSt_Verifier_0(St_Verifier_0(t1)) ==
                 t1 &&
-                  getTag(St_Verifier_0(t1)) == 1)
+                  getTag(St_Verifier_0(t1)) == 9)
     }
 
-    // tag 2
+    // tag 10
     func OutFact_Verifier(t1 Term, t2 Term) Fact
     func getOutFact_Verifier(f Fact) seq[Term]
     axiom  {
@@ -40,10 +129,21 @@ type Fact domain {
             { OutFact_Verifier(t1, t2) } (
                 getOutFact_Verifier(OutFact_Verifier(t1, t2)) ==
                 seq[Term]{t1, t2} &&
-                                 getTag(OutFact_Verifier(t1, t2)) == 2)
+                                 getTag(OutFact_Verifier(t1, t2)) == 10)
     }
 
-    // tag 3
+    // tag 11
+    func St_Verifier_1(t1 Term) Fact
+    func getSt_Verifier_1(f Fact) Term
+    axiom  {
+        forall t1 Term :: 
+            { St_Verifier_1(t1) } (
+                getSt_Verifier_1(St_Verifier_1(t1)) ==
+                t1 &&
+                  getTag(St_Verifier_1(t1)) == 11)
+    }
+
+    // tag 12
     func InFact_Verifier(t1 Term, t2 Term) Fact
     func getInFact_Verifier(f Fact) seq[Term]
     axiom  {
@@ -51,139 +151,51 @@ type Fact domain {
             { InFact_Verifier(t1, t2) } (
                 getInFact_Verifier(InFact_Verifier(t1, t2)) ==
                 seq[Term]{t1, t2} &&
-                                 getTag(InFact_Verifier(t1, t2)) == 3)
-    }
-
-    // tag 4
-    func CA_Verifier(t1 Term, t2 Term, t3 Term) Fact
-    func getCA_Verifier(f Fact) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term, t3 Term :: 
-            { CA_Verifier(t1, t2, t3) } (
-                getCA_Verifier(CA_Verifier(t1, t2, t3)) ==
-                seq[Term]{t1, t2, t3} &&
-                                     getTag(CA_Verifier(t1, t2, t3)) == 4)
-    }
-
-    // tag 5
-    func Log_Verifier(t1 Term, t2 Term, t3 Term) Fact
-    func getLog_Verifier(f Fact) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term, t3 Term :: 
-            { Log_Verifier(t1, t2, t3) } (
-                getLog_Verifier(Log_Verifier(t1, t2, t3)) ==
-                seq[Term]{t1, t2, t3} &&
-                                     getTag(Log_Verifier(t1, t2, t3)) == 5)
-    }
-
-    // tag 6
-    func St_Verifier_1(t1 Term, t2 Term, t3 Term) Fact
-    func getSt_Verifier_1(f Fact) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term, t3 Term :: 
-            { St_Verifier_1(t1, t2, t3) } (
-                getSt_Verifier_1(St_Verifier_1(t1, t2, t3)) ==
-                seq[Term]{t1, t2, t3} &&
-                                     getTag(St_Verifier_1(t1, t2, t3)) == 6)
-    }
-
-    // tag 7
-    func PermitAuthorityVerificationOut_Verifier(t1 Term, t2 Term, t3 Term, t4 Term) Fact
-    func getPermitAuthorityVerificationOut_Verifier(f Fact) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term, t3 Term, t4 Term :: 
-            { PermitAuthorityVerificationOut_Verifier(t1, t2, t3, t4) } (
-                getPermitAuthorityVerificationOut_Verifier(PermitAuthorityVerificationOut_Verifier(t1, t2, t3, t4)) ==
-                seq[Term]{t1, t2, t3, t4} &&
-                                         getTag(PermitAuthorityVerificationOut_Verifier(t1, t2, t3, t4)) == 7)
-    }
-
-    // tag 8
-    func St_Verifier_2(t1 Term, t2 Term, t3 Term, t4 Term) Fact
-    func getSt_Verifier_2(f Fact) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term, t3 Term, t4 Term :: 
-            { St_Verifier_2(t1, t2, t3, t4) } (
-                getSt_Verifier_2(St_Verifier_2(t1, t2, t3, t4)) ==
-                seq[Term]{t1, t2, t3, t4} &&
-                                         getTag(St_Verifier_2(t1, t2, t3, t4)) == 8)
-    }
-
-    // tag 9
-    func AuthorityVerificationFinishedIn_Verifier(t1 Term, t2 Term, t3 Term, t4 Term, t5 Term, t6 Term) Fact
-    func getAuthorityVerificationFinishedIn_Verifier(f Fact) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term, t3 Term, t4 Term, t5 Term, t6 Term :: 
-            { AuthorityVerificationFinishedIn_Verifier(t1, t2, t3, t4, t5, t6) } (
-                getAuthorityVerificationFinishedIn_Verifier(AuthorityVerificationFinishedIn_Verifier(t1, t2, t3, t4, t5, t6)) ==
-                seq[Term]{t1, t2, t3, t4, t5, t6} &&
-                                                 getTag(AuthorityVerificationFinishedIn_Verifier(t1, t2, t3, t4, t5, t6)) == 9)
-    }
-
-    // tag 10
-    func Setup_AuthorityVerifier(t1 Term, t2 Term, t3 Term, t4 Term) Fact
-    func getSetup_AuthorityVerifier(f Fact) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term, t3 Term, t4 Term :: 
-            { Setup_AuthorityVerifier(t1, t2, t3, t4) } (
-                getSetup_AuthorityVerifier(Setup_AuthorityVerifier(t1, t2, t3, t4)) ==
-                seq[Term]{t1, t2, t3, t4} &&
-                                         getTag(Setup_AuthorityVerifier(t1, t2, t3, t4)) == 10)
-    }
-
-    // tag 11
-    func CA_AuthorityVerifier(t1 Term, t2 Term, t3 Term) Fact
-    func getCA_AuthorityVerifier(f Fact) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term, t3 Term :: 
-            { CA_AuthorityVerifier(t1, t2, t3) } (
-                getCA_AuthorityVerifier(CA_AuthorityVerifier(t1, t2, t3)) ==
-                seq[Term]{t1, t2, t3} &&
-                                     getTag(CA_AuthorityVerifier(t1, t2, t3)) == 11)
-    }
-
-    // tag 12
-    func Log_AuthorityVerifier(t1 Term, t2 Term, t3 Term) Fact
-    func getLog_AuthorityVerifier(f Fact) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term, t3 Term :: 
-            { Log_AuthorityVerifier(t1, t2, t3) } (
-                getLog_AuthorityVerifier(Log_AuthorityVerifier(t1, t2, t3)) ==
-                seq[Term]{t1, t2, t3} &&
-                                     getTag(Log_AuthorityVerifier(t1, t2, t3)) == 12)
+                                 getTag(InFact_Verifier(t1, t2)) == 12)
     }
 
     // tag 13
-    func InFact_AuthorityVerifier(t1 Term, t2 Term) Fact
-    func getInFact_AuthorityVerifier(f Fact) seq[Term]
+    func PermitTokenVerificationOut_Verifier(t1 Term, t2 Term) Fact
+    func getPermitTokenVerificationOut_Verifier(f Fact) seq[Term]
     axiom  {
         forall t1 Term, t2 Term :: 
-            { InFact_AuthorityVerifier(t1, t2) } (
-                getInFact_AuthorityVerifier(InFact_AuthorityVerifier(t1, t2)) ==
+            { PermitTokenVerificationOut_Verifier(t1, t2) } (
+                getPermitTokenVerificationOut_Verifier(PermitTokenVerificationOut_Verifier(t1, t2)) ==
                 seq[Term]{t1, t2} &&
-                                 getTag(InFact_AuthorityVerifier(t1, t2)) == 13)
+                                 getTag(PermitTokenVerificationOut_Verifier(t1, t2)) == 13)
     }
 
     // tag 14
-    func St_AuthorityVerifier_0(t1 Term) Fact
-    func getSt_AuthorityVerifier_0(f Fact) Term
+    func St_Verifier_2(t1 Term) Fact
+    func getSt_Verifier_2(f Fact) Term
     axiom  {
         forall t1 Term :: 
-            { St_AuthorityVerifier_0(t1) } (
-                getSt_AuthorityVerifier_0(St_AuthorityVerifier_0(t1)) ==
+            { St_Verifier_2(t1) } (
+                getSt_Verifier_2(St_Verifier_2(t1)) ==
                 t1 &&
-                  getTag(St_AuthorityVerifier_0(t1)) == 14)
+                  getTag(St_Verifier_2(t1)) == 14)
     }
 
     // tag 15
-    func AuthorityVerificationFinishedOut_AuthorityVerifier(t1 Term, t2 Term, t3 Term, t4 Term, t5 Term, t6 Term) Fact
-    func getAuthorityVerificationFinishedOut_AuthorityVerifier(f Fact) seq[Term]
+    func ValidTokenIn_Verifier(t1 Term, t2 Term) Fact
+    func getValidTokenIn_Verifier(f Fact) seq[Term]
     axiom  {
-        forall t1 Term, t2 Term, t3 Term, t4 Term, t5 Term, t6 Term :: 
-            { AuthorityVerificationFinishedOut_AuthorityVerifier(t1, t2, t3, t4, t5, t6) } (
-                getAuthorityVerificationFinishedOut_AuthorityVerifier(AuthorityVerificationFinishedOut_AuthorityVerifier(t1, t2, t3, t4, t5, t6)) ==
-                seq[Term]{t1, t2, t3, t4, t5, t6} &&
-                                                 getTag(AuthorityVerificationFinishedOut_AuthorityVerifier(t1, t2, t3, t4, t5, t6)) == 15)
+        forall t1 Term, t2 Term :: 
+            { ValidTokenIn_Verifier(t1, t2) } (
+                getValidTokenIn_Verifier(ValidTokenIn_Verifier(t1, t2)) ==
+                seq[Term]{t1, t2} &&
+                                 getTag(ValidTokenIn_Verifier(t1, t2)) == 15)
+    }
+
+    // tag 16
+    func St_Verifier_3(t1 Term, t2 Term) Fact
+    func getSt_Verifier_3(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term :: 
+            { St_Verifier_3(t1, t2) } (
+                getSt_Verifier_3(St_Verifier_3(t1, t2)) ==
+                seq[Term]{t1, t2} &&
+                                 getTag(St_Verifier_3(t1, t2)) == 16)
     }
 
     // each fact has a unique tag:
@@ -194,7 +206,7 @@ type Fact domain {
         forall f Fact :: 
             { persistent(f) } (
                 persistent(f) ==
-                (getTag(f) == 4 || getTag(f) == 5 || getTag(f) == 11 || getTag(f) == 12))
+                (getTag(f) == 4 || getTag(f) == 5))
     }
 
 }

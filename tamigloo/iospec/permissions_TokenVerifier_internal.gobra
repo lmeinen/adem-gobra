@@ -1,0 +1,66 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
+// ##(--disablePureFunctsTerminationRequirement)
+package iospec
+
+
+
+import . "github.com/adem-wg/adem-proto/claim"
+import . "github.com/adem-wg/adem-proto/fact"
+import . "github.com/adem-wg/adem-proto/term"
+import . "github.com/adem-wg/adem-proto/place"
+import . "github.com/adem-wg/adem-proto/pub"
+import . "github.com/adem-wg/adem-proto/fresh"
+
+
+// permission e_VerifyUnsignedEmblem
+pred e_VerifyUnsignedEmblem(ghost tami_p Place, ghost rid Term, ghost E Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_VerifyUnsignedEmblem(tami_p, rid, E, tami_lp, tami_ap, tami_rp)
+pure func get_e_VerifyUnsignedEmblem_placeDst(tami_p Place, rid Term, E Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_VerifyUnsignedEmblem(tami_p, rid, E, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_VerifyUnsignedEmblem_placeDst(tami_p, rid, E, tami_lp, tami_ap, tami_rp))
+func internBIO_e_VerifyUnsignedEmblem(tami_p Place, rid Term, E Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_VerifyAnonToken
+pred e_VerifyAnonToken(ghost tami_p Place, ghost rid Term, ghost key Term, ghost tokenBody Term, ghost tokenSig Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_VerifyAnonToken(tami_p, rid, key, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp)
+pure func get_e_VerifyAnonToken_placeDst(tami_p Place, rid Term, key Term, tokenBody Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_VerifyAnonToken(tami_p, rid, key, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_VerifyAnonToken_placeDst(tami_p, rid, key, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp))
+func internBIO_e_VerifyAnonToken(tami_p Place, rid Term, key Term, tokenBody Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_VerifyRootToken
+pred e_VerifyRootToken(ghost tami_p Place, ghost rid Term, ghost key Term, ghost oi Term, ghost tokenBody Term, ghost tokenSig Term, ghost CA Term, ghost skCA Term, ghost Log Term, ghost skCT Term, ghost tlsPk Term, ghost certOiSig Term, ghost ctSigOi Term, ghost certRootDSig Term, ghost ctSigRootD Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_VerifyRootToken(tami_p, rid, key, oi, tokenBody, tokenSig, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp)
+pure func get_e_VerifyRootToken_placeDst(tami_p Place, rid Term, key Term, oi Term, tokenBody Term, tokenSig Term, CA Term, skCA Term, Log Term, skCT Term, tlsPk Term, certOiSig Term, ctSigOi Term, certRootDSig Term, ctSigRootD Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_VerifyRootToken(tami_p, rid, key, oi, tokenBody, tokenSig, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_VerifyRootToken_placeDst(tami_p, rid, key, oi, tokenBody, tokenSig, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp))
+func internBIO_e_VerifyRootToken(tami_p Place, rid Term, key Term, oi Term, tokenBody Term, tokenSig Term, CA Term, skCA Term, Log Term, skCT Term, tlsPk Term, certOiSig Term, ctSigOi Term, certRootDSig Term, ctSigRootD Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_VerifyInternalToken
+pred e_VerifyInternalToken(ghost tami_p Place, ghost rid Term, ghost key Term, ghost oi Term, ghost tokenBody Term, ghost tokenSig Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_VerifyInternalToken(tami_p, rid, key, oi, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp)
+pure func get_e_VerifyInternalToken_placeDst(tami_p Place, rid Term, key Term, oi Term, tokenBody Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_VerifyInternalToken(tami_p, rid, key, oi, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_VerifyInternalToken_placeDst(tami_p, rid, key, oi, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp))
+func internBIO_e_VerifyInternalToken(tami_p Place, rid Term, key Term, oi Term, tokenBody Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+

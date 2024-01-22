@@ -1,5 +1,6 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
+// ##(--disablePureFunctsTerminationRequirement)
 package iospec
 
 
@@ -12,16 +13,16 @@ import . "github.com/adem-wg/adem-proto/pub"
 import . "github.com/adem-wg/adem-proto/fresh"
 
 
-// permission e_InFact
-pred e_InFact(ghost tami_p Place, ghost tami_rid Term)
+// permission e_PermitTokenVerificationIn
+pred e_PermitTokenVerificationIn(ghost tami_p Place, ghost tami_rid Term)
 
 ghost
-requires e_InFact(tami_p, tami_rid)
-pure func get_e_InFact_r1(tami_p Place, tami_rid Term) (r1 Term)
+requires e_PermitTokenVerificationIn(tami_p, tami_rid)
+pure func get_e_PermitTokenVerificationIn_r1(tami_p Place, tami_rid Term) (r1 Term)
 
 ghost
-requires e_InFact(tami_p, tami_rid)
-pure func get_e_InFact_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
+requires e_PermitTokenVerificationIn(tami_p, tami_rid)
+pure func get_e_PermitTokenVerificationIn_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
 
 
 // permission e_CA
@@ -56,32 +57,48 @@ requires e_Log(tami_p, tami_rid)
 pure func get_e_Log_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
 
 
-// permission e_AuthorityVerificationFinishedIn
-pred e_AuthorityVerificationFinishedIn(ghost tami_p Place, ghost tami_rid Term)
+// permission e_InFact
+pred e_InFact(ghost tami_p Place, ghost tami_rid Term)
 
 ghost
-requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
-pure func get_e_AuthorityVerificationFinishedIn_r1(tami_p Place, tami_rid Term) (r1 Term)
+requires e_InFact(tami_p, tami_rid)
+pure func get_e_InFact_r1(tami_p Place, tami_rid Term) (r1 Term)
 
 ghost
-requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
-pure func get_e_AuthorityVerificationFinishedIn_r2(tami_p Place, tami_rid Term) (r2 Term)
+requires e_InFact(tami_p, tami_rid)
+pure func get_e_InFact_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
+
+
+// permission e_VerifiedPk
+pred e_VerifiedPk(ghost tami_p Place, ghost tami_rid Term)
 
 ghost
-requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
-pure func get_e_AuthorityVerificationFinishedIn_r3(tami_p Place, tami_rid Term) (r3 Term)
+requires e_VerifiedPk(tami_p, tami_rid)
+pure func get_e_VerifiedPk_r1(tami_p Place, tami_rid Term) (r1 Term)
 
 ghost
-requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
-pure func get_e_AuthorityVerificationFinishedIn_r4(tami_p Place, tami_rid Term) (r4 Term)
+requires e_VerifiedPk(tami_p, tami_rid)
+pure func get_e_VerifiedPk_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
+
+
+// permission e_Setup_TokenVerifier
+pred e_Setup_TokenVerifier(ghost tami_p Place, ghost tami_rid Term)
 
 ghost
-requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
-pure func get_e_AuthorityVerificationFinishedIn_r5(tami_p Place, tami_rid Term) (r5 Term)
+requires e_Setup_TokenVerifier(tami_p, tami_rid)
+pure func get_e_Setup_TokenVerifier_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
+
+
+// permission e_ValidTokenIn
+pred e_ValidTokenIn(ghost tami_p Place, ghost tami_rid Term)
 
 ghost
-requires e_AuthorityVerificationFinishedIn(tami_p, tami_rid)
-pure func get_e_AuthorityVerificationFinishedIn_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
+requires e_ValidTokenIn(tami_p, tami_rid)
+pure func get_e_ValidTokenIn_r1(tami_p Place, tami_rid Term) (r1 Term)
+
+ghost
+requires e_ValidTokenIn(tami_p, tami_rid)
+pure func get_e_ValidTokenIn_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
 
 
 // permission e_Setup_Verifier
@@ -90,24 +107,4 @@ pred e_Setup_Verifier(ghost tami_p Place, ghost tami_rid Term)
 ghost
 requires e_Setup_Verifier(tami_p, tami_rid)
 pure func get_e_Setup_Verifier_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
-
-
-// permission e_Setup_AuthorityVerifier
-pred e_Setup_AuthorityVerifier(ghost tami_p Place, ghost tami_rid Term)
-
-ghost
-requires e_Setup_AuthorityVerifier(tami_p, tami_rid)
-pure func get_e_Setup_AuthorityVerifier_r1(tami_p Place, tami_rid Term) (r1 Term)
-
-ghost
-requires e_Setup_AuthorityVerifier(tami_p, tami_rid)
-pure func get_e_Setup_AuthorityVerifier_r2(tami_p Place, tami_rid Term) (r2 Term)
-
-ghost
-requires e_Setup_AuthorityVerifier(tami_p, tami_rid)
-pure func get_e_Setup_AuthorityVerifier_r3(tami_p Place, tami_rid Term) (r3 Term)
-
-ghost
-requires e_Setup_AuthorityVerifier(tami_p, tami_rid)
-pure func get_e_Setup_AuthorityVerifier_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
 

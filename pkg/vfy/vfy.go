@@ -93,20 +93,32 @@ type TokenVerificationResult struct {
 // @ 	km.lock.LockInv() == LockInv!<km!>
 // @ requires acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 // @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
-func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
+func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
 	// @ share threadCount, loc, results, vfyWaitGroup
+	// @ ghost t@ := place.Place.place(0)
+	// @ ghost ridT@ := term.freshTerm(fresh.fr_integer64(rid))
+	// @ ghost s := mset[fact.Fact]{}
+	// @ inhale place.token(t) && iospec.P_Verifier(t, ridT, s)
 	// @ unfold acc(PkgMems(), 1 / threadCount)
 	result /*@@@*/ := TokenVerificationResult{}
+	// @ ghost tokenT@ := term.ok()
 	defer
-	// @ requires acc(&threadCount) && acc(&loc) && acc(&results) && acc(&vfyWaitGroup)
+	// @ requires acc(&threadCount) && acc(&loc) && acc(&results) && acc(&vfyWaitGroup) && acc(&tokenT) && acc(&t) && acc(&ridT)
 	// @ requires threadCount > 0
 	// @ requires acc(&result) &&
-	// @ 			(result.err == nil ==> result.token != nil && ValidToken(result.token)) &&
+	// @ 			(result.err == nil ==> (
+	// @ 				result.token != nil &&
+	// @ 				ValidToken(result.token) &&
+	// @ 				goblib.gamma(tokenT) == Abs(result.token) &&
+	// @ 				iospec.e_ValidTokenOut(t, ridT, tokenT))) &&
 	// @ 			(result.err != nil ==> result.token == nil)
 	// @ requires acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 	// @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
 	func /*@ f @*/ () {
 		// @ unfold acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
+		//  assert iospec.e_ValidTokenOut(t, ridT, tokenT)
+		//  ghost { if result.err == nil { PersistValidToken(t, ridT, tokenT) } }
+		//  assert e_ValidToken(tokenT) && goblib.gamma(tokenT) == Abs(result.token)
 		// @ fold ResultPerm(&result)
 		// @ fold SendToken!<loc, threadCount, _!>(&result)
 		results <- &result
@@ -133,7 +145,22 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 		return
 	} else {
 		result.token = ademT
+		// TODO: Replace with term as obtained from previous state transition
+		// @ assume goblib.gamma(tokenT) == Abs(result.token)
+		// TODO: Replace with permission obtained from Out rule
+		// @ inhale iospec.e_ValidTokenOut(t, ridT, tokenT)
+		// @ assert goblib.gamma(tokenT) == Abs(result.token)
+		// @ assert iospec.e_ValidTokenOut(t, ridT, tokenT)
 	}
+}
+
+// @ preserves results.RecvChannel() &&
+// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
+// @ 	results.RecvGotPerm() == SendToken!<loc, n, _!>
+// @ ensures res != nil ==> SendToken!<loc, n, _!>(res)
+func ResultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghost n int @*/) (res *TokenVerificationResult) {
+	// @ fold PredTrue!<!>()
+	return <-results
 }
 
 // Verify a slice of ADEM tokens.
@@ -236,8 +263,8 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ 	km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(ResultsInv(loc, threadCount, results), (threadCount - i0) / threadCount)
 	// @ invariant acc(wg.UnitDebt(SendFraction!<results, threadCount!>), threadCount - i0)
-	for _, rawToken := range rawTokens /*@ with i0 @*/ {
-		go vfyToken(rawToken, km, results /*@, loc, threadCount, vfyWaitGroup @*/)
+	for i, rawToken := range rawTokens /*@ with i0 @*/ {
+		go vfyToken(uint64(i), rawToken, km, results /*@, loc, threadCount, vfyWaitGroup @*/)
 	}
 
 	// @ vfyWaitGroup.SetWaitMode(1/2, 1/2)
@@ -293,8 +320,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			// new verification, we miss verification keys and verification will be
 			// aborted.
 			km.killListeners()
-		} else if result := <-results; result == nil {
-			// TODO: (lmeinen) Prove termination
+		} else if result := ResultsRecv(results /*@, loc, n @*/); result == nil {
 			// All threads have terminated
 			break
 		} else {
@@ -488,9 +514,15 @@ pred SingleUse(loc *int) {
 	acc(loc)
 }
 
+pred e_ValidToken(t *ADEMToken)
+
 pred ResultPerm(result *TokenVerificationResult) {
 	acc(result) &&
-			(result.err == nil ==> result.token != nil && ValidToken(result.token)) &&
+			(result.err == nil ==> (
+				result.token != nil &&
+				ValidToken(result.token) &&
+				// e_ValidToken(result.token) &&
+				true)) &&
 			(result.err != nil ==> result.token == nil)
 }
 
@@ -578,5 +610,12 @@ func collectDebt(fractionSeq seq[pred()], n int, results chan *TokenVerification
 		unfold SendFraction!<results, n!>()
 	}
 }
+
+ghost
+requires ValidToken(at) &&
+	iospec.e_ValidTokenOut(p, rid, t) &&
+	Abs(at) == goblib.gamma(t)
+ensures e_ValidToken(at)
+func PersistValidToken(at *ADEMToken, p place.Place, rid term.Term, t term.Term)
 
 @*/
