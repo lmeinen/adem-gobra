@@ -154,12 +154,15 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	}
 }
 
-// @ preserves results.RecvChannel() &&
+// @ requires results.RecvChannel() &&
+// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
+// @ 	results.RecvGotPerm() == SendToken!<loc, n, _!>
+// @ requires results.RecvGivenPerm()()
+// @ ensures results.RecvChannel() &&
 // @ 	results.RecvGivenPerm() == PredTrue!<!> &&
 // @ 	results.RecvGotPerm() == SendToken!<loc, n, _!>
 // @ ensures res != nil ==> SendToken!<loc, n, _!>(res)
 func ResultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghost n int @*/) (res *TokenVerificationResult) {
-	// @ fold PredTrue!<!>()
 	return <-results
 }
 
