@@ -154,6 +154,7 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	}
 }
 
+// @ trusted
 // @ requires results.RecvChannel() &&
 // @ 	results.RecvGivenPerm() == PredTrue!<!> &&
 // @ 	results.RecvGotPerm() == SendToken!<loc, n, _!>
