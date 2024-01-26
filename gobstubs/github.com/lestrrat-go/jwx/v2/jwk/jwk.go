@@ -44,6 +44,7 @@ type Set interface {
 	// @ ensures res != nil &&
 	// @ 	res.Index() == 0 &&
 	// @ 	forall i int :: 0 <= i && i < len(res.PredSeq()) ==> res.PredSeq()[i] == KeyIterConstraint!<_!>
+	// @ decreases _
 	Keys(context.Context) (res KeyIterator)
 
 	// LookupKeyID returns the first key matching the given key id.

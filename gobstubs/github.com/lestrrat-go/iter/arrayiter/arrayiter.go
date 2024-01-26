@@ -19,7 +19,7 @@ type Iterator interface {
 	// @ pure PredSeq() (ghost seq[pred(any)])
 
 	// @ ghost
-	// @ ensures r > 0
+	// @ ensures r >= 0
 	// @ pure Index() (r int)
 
 	// @ ensures r == (len(PredSeq()) > 0)
