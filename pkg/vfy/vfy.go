@@ -503,6 +503,7 @@ ensures len(fractionSeq) == n &&
 		fractionSeq[i] == SendFraction!<results, n!> &&
 		wg.TokenById(fractionSeq[i], i))
 ensures acc(wg.UnitDebt(SendFraction!<results, n!>), n)
+decreases _
 func generateTokenSeq(wg *sync.WaitGroup, n int, results chan *TokenVerificationResult) (fractionSeq seq[pred()]) {
 	fractionSeq := seq[pred()] {}
 	invariant 0 <= i && i <= n
@@ -527,6 +528,7 @@ requires len(fractionSeq) == n &&
 		sync.InjEval(fractionSeq[i], i) &&
 		fractionSeq[i] == SendFraction!<results, n!>)
 ensures acc(results.SendChannel(), 1/2)
+decreases _
 func collectDebt(fractionSeq seq[pred()], n int, results chan *TokenVerificationResult) {
 	invariant 0 <= i && i <= n
 	invariant forall j int :: { fractionSeq[j] } i <= j && j < n ==> sync.InjEval(fractionSeq[j], j)

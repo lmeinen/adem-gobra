@@ -16,10 +16,12 @@ type Pair struct {
 type Iterator interface {
 
 	// @ ghost
+	// @ decreases _
 	// @ pure PredSeq() (ghost seq[pred(any)])
 
 	// @ ghost
 	// @ ensures r > 0
+	// @ decreases _
 	// @ pure Index() (r int)
 
 	// @ ensures r == (len(PredSeq()) > 0)

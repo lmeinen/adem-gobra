@@ -416,6 +416,7 @@ pred PkgMem() {
 
 ghost
 requires acc(f, _)
+decreases _
 pure func CustomFields(f jwt.Fields) bool {
 	return (
 		domain(f) == set[string] { "log", "key", "ass", "emb", "ver" } &&

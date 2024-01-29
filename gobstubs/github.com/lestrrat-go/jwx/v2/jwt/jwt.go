@@ -21,6 +21,7 @@ func NewMapping() (f Fields)
 // @ ghost
 // @ requires acc(f, _)
 // @ ensures res ==> len(f) == 0
+// @ decreases _
 // @ pure
 func (f Fields) IsEmpty() (res bool) {
 	return len(f) == 0
@@ -65,26 +66,32 @@ type JwtClaim interface {
 type JwtToken interface {
 
 	// Expiration returns the value for "exp" field of the token
+	// @ decreases _
 	// @ pure
 	Expiration() time.Time
 
 	// IssuedAt returns the value for "iat" field of the token
+	// @ decreases _
 	// @ pure
 	IssuedAt() time.Time
 
 	// Issuer returns the value for "iss" field of the token
+	// @ decreases _
 	// @ pure
 	Issuer() string
 
 	// NotBefore returns the value for "nbf" field of the token
+	// @ decreases _
 	// @ pure
 	NotBefore() time.Time
 
 	// Subject returns the value for "sub" field of the token
+	// @ decreases _
 	// @ pure
 	Subject() string
 
 	// @ ghost
+	// @ decreases _
 	// @ pure
 	Contains(key string) bool
 
@@ -94,6 +101,7 @@ type JwtToken interface {
 	// @ ensures Contains(key) && key in domain(Custom) ==> (
 	// @		typeOf(claim) == typeOf(Custom[key]) &&
 	// @ 		typeOf(claim) == type[JwtClaim])
+	// @ decreases _
 	// @ pure
 	PureGet(key string) (claim any)
 
@@ -155,10 +163,12 @@ type ValidateOption interface {
 
 	// Ident returns the "indentity" of this option, a unique identifier that
 	// can be used to differentiate between options
+	// @ decreases _
 	// @ pure
 	Ident() any
 
 	// Value returns the corresponding value.
+	// @ decreases _
 	// @ pure
 	Value() any
 	// ---------------------------------------------------------------

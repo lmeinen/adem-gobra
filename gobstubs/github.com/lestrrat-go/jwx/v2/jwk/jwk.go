@@ -94,14 +94,16 @@ type Key interface {
 	PublicKey( /*@ ghost p option[perm] @*/ ) (pk Key, err error)
 
 	// Algorithm returns `alg` of a JWK
-	// @ pure
 	// @ requires p == none[perm] ? acc(Mem(), _) : (get(p) > 0 && acc(Mem(), get(p)))
 	// @ ensures a != nil
+	// @ decreases _
+	// @ pure
 	Algorithm( /*@ ghost p option[perm] @*/ ) (a jwa.KeyAlgorithm)
 
 	// KeyID returns `kid` of a JWK
-	// @ pure
 	// @ requires p == none[perm] ? acc(Mem(), _) : (get(p) > 0 && acc(Mem(), get(p)))
+	// @ decreases _
+	// @ pure
 	KeyID( /*@ ghost p option[perm] @*/ ) string
 }
 

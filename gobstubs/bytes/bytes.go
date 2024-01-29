@@ -7,7 +7,7 @@ package bytes
 // A nil argument is equivalent to an empty slice.
 // @ requires forall i int :: 0 <= i && i < len(a) ==> acc(&a[i], _)
 // @ requires forall i int :: 0 <= i && i < len(b) ==> acc(&b[i], _)
-// @ decreases
+// @ decreases _
 // @ pure
 func Equal(a, b []byte) bool {
 	// Neither cmd/compile nor gccgo allocates for these string conversions.
