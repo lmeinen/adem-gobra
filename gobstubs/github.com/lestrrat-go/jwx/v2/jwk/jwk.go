@@ -33,6 +33,12 @@ type ParseOption interface {
 type Set interface {
 	// @ pred Mem()
 
+	// @ ghost
+	// @ requires acc(Mem(), _)
+	// @ ensures forall i int :: { r[i] } 0 <= i && i < len(r) ==> typeOf(r[i]) == type[Key]
+	// @ decreases _
+	// @ pure GetUnderlyingArray() (ghost r seq[Key])
+
 	// AddKey adds the specified key. If the key already exists in the set,
 	// an error is returned.
 	// @ preserves Mem()
@@ -42,8 +48,10 @@ type Set interface {
 	// Keys creates an iterator to iterate through all keys in the set.
 	// @ preserves Mem()
 	// @ ensures res != nil &&
+	// @ 	res.IterMem() &&
+	// @ 	len(res.GetIterSeq()) == len(GetUnderlyingArray()) &&
 	// @ 	res.Index() == 0 &&
-	// @ 	forall i int :: 0 <= i && i < len(res.PredSeq()) ==> res.PredSeq()[i] == KeyIterConstraint!<_!>
+	// @ 	(forall i int :: { res.GetIterSeq()[i] } 0 <= i && i < len(GetUnderlyingArray()) ==> res.GetIterSeq()[i] === GetUnderlyingArray()[i] && res.GetIterSeq()[i].(Key).Mem())
 	Keys(context.Context) (res KeyIterator)
 
 	// LookupKeyID returns the first key matching the given key id.

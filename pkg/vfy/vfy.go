@@ -182,13 +182,18 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// tokens without issuer.
 	ctx := context.TODO()
 	iter := trustedKeys.Keys(ctx)
+
+	iterNext := iter.Next(ctx)
+
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(tokens.PkgMem(), _)
-	// @ invariant forall i int :: 0 <= i && i < len(iter.PredSeq()) ==> iter.PredSeq()[i] == jwk.KeyIterConstraint!<_!>
-	// @ decreases len(iter.PredSeq())
-	for iter.Next(ctx) {
-		k := iter.Pair().Value
-		// @ unfold jwk.KeyIterConstraint!<k!>()
+	// @ invariant iter.IterMem() &&
+	// @ 	(iterNext ==> iter.Index() < len(iter.GetIterSeq())) &&
+	// @ 	(forall i int :: { iter.GetIterSeq()[i] } iter.Index() <= i && i < len(iter.GetIterSeq()) ==> typeOf(iter.GetIterSeq()[i]) == type[jwk.Key] && iter.GetIterSeq()[i].(jwk.Key).Mem())
+	// @ decreases len(iter.GetIterSeq()) - iter.Index()
+	for iterNext {
+		k := iter.Pair( /*@ perm(1/2) @*/ ).Value
+		iterNext = iter.Next(ctx)
 		km.put(k.(jwk.Key))
 	}
 
