@@ -51,7 +51,7 @@ pred IsValid(_ JwtToken) { true }
 // @ ensures p > 0 && acc(f, p)
 // @ ensures acc(r, _)
 // @ ensures domain(f) == domain(r) &&
-// @ 	forall k string :: { f[k] } k in domain(f) ==> f[k] === r[k]
+// @ 	forall k string :: k in domain(f) ==> f[k] === r[k]
 // @ decreases _
 func (f Fields) Copy( /*@ ghost p perm @*/ ) (r Fields)
 
@@ -199,10 +199,10 @@ func NewValidationError(err error) (e ValidationError)
 // a global effect.
 // @ requires acc(&Custom) && acc(Custom) && acc(fields, _)
 // @ requires domain(fields) == domain(Custom) &&
-// @ 	forall k string :: { Custom[k] } k in domain(fields) ==> fields[k] === Custom[k]
+// @ 	forall k string :: k in domain(fields) ==> fields[k] === Custom[k]
 // @ ensures acc(&Custom) && acc(Custom) && acc(fields, _)
-// @ ensures (forall k string :: { Custom[k] } k in domain(fields) ==> k in domain(Custom)) &&
-// @ 	(forall k string :: { Custom[k] } k in domain(Custom) && k != name ==> k in domain(fields) && Custom[k] === fields[k])
+// @ ensures (forall k string :: k in domain(fields) ==> k in domain(Custom)) &&
+// @ 	(forall k string :: k in domain(Custom) && k != name ==> k in domain(fields) && Custom[k] === fields[k])
 // @ ensures name in domain(Custom) && Custom[name] === object
 // @ decreases _
 func RegisterCustomField(name string, object JwtClaim /*@, ghost fields Fields @*/)

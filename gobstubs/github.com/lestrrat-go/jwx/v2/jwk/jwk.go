@@ -9,7 +9,7 @@ import (
 )
 
 // NewSet creates and empty `jwk.Set` object
-// @ ensures s != nil && s.Mem()
+// @ ensures s != nil && s.Mem() && s.Elems() == seq[Key] {} && KeySeq(s.Elems())
 func NewSet() (s Set)
 
 // ParseOption is a type of Option that can be passed to `jwk.Parse()`
@@ -36,34 +36,39 @@ type Set interface {
 	// @ ghost
 	// @ requires acc(Mem(), _)
 	// @ ensures forall i int :: { r[i] } 0 <= i && i < len(r) ==> typeOf(r[i]) == type[Key]
+	// @ ensures forall i, j int :: { r[i] } { r[j] } 0 <= i && i < j && j < len(r) ==> r[i] !== r[j]
 	// @ decreases _
-	// @ pure GetUnderlyingArray() (ghost r seq[Key])
+	// @ pure Elems() (ghost r seq[Key])
 
 	// AddKey adds the specified key. If the key already exists in the set,
 	// an error is returned.
 	// @ preserves Mem()
-	// @ requires k.Mem()
+	// @ ensures Elems() == old(Elems()) ++ seq[Key] { k }
 	AddKey(k Key) error
 
 	// Keys creates an iterator to iterate through all keys in the set.
-	// @ preserves Mem()
+	// @ requires p > 0 && acc(Mem(), p)
+	// @ ensures acc(Mem(), old(p)) && Elems() == old(Elems())
 	// @ ensures res != nil &&
 	// @ 	res.IterMem() &&
-	// @ 	len(res.GetIterSeq()) == len(GetUnderlyingArray()) &&
-	// @ 	res.Index() == 0 &&
-	// @ 	(forall i int :: { res.GetIterSeq()[i] } 0 <= i && i < len(GetUnderlyingArray()) ==> res.GetIterSeq()[i] === GetUnderlyingArray()[i] && res.GetIterSeq()[i].(Key).Mem())
-	Keys(context.Context) (res KeyIterator)
+	// @ 	res.GetIterSeq() == Elems() &&
+	// @ 	res.Index() == 0
+	// @ decreases _
+	Keys(context.Context /*@, ghost p perm @*/) (res KeyIterator)
 
 	// LookupKeyID returns the first key matching the given key id.
 	// The second return value is false if there are no keys matching the key id.
-	// @ preserves Mem()
-	// @ ensures b ==> k != nil && acc(k.Mem(), _)
-	LookupKeyID(string) (k Key, b bool)
+	// @ requires 0 < p && p < 1 && acc(Mem(), p) && acc(KeySeq(Elems()), _)
+	// @ ensures acc(Mem(), old(p)) && acc(KeySeq(Elems()), _)
+	// @ ensures exists key Key :: key in Elems() && unfolding acc(KeySeq(Elems()), _) in key.KeyID(none[perm]) == kid ==> b
+	// @ ensures b ==> (k in Elems() && unfolding acc(KeySeq(Elems()), _) in k.KeyID(none[perm]) == kid)
+	// @ decreases _
+	LookupKeyID(kid string /*@, ghost p perm @*/) (k Key, b bool)
 }
 
 /*@
-pred KeyIterConstraint(k any) {
-	typeOf(k) == type[Key] && k.(Key).Mem()
+pred KeySeq(ghost keys seq[Key]) {
+	forall i int :: { keys[i] } 0 <= i && i < len(keys) ==> keys[i].Mem()
 }
 @*/
 

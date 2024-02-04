@@ -134,7 +134,7 @@ func vfyToken(rawToken []byte, km *keyManager, results chan *TokenVerificationRe
 // @ requires acc(&jwt.Custom, 1/2) && acc(jwt.Custom, 1/2) && tokens.CustomFields(jwt.Custom)
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
-// @ requires trustedKeys.Mem()
+// @ requires trustedKeys != nil && trustedKeys.Mem() && jwk.KeySeq(trustedKeys.Elems())
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
 func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResults) {
 
@@ -157,11 +157,13 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 
 	// (lmeinen) 0 - set up chain of promises from root keys to signing keys
 	// @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-	// @ preserves trustedKeys.Mem() && trustedKeys != nil
+	// @ requires trustedKeys != nil && acc(trustedKeys.Mem(), 1/2)
+	// @ requires jwk.KeySeq(trustedKeys.Elems())
 	// @ requires PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem()
 	// @ requires acc(rawTokens)
 	// @ requires len(rawTokens) > 0
 	// @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
+	// @ ensures trustedKeys != nil && acc(trustedKeys.Mem(), 1/2) && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 	// @ ensures acc(tokens.PkgMem(), _)
 	// @ ensures 0 < threadCount
 	// @ ensures results.RecvChannel() &&
@@ -181,21 +183,29 @@ func VerifyTokens(rawTokens [][]byte, trustedKeys jwk.Set) (res VerificationResu
 	// Put trusted public keys into key manager. This allows for termination for
 	// tokens without issuer.
 	ctx := context.TODO()
-	iter := trustedKeys.Keys(ctx)
+	iter := trustedKeys.Keys(ctx /*@, perm(1/2) @*/)
+	// @ unfold jwk.KeySeq(trustedKeys.Elems())
+	// @ assert forall i int :: { trustedKeys.Elems()[i] } 0 <= i && i < len(trustedKeys.Elems()) ==> trustedKeys.Elems()[i].Mem()
 
 	iterNext := iter.Next(ctx)
 
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(tokens.PkgMem(), _)
-	// @ invariant iter.IterMem() &&
+	// @ invariant acc(trustedKeys.Mem(), 1/2) &&
+	// @ 	iter.IterMem() &&
 	// @ 	(iterNext ==> iter.Index() < len(iter.GetIterSeq())) &&
-	// @ 	(forall i int :: { iter.GetIterSeq()[i] } iter.Index() <= i && i < len(iter.GetIterSeq()) ==> typeOf(iter.GetIterSeq()[i]) == type[jwk.Key] && iter.GetIterSeq()[i].(jwk.Key).Mem())
+	// @ 	trustedKeys.Elems() == iter.GetIterSeq() &&
+	// @ 	(forall i int :: { iter.GetIterSeq()[i] } 0 <= i && i < iter.Index() && i < len(iter.GetIterSeq()) ==> acc(iter.GetIterSeq()[i].(jwk.Key).Mem(), _)) &&
+	// @ 	(forall i int :: { iter.GetIterSeq()[i] } iter.Index() <= i && i < len(iter.GetIterSeq()) ==> iter.GetIterSeq()[i].(jwk.Key).Mem())
 	// @ decreases len(iter.GetIterSeq()) - iter.Index()
 	for iterNext {
 		k := iter.Pair( /*@ perm(1/2) @*/ ).Value
 		iterNext = iter.Next(ctx)
 		km.put(k.(jwk.Key))
+		// @ assert acc(k.(jwk.Key).Mem(), _)
 	}
+
+	// @ fold acc(jwk.KeySeq(trustedKeys.Elems()), _)
 
 	// @ x@ := 42
 	// @ ghost loc := &x

@@ -44,21 +44,3 @@ type Iterator interface {
 	// @ ensures res.Value === GetIterSeq()[Index()]
 	Pair( /*@ ghost p perm @*/ ) (res *Pair)
 }
-
-// @ requires iter != nil && iter.IterMem()
-// @ ensures true
-func BadSpec(iter Iterator) {
-	if iter.Next(context.TODO()) {
-		// @ assert iter.Index() < len(iter.GetIterSeq())
-	}
-	if iter.Next(context.TODO()) {
-		// @ assert iter.Index() < len(iter.GetIterSeq())
-	}
-	r := iter.Next(context.TODO())
-	// @ invariant iter.IterMem()
-	// @ invariant r ==> iter.Index() < len(iter.GetIterSeq())
-	for r {
-		iter.Pair( /*@ perm(1/2) @*/ )
-		r = iter.Next(context.TODO())
-	}
-}

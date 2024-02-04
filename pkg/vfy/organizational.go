@@ -14,7 +14,7 @@ import (
 
 // @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-// @ preserves trustedKeys != nil && trustedKeys.Mem()
+// @ preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 // @ requires p > 0
 // @ requires acc(Emblem(emblem), p)
 // @ requires acc(EndorsementList(endorsements), p)
@@ -74,7 +74,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	last := emblem
 
 	// @ invariant acc(Emblem(emblem), p)
-	// @ invariant trustedKeys.Mem()
+	// @ invariant acc(trustedKeys.Mem(), 1/2) && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant acc(endorsedBy) &&
@@ -85,7 +85,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ invariant root != nil ==> root == last
 	for root == nil {
 		// @ ghost { if endorses == none[string] { unfold acc(Emblem(last), p / 2) } else { unfold acc(Endorsement(last), p / 2) } }
-		_, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(ValidToken(last), p / 4) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ ))
+		_, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(ValidToken(last), p / 4) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ ) /*@, perm(1/2) @*/)
 		trustedFound = trustedFound || ok
 
 		kid := /*@ unfolding acc(ValidToken(last), p / 4) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ )
@@ -142,7 +142,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		return []consts.VerificationResult{consts.INVALID}, nil
 	} else if rootLogged {
 		results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL)
-		if _, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(ValidToken(root), p / 2) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ )); ok {
+		if _, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(ValidToken(root), p / 2) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ ) /*@, perm(1/2) @*/); ok {
 			results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL_TRUSTED)
 		}
 	}
