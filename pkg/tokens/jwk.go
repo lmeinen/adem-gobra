@@ -104,19 +104,28 @@ func SetKID(key jwk.Key, force bool) error {
 // Calculate and set the KID of every key in the given set. Will override old
 // KIDs.
 // @ preserves acc(PkgMem(), _)
-// @ requires jwkSet != nil && jwkSet.Mem()
+// @ requires jwkSet != nil && jwkSet.Mem() && jwk.KeySeq(jwkSet.Elems())
 // @ requires acc(alg, _)
-func SetKIDs(jwkSet jwk.Set, alg *jwa.SignatureAlgorithm) (jwk.Set, error) {
+// @ ensures e == nil ==> r != nil && r.Mem() && jwk.KeySeq(r.Elems())
+func SetKIDs(jwkSet jwk.Set, alg *jwa.SignatureAlgorithm) (r jwk.Set, e error) {
 	withKIDs := jwk.NewSet()
 	ctx := context.TODO()
-	iter := jwkSet.Keys(ctx)
+	iter := jwkSet.Keys(ctx /*@, perm(1/2) @*/)
+	// @ unfold jwk.KeySeq(jwkSet.Elems())
+
+	iterNext := iter.Next(ctx)
+
 	// @ invariant acc(PkgMem(), _)
-	// @ invariant withKIDs != nil && withKIDs.Mem()
-	// @ invariant forall i int :: 0 <= i && i < len(iter.PredSeq()) ==> iter.PredSeq()[i] == jwk.KeyIterConstraint!<_!>
-	// @ decreases len(iter.PredSeq())
-	for iter.Next(ctx) {
-		v := iter.Pair().Value
-		// @ unfold jwk.KeyIterConstraint!<v!>()
+	// @ invariant acc(jwkSet.Mem(), 1/2)
+	// @ invariant withKIDs != nil && withKIDs.Mem() &&
+	// @ 	forall i int :: { withKIDs.Elems()[i] } 0 <= i && i < len(withKIDs.Elems()) ==> withKIDs.Elems()[i].Mem()
+	// @ invariant iter.IterMem() &&
+	// @ 	(iterNext ==> iter.Index() < len(iter.GetIterSeq())) &&
+	// @ 	jwkSet.Elems() == iter.GetIterSeq() &&
+	// @ 	(forall i int :: { iter.GetIterSeq()[i] } 0 <= i && i < len(iter.GetIterSeq()) ==> iter.GetIterSeq()[i].(jwk.Key).Mem())
+	// @ decreases len(iter.GetIterSeq()) - iter.Index()
+	for iterNext {
+		v := iter.Pair( /*@ perm(1/2) @*/ ).Value
 		if pk, err := v.(jwk.Key).PublicKey( /*@ some(perm(1/2)) @*/ ); err != nil {
 			return nil, err
 		} else {
@@ -128,8 +137,12 @@ func SetKIDs(jwkSet jwk.Set, alg *jwa.SignatureAlgorithm) (jwk.Set, error) {
 			if err := SetKID(pk, true); err != nil {
 				return nil, err
 			}
+			// @ assert pk.Mem()
 			withKIDs.AddKey(pk)
 		}
+		iterNext = iter.Next(ctx)
 	}
+	// @ fold jwk.KeySeq(withKIDs.Elems())
+
 	return withKIDs, nil
 }

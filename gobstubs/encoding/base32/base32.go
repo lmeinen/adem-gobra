@@ -28,6 +28,7 @@ func (enc Encoding) EncodeToString(src []byte) (r string)
 // of an input buffer of length n.
 // @ ghost
 // @ requires n >= 0
+// @ decreases _
 // @ pure
 func EncodedLen(n int) int {
 	return (n + 4) / 5 * 8

@@ -31,15 +31,18 @@ type KeyProvider interface {
 
 // Headers describe a standard Header set.
 type Headers interface {
+	// @ decreases _
 	// @ pure
 	Algorithm() jwa.SignatureAlgorithm
 
+	// @ decreases _
 	// @ pure
 	ContentType() string
 
 	// @ ensures res != nil && res.Mem()
 	JWK() (res jwk.Key)
 
+	// @ decreases _
 	// @ pure
 	KeyID() string
 }

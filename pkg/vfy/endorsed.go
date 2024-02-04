@@ -15,7 +15,7 @@ import (
 // @ preserves p > 0
 // @ preserves acc(Emblem(emblem), p)
 // @ preserves acc(ValidToken(root), p)
-// @ preserves trustedKeys.Mem()
+// @ preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 // @ preserves acc(EndorsementList(endorsements), p)
 // @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
@@ -33,7 +33,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 	existsEndorsement := false
 	// @ invariant acc(Emblem(emblem), p)
 	// @ invariant acc(ValidToken(root), p)
-	// @ invariant trustedKeys.Mem()
+	// @ invariant trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant issuers != nil && acc(issuers)
@@ -79,7 +79,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 		} else {
 			existsEndorsement = true
 			issuers = append( /*@ perm(1/2), @*/ issuers, endorsement.Token.Issuer())
-			_, ok := trustedKeys.LookupKeyID(endorsement.VerificationKey.KeyID( /*@ none[perm] @*/ ))
+			_, ok := trustedKeys.LookupKeyID(endorsement.VerificationKey.KeyID( /*@ none[perm] @*/ ) /*@, perm(1/2) @*/)
 			trustedFound = trustedFound || ok
 			// @ fold acc(ValidToken(endorsement), p / 2)
 			// @ fold acc(Endorsement(endorsement), p)

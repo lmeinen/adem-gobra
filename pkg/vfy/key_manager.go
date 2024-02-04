@@ -139,6 +139,7 @@ func (km *keyManager) waiting() (res int) {
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(tokens.PkgMem(), _)
 // @ requires k != nil && k.Mem()
+// @ ensures k === old(k) && acc(k.Mem(), _)
 func (km *keyManager) put(k jwk.Key) bool {
 	km.lock.Lock()
 	defer km.lock.Unlock()
@@ -294,6 +295,10 @@ func doDelete(listeners map[string][]util.Promise, key string) {
 func noop(_ string) {
 	// avoids UnusedVar compiler errors
 }
+
+// TODO: (lmeinen) Add ghost function to inspect stored keys
+// TODO: (lmeinen) Add function that consumes lock permissions to return permissions to those keys
+// TODO: (lmeinen) With this, we can then safely implement jwk.Set operations on trustedKeys
 
 /*@
 pred WaitInv() {

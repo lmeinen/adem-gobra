@@ -15,23 +15,32 @@ type Pair struct {
 // Iterator iterates through keys and values of a array
 type Iterator interface {
 
-	// @ ghost
-	// @ pure PredSeq() (ghost seq[pred(any)])
+	// @ pred IterMem()
 
 	// @ ghost
-	// @ ensures r >= 0
+	// @ requires acc(IterMem(), _)
+	// @ decreases _
+	// @ pure GetIterSeq() (ghost seq[any])
+
+	// @ ghost
+	// @ requires acc(IterMem(), _)
+	// @ ensures 0 <= r
+	// @ decreases _
 	// @ pure Index() (r int)
 
-	// @ ensures r == (len(PredSeq()) > 0)
-	// @ ensures old(PredSeq()) == PredSeq()
-	// @ ensures old(Index()) == Index()
+	// @ preserves IterMem()
+	// @ ensures GetIterSeq() == old(GetIterSeq())
+	// @ ensures Index() == old(Index()) + 1
+	// @ ensures r ==> (Index() < len(GetIterSeq()))
 	Next(context.Context) (r bool)
 
-	// @ requires len(PredSeq()) > 0
-	// @ ensures Index() == old(Index()) + 1
-	// @ ensures PredSeq() == old(PredSeq())[1:]
+	// @ requires p > 0 && acc(IterMem(), p)
+	// @ requires Index() < len(GetIterSeq())
+	// @ ensures acc(IterMem(), old(p))
+	// @ ensures Index() == old(Index())
+	// @ ensures GetIterSeq() == old(GetIterSeq())
 	// @ ensures res != nil && acc(res, _)
-	// @ ensures res.Index == old(Index())
-	// @ ensures old(PredSeq())[0](res.Value)
-	Pair() (res *Pair)
+	// @ ensures res.Index == Index()
+	// @ ensures res.Value === GetIterSeq()[Index()]
+	Pair( /*@ ghost p perm @*/ ) (res *Pair)
 }

@@ -184,7 +184,7 @@ func ResultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghos
 // @ requires acc(&jwt.Custom, 1/2) && acc(jwt.Custom, 1/2) && tokens.CustomFields(jwt.Custom)
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
-// @ requires trustedKeys.Mem()
+// @ requires trustedKeys != nil && trustedKeys.Mem() && jwk.KeySeq(trustedKeys.Elems())
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
 func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost p place.Place @*/) (res VerificationResults) {
 	// @ ghost ridT := term.freshTerm(fresh.fr_integer64(rid))
@@ -235,16 +235,29 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// Put trusted public keys into key manager. This allows for termination for
 	// tokens without issuer.
 	ctx := context.TODO()
-	iter := trustedKeys.Keys(ctx)
+	iter := trustedKeys.Keys(ctx /*@, perm(1/2) @*/)
+	// @ unfold jwk.KeySeq(trustedKeys.Elems())
+	// @ assert forall i int :: { trustedKeys.Elems()[i] } 0 <= i && i < len(trustedKeys.Elems()) ==> trustedKeys.Elems()[i].Mem()
+
+	iterNext := iter.Next(ctx)
+
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(tokens.PkgMem(), _)
-	// @ invariant forall i int :: 0 <= i && i < len(iter.PredSeq()) ==> iter.PredSeq()[i] == jwk.KeyIterConstraint!<_!>
-	// @ decreases len(iter.PredSeq())
-	for iter.Next(ctx) {
-		k := iter.Pair().Value
-		// @ unfold jwk.KeyIterConstraint!<k!>()
+	// @ invariant acc(trustedKeys.Mem(), 1/2) &&
+	// @ 	iter.IterMem() &&
+	// @ 	(iterNext ==> iter.Index() < len(iter.GetIterSeq())) &&
+	// @ 	trustedKeys.Elems() == iter.GetIterSeq() &&
+	// @ 	(forall i int :: { iter.GetIterSeq()[i] } 0 <= i && i < iter.Index() && i < len(iter.GetIterSeq()) ==> acc(iter.GetIterSeq()[i].(jwk.Key).Mem(), _)) &&
+	// @ 	(forall i int :: { iter.GetIterSeq()[i] } iter.Index() <= i && i < len(iter.GetIterSeq()) ==> iter.GetIterSeq()[i].(jwk.Key).Mem())
+	// @ decreases len(iter.GetIterSeq()) - iter.Index()
+	for iterNext {
+		k := iter.Pair( /*@ perm(1/2) @*/ ).Value
+		iterNext = iter.Next(ctx)
 		km.put(k.(jwk.Key))
+		// @ assert acc(k.(jwk.Key).Mem(), _)
 	}
+
+	// @ fold acc(jwk.KeySeq(trustedKeys.Elems()), _)
 
 	// @ x@ := 42
 	// @ ghost loc := &x
@@ -598,6 +611,7 @@ ensures len(fractionSeq) == n &&
 		fractionSeq[i] == SendFraction!<results, n!> &&
 		wg.TokenById(fractionSeq[i], i))
 ensures acc(wg.UnitDebt(SendFraction!<results, n!>), n)
+decreases _
 func generateTokenSeq(wg *sync.WaitGroup, n int, results chan *TokenVerificationResult) (fractionSeq seq[pred()]) {
 	fractionSeq := seq[pred()] {}
 	invariant 0 <= i && i <= n
@@ -622,6 +636,7 @@ requires len(fractionSeq) == n &&
 		sync.InjEval(fractionSeq[i], i) &&
 		fractionSeq[i] == SendFraction!<results, n!>)
 ensures acc(results.SendChannel(), 1/2)
+decreases _
 func collectDebt(fractionSeq seq[pred()], n int, results chan *TokenVerificationResult) {
 	invariant 0 <= i && i <= n
 	invariant forall j int :: { fractionSeq[j] } i <= j && j < n ==> sync.InjEval(fractionSeq[j], j)

@@ -36,6 +36,7 @@ pred (ipnet *IPNet) Mem() {
 }
 
 requires ip.Mem()
+decreases _
 pure func (ip IP) String() string
 
 // Equal reports whether ip and x are the same IP address.
@@ -43,16 +44,19 @@ pure func (ip IP) String() string
 // considered to be equal.
 requires ip.Mem()
 requires x != nil ==> x.Mem()
+decreases _
 pure func (ip IP) Equal(x IP) bool // {
 
 // Contains reports whether the network includes ip.
 requires n.Mem()
 requires ip != nil ==> ip.Mem()
+decreases _
 pure func (n *IPNet) Contains(ip IP) bool
 
 // String returns the CIDR notation of n like "192.0.2.0/24"
 // or "2001:db8::/48" as defined in RFC 4632 and RFC 4291.
 requires n.Mem()
+decreases _
 pure func (n *IPNet) String() string
 
 // ParseIP parses s as an IP address, returning the result.

@@ -21,6 +21,7 @@ const StdEncoding Encoding = 0
 // DecodedLen returns the maximum length in bytes of the decoded data
 // corresponding to n bytes of base64-encoded data.
 // @ ensures n >= 0 ==> res >= 0
+// @ decreases _
 // @ pure
 func (enc Encoding) DecodedLen(n int) (res int)
 
