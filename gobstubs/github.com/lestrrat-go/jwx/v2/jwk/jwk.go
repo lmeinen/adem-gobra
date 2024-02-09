@@ -43,12 +43,13 @@ type Set interface {
 	// AddKey adds the specified key. If the key already exists in the set,
 	// an error is returned.
 	// @ preserves Mem()
-	// @ ensures Elems() == old(Elems()) ++ seq[Key] { k }
-	AddKey(k Key) error
+	// @ ensures err == nil ==> Elems() == old(Elems()) ++ seq[Key] { k }
+	// @ ensures err != nil ==> Elems() == old(Elems())
+	AddKey(k Key) (err error)
 
 	// Keys creates an iterator to iterate through all keys in the set.
 	// @ requires p > 0 && acc(Mem(), p)
-	// @ ensures acc(Mem(), old(p)) && Elems() == old(Elems())
+	// @ ensures acc(Mem(), p) && Elems() == old(Elems())
 	// @ ensures res != nil &&
 	// @ 	res.IterMem() &&
 	// @ 	res.GetIterSeq() == Elems() &&
@@ -58,9 +59,8 @@ type Set interface {
 
 	// LookupKeyID returns the first key matching the given key id.
 	// The second return value is false if there are no keys matching the key id.
-	// @ requires 0 < p && p < 1 && acc(Mem(), p) && acc(KeySeq(Elems()), _)
-	// @ ensures acc(Mem(), old(p)) && acc(KeySeq(Elems()), _)
-	// @ ensures exists key Key :: key in Elems() && unfolding acc(KeySeq(Elems()), _) in key.KeyID(none[perm]) == kid ==> b
+	// @ requires 0 < p && acc(Mem(), p) && acc(KeySeq(Elems()), _)
+	// @ ensures acc(Mem(), p) && acc(KeySeq(Elems()), _)
 	// @ ensures b ==> (k in Elems() && unfolding acc(KeySeq(Elems()), _) in k.KeyID(none[perm]) == kid)
 	// @ decreases _
 	LookupKeyID(kid string /*@, ghost p perm @*/) (k Key, b bool)

@@ -1,6 +1,5 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
-// ##(--disablePureFunctsTerminationRequirement)
 package iospec
 
 
@@ -18,13 +17,14 @@ pred P_TokenVerifier(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     phiR_TokenVerifier_1(tami_p, tami_rid, tami_s) &&
     phiR_TokenVerifier_2(tami_p, tami_rid, tami_s) &&
     phiR_TokenVerifier_3(tami_p, tami_rid, tami_s) &&
-    phiRG_TokenVerifier_4(tami_p, tami_rid, tami_s) &&
-    phiRF_TokenVerifier_5(tami_p, tami_rid, tami_s) &&
-    phiRF_TokenVerifier_6(tami_p, tami_rid, tami_s) &&
+    phiR_TokenVerifier_4(tami_p, tami_rid, tami_s) &&
+    phiR_TokenVerifier_5(tami_p, tami_rid, tami_s) &&
+    phiRG_TokenVerifier_6(tami_p, tami_rid, tami_s) &&
     phiRF_TokenVerifier_7(tami_p, tami_rid, tami_s) &&
     phiRF_TokenVerifier_8(tami_p, tami_rid, tami_s) &&
     phiRF_TokenVerifier_9(tami_p, tami_rid, tami_s) &&
-    phiRF_TokenVerifier_10(tami_p, tami_rid, tami_s)
+    phiRF_TokenVerifier_10(tami_p, tami_rid, tami_s) &&
+    phiRF_TokenVerifier_11(tami_p, tami_rid, tami_s)
 }
 pred phiR_TokenVerifier_0(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     forall rid Term, E Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
@@ -42,28 +42,12 @@ pred phiR_TokenVerifier_0(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) 
              P_TokenVerifier(get_e_VerifyUnsignedEmblem_placeDst(tami_p, rid, E, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
 }
 pred phiR_TokenVerifier_1(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
-    forall rid Term, key Term, tokenBody Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
-        { e_VerifyAnonToken(tami_p, rid, key, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp) } (
+    forall rid Term, key Term, oi Term, endOi Term, endKey Term, tokenSig Term, CA Term, skCA Term, Log Term, skCT Term, tlsPk Term, certOiSig Term, ctSigOi Term, certRootDSig Term, ctSigRootD Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
+        { e_VerifyRootEndorsement(tami_p, rid, key, oi, endOi, endKey, tokenSig, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp) } (
             (M(tami_lp, tami_s) &&
              tami_lp == mset[Fact] {
                             Setup_TokenVerifier(rid),
-                            PermitTokenVerificationIn_TokenVerifier(rid, pair(key, pair(tokenBody, tokenSig)))} &&
-             tami_ap == mset[Claim] {
-                            Eq(verify(tokenSig, tokenBody, key), ok())} &&
-             tami_rp == mset[Fact] {
-                            St_TokenVerifier_0(rid),
-                            ValidTokenOut_TokenVerifier(rid, pair(key, pair(tokenBody, tokenSig)))} &&
-             (verify(tokenSig, tokenBody, key) == ok())) ==>
-            (e_VerifyAnonToken(tami_p, rid, key, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp) && 
-             P_TokenVerifier(get_e_VerifyAnonToken_placeDst(tami_p, rid, key, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
-}
-pred phiR_TokenVerifier_2(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
-    forall rid Term, key Term, oi Term, tokenBody Term, tokenSig Term, CA Term, skCA Term, Log Term, skCT Term, tlsPk Term, certOiSig Term, ctSigOi Term, certRootDSig Term, ctSigRootD Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
-        { e_VerifyRootToken(tami_p, rid, key, oi, tokenBody, tokenSig, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp) } (
-            (M(tami_lp, tami_s) &&
-             tami_lp == mset[Fact] {
-                            Setup_TokenVerifier(rid),
-                            PermitTokenVerificationIn_TokenVerifier(rid, pair(key, pair(oi, pair(tokenBody, tokenSig)))),
+                            PermitTokenVerificationIn_TokenVerifier(rid, pair(key, pair(oi, pair(pair(pubTerm(const_root_end_pub()), pair(endOi, endKey)), tokenSig)))),
                             CA_TokenVerifier(rid, CA, skCA),
                             Log_TokenVerifier(rid, Log, skCT),
                             InFact_TokenVerifier(rid, pair(pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), certOiSig))), ctSigOi)),
@@ -73,38 +57,85 @@ pred phiR_TokenVerifier_2(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) 
                             Eq(verify(ctSigRootD, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(key)), tlsPk))), certRootDSig))), pk(skCT)), ok()),
                             Eq(verify(certOiSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), pk(skCA)), ok()),
                             Eq(verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(key)), tlsPk))), pk(skCA)), ok()),
-                            Eq(verify(tokenSig, tokenBody, key), ok()),
+                            Eq(verify(tokenSig, pair(pubTerm(const_root_end_pub()), pair(endOi, endKey)), key), ok()),
                             VerifiedRootKey(oi, sha256(key)),
                             UsedRootKey(oi, key)} &&
              tami_rp == mset[Fact] {
                             St_TokenVerifier_0(rid),
-                            ValidTokenOut_TokenVerifier(rid, pair(key, pair(oi, pair(tokenBody, tokenSig))))} &&
+                            ValidTokenOut_TokenVerifier(rid, pair(key, pair(oi, pair(pair(pubTerm(const_root_end_pub()), pair(endOi, endKey)), tokenSig))))} &&
              (verify(ctSigOi, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), certOiSig))), pk(skCT)) == ok()) &&
              (verify(ctSigRootD, pair(pubTerm(const_MHTLeaf_pub()), pair(Log, pair(pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(key)), tlsPk))), certRootDSig))), pk(skCT)) == ok()) &&
              (verify(certOiSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(oi, tlsPk))), pk(skCA)) == ok()) &&
              (verify(certRootDSig, pair(pubTerm(const_cert_pub()), pair(CA, pair(pair(oi, sha256(key)), tlsPk))), pk(skCA)) == ok()) &&
-             (verify(tokenSig, tokenBody, key) == ok())) ==>
-            (e_VerifyRootToken(tami_p, rid, key, oi, tokenBody, tokenSig, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp) && 
-             P_TokenVerifier(get_e_VerifyRootToken_placeDst(tami_p, rid, key, oi, tokenBody, tokenSig, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
+             (verify(tokenSig, pair(pubTerm(const_root_end_pub()), pair(endOi, endKey)), key) == ok())) ==>
+            (e_VerifyRootEndorsement(tami_p, rid, key, oi, endOi, endKey, tokenSig, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp) && 
+             P_TokenVerifier(get_e_VerifyRootEndorsement_placeDst(tami_p, rid, key, oi, endOi, endKey, tokenSig, CA, skCA, Log, skCT, tlsPk, certOiSig, ctSigOi, certRootDSig, ctSigRootD, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
 }
-pred phiR_TokenVerifier_3(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
-    forall rid Term, key Term, oi Term, tokenBody Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
-        { e_VerifyInternalToken(tami_p, rid, key, oi, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp) } (
+pred phiR_TokenVerifier_2(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+    forall rid Term, key Term, oi Term, endKey Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
+        { e_VerifyInternalEndorsement(tami_p, rid, key, oi, endKey, tokenSig, tami_lp, tami_ap, tami_rp) } (
             (M(tami_lp, tami_s) &&
              tami_lp == mset[Fact] {
                             Setup_TokenVerifier(rid),
-                            PermitTokenVerificationIn_TokenVerifier(rid, pair(key, pair(oi, pair(tokenBody, tokenSig)))),
-                            VerifiedPk_TokenVerifier(rid, pair(oi, key))} &&
+                            PermitTokenVerificationIn_TokenVerifier(rid, pair(key, pair(oi, pair(pair(pubTerm(const_end_pub()), pair(oi, endKey)), tokenSig))))} &&
              tami_ap == mset[Claim] {
-                            Eq(verify(tokenSig, tokenBody, key), ok())} &&
+                            Eq(verify(tokenSig, pair(pubTerm(const_end_pub()), pair(oi, endKey)), key), ok())} &&
              tami_rp == mset[Fact] {
                             St_TokenVerifier_0(rid),
-                            ValidTokenOut_TokenVerifier(rid, pair(key, pair(oi, pair(tokenBody, tokenSig))))} &&
-             (verify(tokenSig, tokenBody, key) == ok())) ==>
-            (e_VerifyInternalToken(tami_p, rid, key, oi, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp) && 
-             P_TokenVerifier(get_e_VerifyInternalToken_placeDst(tami_p, rid, key, oi, tokenBody, tokenSig, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
+                            ValidTokenOut_TokenVerifier(rid, pair(key, pair(oi, pair(pair(pubTerm(const_end_pub()), pair(oi, endKey)), tokenSig))))} &&
+             (verify(tokenSig, pair(pubTerm(const_end_pub()), pair(oi, endKey)), key) == ok())) ==>
+            (e_VerifyInternalEndorsement(tami_p, rid, key, oi, endKey, tokenSig, tami_lp, tami_ap, tami_rp) && 
+             P_TokenVerifier(get_e_VerifyInternalEndorsement_placeDst(tami_p, rid, key, oi, endKey, tokenSig, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
 }
-pred phiRG_TokenVerifier_4(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+pred phiR_TokenVerifier_3(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+    forall rid Term, key Term, endKey Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
+        { e_VerifyAnonInternalEndorsement(tami_p, rid, key, endKey, tokenSig, tami_lp, tami_ap, tami_rp) } (
+            (M(tami_lp, tami_s) &&
+             tami_lp == mset[Fact] {
+                            Setup_TokenVerifier(rid),
+                            PermitTokenVerificationIn_TokenVerifier(rid, pair(key, pair(pair(pubTerm(const_end_pub()), endKey), tokenSig)))} &&
+             tami_ap == mset[Claim] {
+                            Eq(verify(tokenSig, pair(pubTerm(const_end_pub()), endKey), key), ok())} &&
+             tami_rp == mset[Fact] {
+                            St_TokenVerifier_0(rid),
+                            ValidTokenOut_TokenVerifier(rid, pair(key, pair(pair(pubTerm(const_end_pub()), endKey), tokenSig)))} &&
+             (verify(tokenSig, pair(pubTerm(const_end_pub()), endKey), key) == ok())) ==>
+            (e_VerifyAnonInternalEndorsement(tami_p, rid, key, endKey, tokenSig, tami_lp, tami_ap, tami_rp) && 
+             P_TokenVerifier(get_e_VerifyAnonInternalEndorsement_placeDst(tami_p, rid, key, endKey, tokenSig, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
+}
+pred phiR_TokenVerifier_4(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+    forall rid Term, key Term, oi Term, E Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
+        { e_VerifyOrganizationalEmblem(tami_p, rid, key, oi, E, tokenSig, tami_lp, tami_ap, tami_rp) } (
+            (M(tami_lp, tami_s) &&
+             tami_lp == mset[Fact] {
+                            Setup_TokenVerifier(rid),
+                            PermitTokenVerificationIn_TokenVerifier(rid, pair(key, pair(oi, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), tokenSig))))} &&
+             tami_ap == mset[Claim] {
+                            Eq(verify(tokenSig, pair(pubTerm(const_emblem_pub()), pair(E, oi)), key), ok())} &&
+             tami_rp == mset[Fact] {
+                            St_TokenVerifier_0(rid),
+                            ValidTokenOut_TokenVerifier(rid, pair(key, pair(oi, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), tokenSig))))} &&
+             (verify(tokenSig, pair(pubTerm(const_emblem_pub()), pair(E, oi)), key) == ok())) ==>
+            (e_VerifyOrganizationalEmblem(tami_p, rid, key, oi, E, tokenSig, tami_lp, tami_ap, tami_rp) && 
+             P_TokenVerifier(get_e_VerifyOrganizationalEmblem_placeDst(tami_p, rid, key, oi, E, tokenSig, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
+}
+pred phiR_TokenVerifier_5(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+    forall rid Term, key Term, oi Term, E Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
+        { e_VerifyAnonEmblem(tami_p, rid, key, oi, E, tokenSig, tami_lp, tami_ap, tami_rp) } (
+            (M(tami_lp, tami_s) &&
+             tami_lp == mset[Fact] {
+                            Setup_TokenVerifier(rid),
+                            PermitTokenVerificationIn_TokenVerifier(rid, pair(key, pair(oi, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig))))} &&
+             tami_ap == mset[Claim] {
+                            Eq(verify(tokenSig, pair(pubTerm(const_emblem_pub()), E), key), ok())} &&
+             tami_rp == mset[Fact] {
+                            St_TokenVerifier_0(rid),
+                            ValidTokenOut_TokenVerifier(rid, pair(key, pair(oi, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig))))} &&
+             (verify(tokenSig, pair(pubTerm(const_emblem_pub()), E), key) == ok())) ==>
+            (e_VerifyAnonEmblem(tami_p, rid, key, oi, E, tokenSig, tami_lp, tami_ap, tami_rp) && 
+             P_TokenVerifier(get_e_VerifyAnonEmblem_placeDst(tami_p, rid, key, oi, E, tokenSig, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
+}
+pred phiRG_TokenVerifier_6(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     forall new_x Term :: 
         { e_ValidTokenOut(tami_p, tami_rid, new_x) }{ ValidTokenOut_TokenVerifier(tami_rid, new_x) } (
             ((ValidTokenOut_TokenVerifier(tami_rid, new_x) # tami_s) > 0) ==>
@@ -112,32 +143,27 @@ pred phiRG_TokenVerifier_4(tami_p Place, tami_rid Term, ghost tami_s mset[Fact])
              P_TokenVerifier(get_e_ValidTokenOut_placeDst(tami_p, tami_rid, new_x), tami_rid, tami_s setminus mset[Fact] {
                                                                                                                   ValidTokenOut_TokenVerifier(tami_rid, new_x)})))
 }
-pred phiRF_TokenVerifier_5(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+pred phiRF_TokenVerifier_7(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     e_PermitTokenVerificationIn(tami_p, tami_rid) && 
     P_TokenVerifier(get_e_PermitTokenVerificationIn_placeDst(tami_p, tami_rid), tami_rid, tami_s union mset[Fact] {
                                                                                                            PermitTokenVerificationIn_TokenVerifier(tami_rid, get_e_PermitTokenVerificationIn_r1(tami_p, tami_rid))})
 }
-pred phiRF_TokenVerifier_6(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+pred phiRF_TokenVerifier_8(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     e_CA(tami_p, tami_rid) && 
     P_TokenVerifier(get_e_CA_placeDst(tami_p, tami_rid), tami_rid, tami_s union mset[Fact] {
                                                                                     CA_TokenVerifier(tami_rid, get_e_CA_r1(tami_p, tami_rid), get_e_CA_r2(tami_p, tami_rid))})
 }
-pred phiRF_TokenVerifier_7(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+pred phiRF_TokenVerifier_9(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     e_Log(tami_p, tami_rid) && 
     P_TokenVerifier(get_e_Log_placeDst(tami_p, tami_rid), tami_rid, tami_s union mset[Fact] {
                                                                                      Log_TokenVerifier(tami_rid, get_e_Log_r1(tami_p, tami_rid), get_e_Log_r2(tami_p, tami_rid))})
 }
-pred phiRF_TokenVerifier_8(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+pred phiRF_TokenVerifier_10(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     e_InFact(tami_p, tami_rid) && 
     P_TokenVerifier(get_e_InFact_placeDst(tami_p, tami_rid), tami_rid, tami_s union mset[Fact] {
                                                                                         InFact_TokenVerifier(tami_rid, get_e_InFact_r1(tami_p, tami_rid))})
 }
-pred phiRF_TokenVerifier_9(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
-    e_VerifiedPk(tami_p, tami_rid) && 
-    P_TokenVerifier(get_e_VerifiedPk_placeDst(tami_p, tami_rid), tami_rid, tami_s union mset[Fact] {
-                                                                                            VerifiedPk_TokenVerifier(tami_rid, get_e_VerifiedPk_r1(tami_p, tami_rid))})
-}
-pred phiRF_TokenVerifier_10(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+pred phiRF_TokenVerifier_11(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     e_Setup_TokenVerifier(tami_p, tami_rid) && 
     P_TokenVerifier(get_e_Setup_TokenVerifier_placeDst(tami_p, tami_rid), tami_rid, tami_s union mset[Fact] {
                                                                                                      Setup_TokenVerifier(tami_rid)})

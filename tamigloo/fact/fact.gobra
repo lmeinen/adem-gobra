@@ -1,6 +1,5 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
-// ##(--disablePureFunctsTerminationRequirement)
 package fact
 
 
@@ -89,17 +88,6 @@ type Fact domain {
     }
 
     // tag 7
-    func VerifiedPk_TokenVerifier(t1 Term, t2 Term) Fact
-    func getVerifiedPk_TokenVerifier(f Fact) seq[Term]
-    axiom  {
-        forall t1 Term, t2 Term :: 
-            { VerifiedPk_TokenVerifier(t1, t2) } (
-                getVerifiedPk_TokenVerifier(VerifiedPk_TokenVerifier(t1, t2)) ==
-                seq[Term]{t1, t2} &&
-                                 getTag(VerifiedPk_TokenVerifier(t1, t2)) == 7)
-    }
-
-    // tag 8
     func Setup_Verifier(t1 Term) Fact
     func getSetup_Verifier(f Fact) Term
     axiom  {
@@ -107,10 +95,10 @@ type Fact domain {
             { Setup_Verifier(t1) } (
                 getSetup_Verifier(Setup_Verifier(t1)) ==
                 t1 &&
-                  getTag(Setup_Verifier(t1)) == 8)
+                  getTag(Setup_Verifier(t1)) == 7)
     }
 
-    // tag 9
+    // tag 8
     func St_Verifier_0(t1 Term) Fact
     func getSt_Verifier_0(f Fact) Term
     axiom  {
@@ -118,10 +106,10 @@ type Fact domain {
             { St_Verifier_0(t1) } (
                 getSt_Verifier_0(St_Verifier_0(t1)) ==
                 t1 &&
-                  getTag(St_Verifier_0(t1)) == 9)
+                  getTag(St_Verifier_0(t1)) == 8)
     }
 
-    // tag 10
+    // tag 9
     func OutFact_Verifier(t1 Term, t2 Term) Fact
     func getOutFact_Verifier(f Fact) seq[Term]
     axiom  {
@@ -129,10 +117,10 @@ type Fact domain {
             { OutFact_Verifier(t1, t2) } (
                 getOutFact_Verifier(OutFact_Verifier(t1, t2)) ==
                 seq[Term]{t1, t2} &&
-                                 getTag(OutFact_Verifier(t1, t2)) == 10)
+                                 getTag(OutFact_Verifier(t1, t2)) == 9)
     }
 
-    // tag 11
+    // tag 10
     func St_Verifier_1(t1 Term) Fact
     func getSt_Verifier_1(f Fact) Term
     axiom  {
@@ -140,10 +128,10 @@ type Fact domain {
             { St_Verifier_1(t1) } (
                 getSt_Verifier_1(St_Verifier_1(t1)) ==
                 t1 &&
-                  getTag(St_Verifier_1(t1)) == 11)
+                  getTag(St_Verifier_1(t1)) == 10)
     }
 
-    // tag 12
+    // tag 11
     func InFact_Verifier(t1 Term, t2 Term) Fact
     func getInFact_Verifier(f Fact) seq[Term]
     axiom  {
@@ -151,10 +139,10 @@ type Fact domain {
             { InFact_Verifier(t1, t2) } (
                 getInFact_Verifier(InFact_Verifier(t1, t2)) ==
                 seq[Term]{t1, t2} &&
-                                 getTag(InFact_Verifier(t1, t2)) == 12)
+                                 getTag(InFact_Verifier(t1, t2)) == 11)
     }
 
-    // tag 13
+    // tag 12
     func PermitTokenVerificationOut_Verifier(t1 Term, t2 Term) Fact
     func getPermitTokenVerificationOut_Verifier(f Fact) seq[Term]
     axiom  {
@@ -162,10 +150,10 @@ type Fact domain {
             { PermitTokenVerificationOut_Verifier(t1, t2) } (
                 getPermitTokenVerificationOut_Verifier(PermitTokenVerificationOut_Verifier(t1, t2)) ==
                 seq[Term]{t1, t2} &&
-                                 getTag(PermitTokenVerificationOut_Verifier(t1, t2)) == 13)
+                                 getTag(PermitTokenVerificationOut_Verifier(t1, t2)) == 12)
     }
 
-    // tag 14
+    // tag 13
     func St_Verifier_2(t1 Term) Fact
     func getSt_Verifier_2(f Fact) Term
     axiom  {
@@ -173,10 +161,10 @@ type Fact domain {
             { St_Verifier_2(t1) } (
                 getSt_Verifier_2(St_Verifier_2(t1)) ==
                 t1 &&
-                  getTag(St_Verifier_2(t1)) == 14)
+                  getTag(St_Verifier_2(t1)) == 13)
     }
 
-    // tag 15
+    // tag 14
     func ValidTokenIn_Verifier(t1 Term, t2 Term) Fact
     func getValidTokenIn_Verifier(f Fact) seq[Term]
     axiom  {
@@ -184,18 +172,40 @@ type Fact domain {
             { ValidTokenIn_Verifier(t1, t2) } (
                 getValidTokenIn_Verifier(ValidTokenIn_Verifier(t1, t2)) ==
                 seq[Term]{t1, t2} &&
-                                 getTag(ValidTokenIn_Verifier(t1, t2)) == 15)
+                                 getTag(ValidTokenIn_Verifier(t1, t2)) == 14)
+    }
+
+    // tag 15
+    func St_Verifier_3(t1 Term, t2 Term, t3 Term, t4 Term) Fact
+    func getSt_Verifier_3(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term, t4 Term :: 
+            { St_Verifier_3(t1, t2, t3, t4) } (
+                getSt_Verifier_3(St_Verifier_3(t1, t2, t3, t4)) ==
+                seq[Term]{t1, t2, t3, t4} &&
+                                         getTag(St_Verifier_3(t1, t2, t3, t4)) == 15)
     }
 
     // tag 16
-    func St_Verifier_3(t1 Term, t2 Term) Fact
-    func getSt_Verifier_3(f Fact) seq[Term]
+    func St_Verifier_5(t1 Term, t2 Term) Fact
+    func getSt_Verifier_5(f Fact) seq[Term]
     axiom  {
         forall t1 Term, t2 Term :: 
-            { St_Verifier_3(t1, t2) } (
-                getSt_Verifier_3(St_Verifier_3(t1, t2)) ==
+            { St_Verifier_5(t1, t2) } (
+                getSt_Verifier_5(St_Verifier_5(t1, t2)) ==
                 seq[Term]{t1, t2} &&
-                                 getTag(St_Verifier_3(t1, t2)) == 16)
+                                 getTag(St_Verifier_5(t1, t2)) == 16)
+    }
+
+    // tag 17
+    func St_Verifier_4(t1 Term, t2 Term, t3 Term) Fact
+    func getSt_Verifier_4(f Fact) seq[Term]
+    axiom  {
+        forall t1 Term, t2 Term, t3 Term :: 
+            { St_Verifier_4(t1, t2, t3) } (
+                getSt_Verifier_4(St_Verifier_4(t1, t2, t3)) ==
+                seq[Term]{t1, t2, t3} &&
+                                     getTag(St_Verifier_4(t1, t2, t3)) == 17)
     }
 
     // each fact has a unique tag:

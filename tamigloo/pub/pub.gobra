@@ -1,6 +1,5 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
-// ##(--disablePureFunctsTerminationRequirement)
 package pub
 
 
@@ -27,9 +26,9 @@ type Pub domain {
 
     func const_asset_pub() Pub
 
-    func const_end_int_pub() Pub
+    func const_root_end_pub() Pub
 
-    func const_end_ext_pub() Pub
+    func const_end_pub() Pub
 
     func const_emblem_pub() Pub
 

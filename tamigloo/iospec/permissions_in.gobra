@@ -1,6 +1,5 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
-// ##(--disablePureFunctsTerminationRequirement)
 package iospec
 
 
@@ -67,18 +66,6 @@ pure func get_e_InFact_r1(tami_p Place, tami_rid Term) (r1 Term)
 ghost
 requires e_InFact(tami_p, tami_rid)
 pure func get_e_InFact_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
-
-
-// permission e_VerifiedPk
-pred e_VerifiedPk(ghost tami_p Place, ghost tami_rid Term)
-
-ghost
-requires e_VerifiedPk(tami_p, tami_rid)
-pure func get_e_VerifiedPk_r1(tami_p Place, tami_rid Term) (r1 Term)
-
-ghost
-requires e_VerifiedPk(tami_p, tami_rid)
-pure func get_e_VerifiedPk_placeDst(tami_p Place, tami_rid Term) (placeDst Place)
 
 
 // permission e_Setup_TokenVerifier

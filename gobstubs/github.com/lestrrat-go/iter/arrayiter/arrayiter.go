@@ -36,7 +36,7 @@ type Iterator interface {
 
 	// @ requires p > 0 && acc(IterMem(), p)
 	// @ requires Index() < len(GetIterSeq())
-	// @ ensures acc(IterMem(), old(p))
+	// @ ensures acc(IterMem(), p)
 	// @ ensures Index() == old(Index())
 	// @ ensures GetIterSeq() == old(GetIterSeq())
 	// @ ensures res != nil && acc(res, _)
