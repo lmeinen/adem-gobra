@@ -733,21 +733,6 @@ ADEM
     
 
 
-    rule Invalid StateRule "Verifier":
-        Pr: (Setup)_Verifier/1
-            |  (rid)
-            |  EnvGroup EnvIn
-        Ac:
-        Cncl:
-            (St)_Verifier_0/1
-            |  (rid)
-            |  StateGroup
-            Out/1
-            |  (pubTerm(const_INVALID_pub()))
-            |  EnvGroup EnvOut
-    
-
-
     rule FinishSetup StateRule "Verifier":
         Pr: (Setup)_Verifier/1
             |  (rid)
@@ -811,6 +796,21 @@ ADEM
             (St)_Verifier_2/1
             |  (rid)
             |  StateGroup
+    
+
+
+    rule IsInvalid StateRule "Verifier":
+        Pr: (St)_Verifier_2/1
+            |  (rid)
+            |  StateGroup
+        Ac:
+        Cncl:
+            (St)_Verifier_0/1
+            |  (rid)
+            |  StateGroup
+            Out/1
+            |  (pubTerm(const_INVALID_pub()))
+            |  EnvGroup EnvOut
     
 
 
@@ -1050,9 +1050,9 @@ ADEM
         TokenVerifier:
             (St)_TokenVerifier_0/1
         Verifier:
-            (St)_Verifier_0/1
             (St)_Verifier_1/1
             (St)_Verifier_2/1
+            (St)_Verifier_0/1
             (St)_Verifier_3/4
             (St)_Verifier_5/2
             (St)_Verifier_4/3
@@ -1783,21 +1783,6 @@ ADEM
         
 
         "Verifier"
-        rule Invalid StateRule "Verifier":
-            Pr: (Setup)_Verifier/1
-                |  (rid)
-                |  EnvGroup EnvIn
-            Ac:
-            Cncl:
-                (St)_Verifier_0/1
-                |  (rid)
-                |  StateGroup
-                Out/1
-                |  (pubTerm(const_INVALID_pub()))
-                |  EnvGroup EnvOut
-        
-
-        "Verifier"
         rule FinishSetup StateRule "Verifier":
             Pr: (Setup)_Verifier/1
                 |  (rid)
@@ -1837,6 +1822,21 @@ ADEM
                 (St)_Verifier_2/1
                 |  (rid)
                 |  StateGroup
+        
+
+        "Verifier"
+        rule IsInvalid StateRule "Verifier":
+            Pr: (St)_Verifier_2/1
+                |  (rid)
+                |  StateGroup
+            Ac:
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                Out/1
+                |  (pubTerm(const_INVALID_pub()))
+                |  EnvGroup EnvOut
         
 
         "Verifier"
@@ -2040,10 +2040,10 @@ ADEM
             (Proto)_ValidTokenIn_Verifier/2
             |  (added_rid, new_x)
             |  EnvGroup EnvIn
-            (Proto)_OutFact_Verifier/2
+            (Proto)_PermitTokenVerificationOut_Verifier/2
             |  (added_rid, new_x)
             |  EnvGroup EnvOut
-            (Proto)_PermitTokenVerificationOut_Verifier/2
+            (Proto)_OutFact_Verifier/2
             |  (added_rid, new_x)
             |  EnvGroup EnvOut
     
@@ -2687,18 +2687,6 @@ ADEM
         
 
         "Verifier"
-        rule OutIntf_OutFact_Verifier EnvRule:
-            Pr: (Proto)_OutFact_Verifier/2
-                |  (added_rid, new_x)
-                |  EnvGroup EnvOut
-            Ac:
-            Cncl:
-                Out/1
-                |  (new_x)
-                |  EnvGroup EnvOut
-        
-
-        "Verifier"
         rule OutIntf_PermitTokenVerificationOut_Verifier EnvRule:
             Pr: (Proto)_PermitTokenVerificationOut_Verifier/2
                 |  (added_rid, new_x)
@@ -2706,6 +2694,18 @@ ADEM
             Ac:
             Cncl:
                 (Proto)_PermitTokenVerificationOut/1
+                |  (new_x)
+                |  EnvGroup EnvOut
+        
+
+        "Verifier"
+        rule OutIntf_OutFact_Verifier EnvRule:
+            Pr: (Proto)_OutFact_Verifier/2
+                |  (added_rid, new_x)
+                |  EnvGroup EnvOut
+            Ac:
+            Cncl:
+                Out/1
                 |  (new_x)
                 |  EnvGroup EnvOut
         
@@ -2884,21 +2884,6 @@ ADEM
         
 
         "Verifier"
-        rule Invalid StateRule "Verifier":
-            Pr: (Setup)_Verifier/1
-                |  (rid)
-                |  EnvGroup EnvIn
-            Ac:
-            Cncl:
-                (St)_Verifier_0/1
-                |  (rid)
-                |  StateGroup
-                (Proto)_OutFact_Verifier/2
-                |  (rid, pubTerm(const_INVALID_pub()))
-                |  EnvGroup EnvOut
-        
-
-        "Verifier"
         rule FinishSetup StateRule "Verifier":
             Pr: (Setup)_Verifier/1
                 |  (rid)
@@ -2938,6 +2923,21 @@ ADEM
                 (St)_Verifier_2/1
                 |  (rid)
                 |  StateGroup
+        
+
+        "Verifier"
+        rule IsInvalid StateRule "Verifier":
+            Pr: (St)_Verifier_2/1
+                |  (rid)
+                |  StateGroup
+            Ac:
+            Cncl:
+                (St)_Verifier_0/1
+                |  (rid)
+                |  StateGroup
+                (Proto)_OutFact_Verifier/2
+                |  (rid, pubTerm(const_INVALID_pub()))
+                |  EnvGroup EnvOut
         
 
         "Verifier"
@@ -3211,17 +3211,6 @@ ADEM
                 |  EnvGroup EnvOut
         
 
-        rule Out_OutFact_Verifier EnvRule:
-            Pr:
-            Ac: (Proto)_slOut_OutFact/2
-                |  (added_rid, new_x)
-                |  ActionGroup
-            Cncl:
-                Out/1
-                |  (new_x)
-                |  EnvGroup EnvOut
-        
-
         rule Out_PermitTokenVerificationOut_Verifier EnvRule:
             Pr:
             Ac: (Proto)_slOut_PermitTokenVerificationOut/2
@@ -3229,6 +3218,17 @@ ADEM
                 |  ActionGroup
             Cncl:
                 (Proto)_PermitTokenVerificationOut/1
+                |  (new_x)
+                |  EnvGroup EnvOut
+        
+
+        rule Out_OutFact_Verifier EnvRule:
+            Pr:
+            Ac: (Proto)_slOut_OutFact/2
+                |  (added_rid, new_x)
+                |  ActionGroup
+            Cncl:
+                Out/1
                 |  (new_x)
                 |  EnvGroup EnvOut
         
@@ -3342,22 +3342,22 @@ ADEM
         
 
         "Verifier"
-        rule Out_OutFact_Verifier EnvRule:
-            Pr: (Proto)_OutFact_Verifier/2
+        rule Out_PermitTokenVerificationOut_Verifier EnvRule:
+            Pr: (Proto)_PermitTokenVerificationOut_Verifier/2
                 |  (added_rid, new_x)
                 |  EnvGroup EnvOut
-            Ac: (Proto)_slOut_OutFact/2
+            Ac: (Proto)_slOut_PermitTokenVerificationOut/2
                 |  (added_rid, new_x)
                 |  ActionGroup
             Cncl:
         
 
         "Verifier"
-        rule Out_PermitTokenVerificationOut_Verifier EnvRule:
-            Pr: (Proto)_PermitTokenVerificationOut_Verifier/2
+        rule Out_OutFact_Verifier EnvRule:
+            Pr: (Proto)_OutFact_Verifier/2
                 |  (added_rid, new_x)
                 |  EnvGroup EnvOut
-            Ac: (Proto)_slOut_PermitTokenVerificationOut/2
+            Ac: (Proto)_slOut_OutFact/2
                 |  (added_rid, new_x)
                 |  ActionGroup
             Cncl:
@@ -3376,10 +3376,10 @@ ADEM
     Perm In_RF "e_Log"
     Perm In_RF "e_InFact"
     Perm In_RF "e_Setup_TokenVerifier"
-    Perm Internal_R "e_Invalid"
     Perm Internal_R "e_FinishSetup"
     Perm Internal_R "e_ReceiveToken"
     Perm Internal_R "e_ReceiveTokenFinish"
+    Perm Internal_R "e_IsInvalid"
     Perm Internal_R "e_IsUnsignedEmblem"
     Perm Internal_R "e_IsSignedEmblem"
     Perm Internal_R "e_IsOrganizationalEmblem"
@@ -3390,8 +3390,8 @@ ADEM
     Perm Internal_R "e_CollectAuthorityEndorsements"
     Perm Internal_R "e_IsEndorsedEmblem"
     Perm Internal_R "e_FinishVerification"
-    Perm Out_RG "e_OutFact"
     Perm Out_RG "e_PermitTokenVerificationOut"
+    Perm Out_RG "e_OutFact"
     Perm In_RF "e_ValidTokenIn"
     Perm In_RF "e_Setup_Verifier"
 ==== Restrictions ==========

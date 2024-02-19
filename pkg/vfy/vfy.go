@@ -94,7 +94,8 @@ type TokenVerificationResult struct {
 // @ 	km.lock.LockInv() == LockInv!<km!>
 // @ requires acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 // @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
-func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup @*/) {
+// @ requires ValidationPerm(tokenT)
+func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup, ghost tokenT term.Term @*/) {
 	// @ share threadCount, loc, results, vfyWaitGroup
 
 	// @ unfold acc(PkgMems(), 1 / threadCount)
@@ -140,22 +141,6 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	}
 }
 
-// @ trusted
-//
-//	requires results.RecvChannel() &&
-//		results.RecvGivenPerm() == PredTrue!<!> &&
-//		results.RecvGotPerm() == SendToken!<loc, n, _!>
-//	requires results.RecvGivenPerm()()
-//	requires place.token(t0) && iospec.e_ValidTokenIn(t0, rid)
-//	ensures results.RecvChannel() &&
-//		results.RecvGivenPerm() == PredTrue!<!> &&
-//		results.RecvGotPerm() == SendToken!<loc, n, _!>
-//	ensures place.token(t1) && t1 == old(iospec.get_e_ValidTokenIn_placeDst(t0, rid)) && t == old(iospec.get_e_ValidTokenIn_r1(t0, rid))
-//	ensures res != nil ==> SendToken!<loc, n, _!>(res)
-func ResultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghost n int, ghost t0 place.Place, ghost rid term.Term @*/) (res *TokenVerificationResult /*@, ghost t term.Term, ghost t1 place.Place @*/) {
-	return <-results
-}
-
 // Verify a slice of ADEM tokens.
 // @ requires PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem()
 // @ requires place.token(p) && iospec.P_Verifier(p, term.freshTerm(fresh.fr_integer64(rid)), mset[fact.Fact]{})
@@ -170,24 +155,14 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	// @ unfold iospec.P_Verifier(p, ridT, s)
 	// @ unfold iospec.phiRF_Verifier_18(p, ridT, s)
-	// @ assert acc(iospec.e_Setup_Verifier(p, ridT))
 	// @ p = iospec.get_e_Setup_Verifier_placeDst(p, ridT)
 	// @ s = mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+
 	// TODO: Is there a better way to do this? Or is this just the assumption that library functions are allowed to make
 	// @ inhale place.token(p)
-	// @ assert iospec.P_Verifier(p, ridT, s)
 
 	// Early termination for empty rawTokens slice
 	if len(rawTokens) == 0 {
-		// @ unfold iospec.P_Verifier(p, ridT, s)
-		// @ unfold iospec.phiR_Verifier_0(p, ridT, s)
-		/*@
-		l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
-		a := mset[claim.Claim] {}
-		r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
-		@*/
-		// @ p = iospec.internBIO_e_Invalid(p, ridT, l, a, r)
-		// @ s = fact.U(l, r, s)
 		return ResultInvalid()
 	}
 
@@ -237,6 +212,16 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	// @ fold acc(jwk.KeySeq(trustedKeys.Elems()), _)
 
+	/*@
+	unfold iospec.P_Verifier(p, ridT, s)
+	unfold iospec.phiR_Verifier_0(p, ridT, s)
+	l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+	a := mset[claim.Claim] { }
+	r := mset[fact.Fact] { fact.St_Verifier_1(ridT) }
+	p = iospec.internBIO_e_FinishSetup(p, ridT, l, a, r)
+	s = fact.U(l, r, s)
+	@*/
+
 	// @ x@ := 42
 	// @ ghost loc := &x
 	// @ fold SingleUse(loc)
@@ -260,6 +245,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ fold PkgMems()
 
 	// Start verification threads
+	// @ invariant place.token(p) && fact.St_Verifier_1(ridT) in s && iospec.P_Verifier(p, ridT, s)
 	// @ invariant threadCount == len(rawTokens)
 	// @ invariant acc(PkgMems(), (threadCount - i0) / threadCount)
 	// @ invariant acc(rawTokens, _)
@@ -270,7 +256,38 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ invariant acc(ResultsInv(loc, threadCount, results), (threadCount - i0) / threadCount)
 	// @ invariant acc(wg.UnitDebt(SendFraction!<results, threadCount!>), threadCount - i0)
 	for i, rawToken := range rawTokens /*@ with i0 @*/ {
-		go vfyToken(uint64(i), rawToken, km, results /*@, loc, threadCount, vfyWaitGroup @*/)
+		// Produce In fact for token
+		/*@
+		unfold iospec.P_Verifier(p, ridT, s)
+		unfold iospec.phiRF_Verifier_16(p, ridT, s)
+		tokenT, pp := tokenIn(rawToken, perm(1/2), p, ridT)
+		p = pp
+		s = s union mset[fact.Fact] { fact.InFact_Verifier(ridT, tokenT) }
+		@*/
+
+		// Produce PermitTokenVerificationOut fact
+		/*@
+		unfold iospec.P_Verifier(p, ridT, s)
+		unfold iospec.phiR_Verifier_1(p, ridT, s)
+		l := mset[fact.Fact] { fact.St_Verifier_1(ridT), fact.InFact_Verifier(ridT, tokenT) }
+		a := mset[claim.Claim] { }
+		r := mset[fact.Fact] { fact.St_Verifier_1(ridT), fact.PermitTokenVerificationOut_Verifier(ridT, tokenT) }
+		p = iospec.internBIO_e_ReceiveToken(p, ridT, tokenT, l, a, r)
+		s = fact.U(l, r, s)
+		@*/
+
+		// TODO: Apply phiRG_Verifier_14 and internal ghost function
+		/*@
+		unfold iospec.P_Verifier(p, ridT, s)
+		unfold iospec.phiRG_Verifier_14(p, ridT, s)
+		assert iospec.e_PermitTokenVerificationOut(p, ridT, tokenT)
+		p = permissionOut(p, ridT, tokenT)
+		s = s setminus mset[fact.Fact] { fact.PermitTokenVerificationOut_Verifier(ridT, tokenT) }
+		@*/
+
+		// --> How could this work nicely so that we still get the token transition?
+
+		go vfyToken(uint64(i), rawToken, km, results /*@, loc, threadCount, vfyWaitGroup, tokenT @*/)
 	}
 
 	// @ vfyWaitGroup.SetWaitMode(1/2, 1/2)
@@ -293,13 +310,23 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	ts := []*ADEMToken{}
 	// @ fold TokenList(ts)
 
+	/*@
+	unfold iospec.P_Verifier(p, ridT, s)
+	unfold iospec.phiR_Verifier_2(p, ridT, s)
+	l := mset[fact.Fact] { fact.St_Verifier_1(ridT) }
+	a := mset[claim.Claim] { }
+	r := mset[fact.Fact] { fact.St_Verifier_2(ridT) }
+	p = iospec.internBIO_e_ReceiveTokenFinish(p, ridT, l, a, r)
+	s = fact.U(l, r, s)
+	@*/
+
 	/* invariant:
 	- retain receive permission to results channel: allows receiving nil to break out of loop
 	- as long as we haven't received all results, the channel is not closed
-	- as soon as we have received one result from every goroutine, the channel is closed
+	- as soon as we have received one result froim every goroutine, the channel is closed
 	- TokenList(ts) to current list of tokens (see (a)-(d) above)
 	*/
-	// @ invariant place.token(p) && iospec.P_Verifier(p, ridT, s) && fact.Setup_Verifier(ridT) in s
+	// @ invariant place.token(p) && fact.St_Verifier_2(ridT) in s && iospec.P_Verifier(p, ridT, s)
 	// @ invariant 0 < n && threadCount <= n
 	//  invariant acc(loc, (n - threadCount) / n)
 	//  invariant 0 <= threadCount
@@ -389,7 +416,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	// @ unfold TokenList(ts)
 
-	// @ invariant iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.Setup_Verifier(ridT) in s
+	// @ invariant iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant acc(ts, _) &&
@@ -405,29 +432,9 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			if emblem != nil {
 				// Multiple emblems
 				log.Print("Token set contains multiple emblems")
-				/*@
-					unfold iospec.P_Verifier(p, ridT, s)
-					unfold iospec.phiR_Verifier_0(p, ridT, s)
-					l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
-					a := mset[claim.Claim] {}
-					r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
-					assert iospec.e_Invalid(p, ridT, l, a, r)
-					p = iospec.internBIO_e_Invalid(p, ridT, l, a, r)
-					s = fact.U(l, r, s)
-				@*/
 				return ResultInvalid()
 			} else if err := jwt.Validate(t.Token, jwt.WithValidator(tokens.EmblemValidator)); err != nil {
 				log.Printf("Invalid emblem: %s", err)
-				/*@
-					unfold iospec.P_Verifier(p, ridT, s)
-					unfold iospec.phiR_Verifier_0(p, ridT, s)
-					l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
-					a := mset[claim.Claim] {}
-					r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
-					assert iospec.e_Invalid(p, ridT, l, a, r)
-					p = iospec.internBIO_e_Invalid(p, ridT, l, a, r)
-					s = fact.U(l, r, s)
-				@*/
 				return ResultInvalid()
 			} else {
 				emblem = t
@@ -469,16 +476,6 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	if emblem == nil {
 		log.Print("no emblem found")
-		/*@
-			unfold iospec.P_Verifier(p, ridT, s)
-			unfold iospec.phiR_Verifier_0(p, ridT, s)
-			l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
-			a := mset[claim.Claim] {}
-			r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
-			assert iospec.e_Invalid(p, ridT, l, a, r)
-			p = iospec.internBIO_e_Invalid(p, ridT, l, a, r)
-			s = fact.U(l, r, s)
-		@*/
 		return ResultInvalid()
 	}
 
@@ -488,16 +485,6 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
 	vfyResults, root := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, perm(1/2) @*/)
 	if util.ContainsVerificationResult(vfyResults, consts.INVALID /*@, perm(1/2) @*/) {
-		/*@
-			unfold iospec.P_Verifier(p, ridT, s)
-			unfold iospec.phiR_Verifier_0(p, ridT, s)
-			l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
-			a := mset[claim.Claim] {}
-			r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
-			assert iospec.e_Invalid(p, ridT, l, a, r)
-			p = iospec.internBIO_e_Invalid(p, ridT, l, a, r)
-			s = fact.U(l, r, s)
-		@*/
 		return ResultInvalid()
 	}
 
@@ -507,16 +494,6 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	endorsedResults, endorsedBy := verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, perm(1/4) @*/)
 	if util.ContainsVerificationResult(endorsedResults, consts.INVALID /*@, perm(1/2) @*/) {
-		/*@
-			unfold iospec.P_Verifier(p, ridT, s)
-			unfold iospec.phiR_Verifier_0(p, ridT, s)
-			l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
-			a := mset[claim.Claim] {}
-			r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, term.pubTerm(pub.const_INVALID_pub())) }
-			assert iospec.e_Invalid(p, ridT, l, a, r)
-			p = iospec.internBIO_e_Invalid(p, ridT, l, a, r)
-			s = fact.U(l, r, s)
-		@*/
 		return ResultInvalid()
 	}
 
@@ -536,8 +513,6 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 pred SingleUse(loc *int) {
 	acc(loc)
 }
-
-pred e_ValidToken(t *ADEMToken)
 
 pred ResultPerm(result *TokenVerificationResult) {
 	acc(result) &&
@@ -636,10 +611,44 @@ func collectDebt(fractionSeq seq[pred()], n int, results chan *TokenVerification
 
 ghost
 trusted
-requires ValidToken(at) &&
-	iospec.e_ValidTokenOut(p, rid, t) &&
-	Abs(at) == gamma(t)
-ensures e_ValidToken(at)
-func PersistValidToken(at *ADEMToken, p place.Place, rid term.Term, t term.Term)
+requires acc(rawToken, _)
+decreases _
+pure func Abs(rawToken []byte) (res Bytes)
+
+ghost
+requires tokenP > 0 && acc(rawToken, tokenP)
+requires place.token(p) && iospec.e_InFact(p, ridT)
+ensures acc(rawToken, tokenP)
+ensures gamma(tokenT) == Abs(rawToken)
+ensures tokenT == old(iospec.get_e_InFact_r1(p, ridT))
+ensures place.token(pp) && pp == old(iospec.get_e_InFact_placeDst(p, ridT))
+decreases  _
+func tokenIn(rawToken []byte, ghost tokenP perm, ghost p place.Place, ghost ridT term.Term) (ghost tokenT term.Term, ghost pp place.Place) {
+	tokenT := iospec.get_e_InFact_r1(p, ridT)
+	assume gamma(tokenT) == Abs(rawToken)
+	pp := iospec.get_e_InFact_placeDst(p, ridT)
+	inhale place.token(pp)
+	return tokenT, pp
+}
+
+pred ValidationPerm(ghost t term.Term)
+
+ghost
+requires place.token(p) && iospec.e_PermitTokenVerificationOut(p, rid, t)
+ensures pp == old(iospec.get_e_PermitTokenVerificationOut_placeDst(p, rid, t)) && place.token(pp)
+ensures ValidationPerm(t)
+decreases _
+func permissionOut(ghost p place.Place, ghost rid term.Term, ghost t term.Term) (ghost pp place.Place) {
+	exhale place.token(p)
+	pp := iospec.get_e_PermitTokenVerificationOut_placeDst(p, rid, t)
+	inhale place.token(pp)
+	inhale ValidationPerm(t)
+}
+
+ghost
+decreases _
+func permissionIn(ghost p place.Place, ghost rid term.Term, ghost t term.Term) (ghost pp place.Place) {
+	// TODO
+}
 
 @*/

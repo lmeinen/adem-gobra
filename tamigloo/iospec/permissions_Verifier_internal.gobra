@@ -12,19 +12,6 @@ import . "github.com/adem-wg/adem-proto/pub"
 import . "github.com/adem-wg/adem-proto/fresh"
 
 
-// permission e_Invalid
-pred e_Invalid(ghost tami_p Place, ghost rid Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
-
-ghost
-requires e_Invalid(tami_p, rid, tami_lp, tami_ap, tami_rp)
-pure func get_e_Invalid_placeDst(tami_p Place, rid Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
-
-ghost
-requires token(tami_p) && e_Invalid(tami_p, rid, tami_lp, tami_ap, tami_rp)
-ensures token(tami_pp) && tami_pp == old(get_e_Invalid_placeDst(tami_p, rid, tami_lp, tami_ap, tami_rp))
-func internBIO_e_Invalid(tami_p Place, rid Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
-
-
 // permission e_FinishSetup
 pred e_FinishSetup(ghost tami_p Place, ghost rid Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
 
@@ -62,6 +49,19 @@ ghost
 requires token(tami_p) && e_ReceiveTokenFinish(tami_p, rid, tami_lp, tami_ap, tami_rp)
 ensures token(tami_pp) && tami_pp == old(get_e_ReceiveTokenFinish_placeDst(tami_p, rid, tami_lp, tami_ap, tami_rp))
 func internBIO_e_ReceiveTokenFinish(tami_p Place, rid Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+
+
+// permission e_IsInvalid
+pred e_IsInvalid(ghost tami_p Place, ghost rid Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+
+ghost
+requires e_IsInvalid(tami_p, rid, tami_lp, tami_ap, tami_rp)
+pure func get_e_IsInvalid_placeDst(tami_p Place, rid Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+
+ghost
+requires token(tami_p) && e_IsInvalid(tami_p, rid, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_IsInvalid_placeDst(tami_p, rid, tami_lp, tami_ap, tami_rp))
+func internBIO_e_IsInvalid(tami_p Place, rid Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
 
 
 // permission e_IsUnsignedEmblem

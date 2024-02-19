@@ -79,8 +79,4 @@ pred EndorsementList(ts []*ADEMToken) {
 	forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> EndListElem(i, ts[i])
 }
 
-ghost
-requires acc(ValidToken(t), _)
-pure func Abs(t *ADEMToken) (res goblib.AbsToken)
-
 @*/

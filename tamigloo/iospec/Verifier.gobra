@@ -35,20 +35,6 @@ pred P_Verifier(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
 }
 pred phiR_Verifier_0(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     forall rid Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
-        { e_Invalid(tami_p, rid, tami_lp, tami_ap, tami_rp) } (
-            (M(tami_lp, tami_s) &&
-             tami_lp == mset[Fact] {
-                            Setup_Verifier(rid)} &&
-             tami_ap == mset[Claim] {
-                        } &&
-             tami_rp == mset[Fact] {
-                            St_Verifier_0(rid),
-                            OutFact_Verifier(rid, pubTerm(const_INVALID_pub()))}) ==>
-            (e_Invalid(tami_p, rid, tami_lp, tami_ap, tami_rp) && 
-             P_Verifier(get_e_Invalid_placeDst(tami_p, rid, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
-}
-pred phiR_Verifier_1(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
-    forall rid Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
         { e_FinishSetup(tami_p, rid, tami_lp, tami_ap, tami_rp) } (
             (M(tami_lp, tami_s) &&
              tami_lp == mset[Fact] {
@@ -60,7 +46,7 @@ pred phiR_Verifier_1(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
             (e_FinishSetup(tami_p, rid, tami_lp, tami_ap, tami_rp) && 
              P_Verifier(get_e_FinishSetup_placeDst(tami_p, rid, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
 }
-pred phiR_Verifier_2(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+pred phiR_Verifier_1(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     forall rid Term, t Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
         { e_ReceiveToken(tami_p, rid, t, tami_lp, tami_ap, tami_rp) } (
             (M(tami_lp, tami_s) &&
@@ -75,7 +61,7 @@ pred phiR_Verifier_2(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
             (e_ReceiveToken(tami_p, rid, t, tami_lp, tami_ap, tami_rp) && 
              P_Verifier(get_e_ReceiveToken_placeDst(tami_p, rid, t, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
 }
-pred phiR_Verifier_3(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+pred phiR_Verifier_2(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     forall rid Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
         { e_ReceiveTokenFinish(tami_p, rid, tami_lp, tami_ap, tami_rp) } (
             (M(tami_lp, tami_s) &&
@@ -87,6 +73,20 @@ pred phiR_Verifier_3(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
                             St_Verifier_2(rid)}) ==>
             (e_ReceiveTokenFinish(tami_p, rid, tami_lp, tami_ap, tami_rp) && 
              P_Verifier(get_e_ReceiveTokenFinish_placeDst(tami_p, rid, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
+}
+pred phiR_Verifier_3(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+    forall rid Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
+        { e_IsInvalid(tami_p, rid, tami_lp, tami_ap, tami_rp) } (
+            (M(tami_lp, tami_s) &&
+             tami_lp == mset[Fact] {
+                            St_Verifier_2(rid)} &&
+             tami_ap == mset[Claim] {
+                        } &&
+             tami_rp == mset[Fact] {
+                            St_Verifier_0(rid),
+                            OutFact_Verifier(rid, pubTerm(const_INVALID_pub()))}) ==>
+            (e_IsInvalid(tami_p, rid, tami_lp, tami_ap, tami_rp) && 
+             P_Verifier(get_e_IsInvalid_placeDst(tami_p, rid, tami_lp, tami_ap, tami_rp), tami_rid, U(tami_lp, tami_rp, tami_s))))
 }
 pred phiR_Verifier_4(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     forall rid Term, E Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact] :: 
@@ -238,19 +238,19 @@ pred phiR_Verifier_13(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
 }
 pred phiRG_Verifier_14(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     forall new_x Term :: 
-        { e_OutFact(tami_p, tami_rid, new_x) }{ OutFact_Verifier(tami_rid, new_x) } (
-            ((OutFact_Verifier(tami_rid, new_x) # tami_s) > 0) ==>
-            (e_OutFact(tami_p, tami_rid, new_x) && 
-             P_Verifier(get_e_OutFact_placeDst(tami_p, tami_rid, new_x), tami_rid, tami_s setminus mset[Fact] {
-                                                                                                       OutFact_Verifier(tami_rid, new_x)})))
-}
-pred phiRG_Verifier_15(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
-    forall new_x Term :: 
         { e_PermitTokenVerificationOut(tami_p, tami_rid, new_x) }{ PermitTokenVerificationOut_Verifier(tami_rid, new_x) } (
             ((PermitTokenVerificationOut_Verifier(tami_rid, new_x) # tami_s) > 0) ==>
             (e_PermitTokenVerificationOut(tami_p, tami_rid, new_x) && 
              P_Verifier(get_e_PermitTokenVerificationOut_placeDst(tami_p, tami_rid, new_x), tami_rid, tami_s setminus mset[Fact] {
                                                                                                                           PermitTokenVerificationOut_Verifier(tami_rid, new_x)})))
+}
+pred phiRG_Verifier_15(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
+    forall new_x Term :: 
+        { e_OutFact(tami_p, tami_rid, new_x) }{ OutFact_Verifier(tami_rid, new_x) } (
+            ((OutFact_Verifier(tami_rid, new_x) # tami_s) > 0) ==>
+            (e_OutFact(tami_p, tami_rid, new_x) && 
+             P_Verifier(get_e_OutFact_placeDst(tami_p, tami_rid, new_x), tami_rid, tami_s setminus mset[Fact] {
+                                                                                                       OutFact_Verifier(tami_rid, new_x)})))
 }
 pred phiRF_Verifier_16(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
     e_InFact(tami_p, tami_rid) && 

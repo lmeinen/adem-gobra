@@ -6,18 +6,18 @@ import (
     "term"
 )
 
-type AbsToken domain {
+type Bytes domain {
     // TODO: Add patterns as we go along
 }
 
 // Models a surjective homomorphism which maps (fresh and public) names to bytestrings and the signature's symbols to functions on bytestrings
 type Gamma domain {
-    func gamma(term.Term) AbsToken
+    func gamma(term.Term) Bytes
 
-    func oneTerm(AbsToken) term.Term
+    func oneTerm(Bytes) term.Term
 
     axiom { // totality
-        forall t AbsToken :: {oneTerm(t)} gamma(oneTerm(t)) == t
+        forall t Bytes :: {oneTerm(t)} gamma(oneTerm(t)) == t
     }
 
     // TODO: Add an entry for each function symbol
