@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/adem-wg/adem-proto/pkg/util"
+	// @ . "github.com/adem-wg/adem-proto/pkg/goblib"
 )
 
 func init() {
@@ -251,4 +252,8 @@ pred (ai *AI) Mem() {
 		(ai.port != nil ==> acc(ai.port))
 
 }
+
+ghost
+pure func AbsAI(ass []*AI) Bytes
+
 @*/

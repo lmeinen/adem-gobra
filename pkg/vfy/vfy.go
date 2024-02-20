@@ -141,6 +141,21 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	}
 }
 
+//	ensures r != nil ==> Abs(r) == gamma(rT)
+//
+// @ requires results.RecvChannel() &&
+// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
+// @ 	results.RecvGotPerm() == SendToken!<loc, n, _!>
+// @ requires results.RecvGivenPerm()()
+// @ ensures results.RecvChannel() &&
+// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
+// @ 	results.RecvGotPerm() == SendToken!<loc, n, _!>
+// @ ensures r != nil ==> results.RecvGotPerm()(r)
+func resultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghost n int, ghost p place.Place, ghost rid term.Term @*/) (r *TokenVerificationResult) {
+	r = <-results
+	return r
+}
+
 // Verify a slice of ADEM tokens.
 // @ requires PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem()
 // @ requires place.token(p) && iospec.P_Verifier(p, term.freshTerm(fresh.fr_integer64(rid)), mset[fact.Fact]{})
@@ -276,7 +291,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		s = fact.U(l, r, s)
 		@*/
 
-		// TODO: Apply phiRG_Verifier_14 and internal ghost function
+		// 'Persist' Out fact
 		/*@
 		unfold iospec.P_Verifier(p, ridT, s)
 		unfold iospec.phiRG_Verifier_14(p, ridT, s)
@@ -284,8 +299,6 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		p = permissionOut(p, ridT, tokenT)
 		s = s setminus mset[fact.Fact] { fact.PermitTokenVerificationOut_Verifier(ridT, tokenT) }
 		@*/
-
-		// --> How could this work nicely so that we still get the token transition?
 
 		go vfyToken(uint64(i), rawToken, km, results /*@, loc, threadCount, vfyWaitGroup, tokenT @*/)
 	}
@@ -445,7 +458,9 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			// @ unfold tokens.AssMem(protected)
 
 			if emblem.Headers.Algorithm() == jwa.NoSignature {
-				// TODO: Apply ReceiveUnsignedEmblem rule --> requires In fact of emblem body without signature
+				// TODO: Apply IsUnsignedEmblem rule
+				// --> constraints on emblem term: <'emblem', $E>
+
 				return VerificationResults{
 					results:   []consts.VerificationResult{consts.UNSIGNED},
 					protected: protected,
@@ -610,22 +625,16 @@ func collectDebt(fractionSeq seq[pred()], n int, results chan *TokenVerification
 }
 
 ghost
-trusted
-requires acc(rawToken, _)
-decreases _
-pure func Abs(rawToken []byte) (res Bytes)
-
-ghost
 requires tokenP > 0 && acc(rawToken, tokenP)
 requires place.token(p) && iospec.e_InFact(p, ridT)
 ensures acc(rawToken, tokenP)
-ensures gamma(tokenT) == Abs(rawToken)
+ensures gamma(tokenT) == AbsBytes(rawToken)
 ensures tokenT == old(iospec.get_e_InFact_r1(p, ridT))
 ensures place.token(pp) && pp == old(iospec.get_e_InFact_placeDst(p, ridT))
 decreases  _
 func tokenIn(rawToken []byte, ghost tokenP perm, ghost p place.Place, ghost ridT term.Term) (ghost tokenT term.Term, ghost pp place.Place) {
 	tokenT := iospec.get_e_InFact_r1(p, ridT)
-	assume gamma(tokenT) == Abs(rawToken)
+	assume gamma(tokenT) == AbsBytes(rawToken)
 	pp := iospec.get_e_InFact_placeDst(p, ridT)
 	inhale place.token(pp)
 	return tokenT, pp

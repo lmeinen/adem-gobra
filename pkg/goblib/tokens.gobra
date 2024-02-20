@@ -8,6 +8,21 @@ import (
 
 type Bytes domain {
     // TODO: Add patterns as we go along
+    
+    // constructors
+    func tuple2B(Bytes, Bytes) Bytes
+    func stringB(string) Bytes
+
+    // deconstructors
+    func getFirstB(Bytes) Bytes
+    func getSecondB(Bytes) Bytes
+
+    // tuple2B deconstructors
+    axiom {
+        forall t1, t2 Bytes :: { tuple2B(t1, t2) } getFirstB(tuple2B(t1, t2)) == t1 && getSecondB(tuple2B(t1, t2)) == t2
+    }
+
+
 }
 
 // Models a surjective homomorphism which maps (fresh and public) names to bytestrings and the signature's symbols to functions on bytestrings
@@ -22,6 +37,6 @@ type Gamma domain {
 
     // TODO: Add an entry for each function symbol
     axiom { // homomorphism
-        (true)
+        (forall t1, t2 term.Term :: {gamma(term.pair(t1,t2))} gamma(term.pair(t1,t2)) == tuple2B(gamma(t1), gamma(t2)))
     }
 }

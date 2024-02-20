@@ -78,14 +78,14 @@ func internBIO_e_VerifyOrganizationalEmblem(tami_p Place, rid Term, key Term, oi
 
 
 // permission e_VerifyAnonEmblem
-pred e_VerifyAnonEmblem(ghost tami_p Place, ghost rid Term, ghost key Term, ghost oi Term, ghost E Term, ghost tokenSig Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+pred e_VerifyAnonEmblem(ghost tami_p Place, ghost rid Term, ghost key Term, ghost E Term, ghost tokenSig Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
 
 ghost
-requires e_VerifyAnonEmblem(tami_p, rid, key, oi, E, tokenSig, tami_lp, tami_ap, tami_rp)
-pure func get_e_VerifyAnonEmblem_placeDst(tami_p Place, rid Term, key Term, oi Term, E Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+requires e_VerifyAnonEmblem(tami_p, rid, key, E, tokenSig, tami_lp, tami_ap, tami_rp)
+pure func get_e_VerifyAnonEmblem_placeDst(tami_p Place, rid Term, key Term, E Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
 
 ghost
-requires token(tami_p) && e_VerifyAnonEmblem(tami_p, rid, key, oi, E, tokenSig, tami_lp, tami_ap, tami_rp)
-ensures token(tami_pp) && tami_pp == old(get_e_VerifyAnonEmblem_placeDst(tami_p, rid, key, oi, E, tokenSig, tami_lp, tami_ap, tami_rp))
-func internBIO_e_VerifyAnonEmblem(tami_p Place, rid Term, key Term, oi Term, E Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+requires token(tami_p) && e_VerifyAnonEmblem(tami_p, rid, key, E, tokenSig, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_VerifyAnonEmblem_placeDst(tami_p, rid, key, E, tokenSig, tami_lp, tami_ap, tami_rp))
+func internBIO_e_VerifyAnonEmblem(tami_p Place, rid Term, key Term, E Term, tokenSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
 

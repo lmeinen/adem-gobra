@@ -682,7 +682,7 @@ ADEM
             |  (rid)
             |  EnvGroup EnvIn
             (Proto)_PermitTokenVerificationIn/1
-            |  (pair(key, pair(oi, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig))))
+            |  (pair(key, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig)))
             |  EnvGroup EnvIn
         Ac: (Proto)_Eq/2
             |  (verify(tokenSig, pair(pubTerm(const_emblem_pub()), E), key), ok())
@@ -692,7 +692,7 @@ ADEM
             |  (rid)
             |  StateGroup
             (Proto)_ValidTokenOut/1
-            |  (pair(key, pair(oi, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig))))
+            |  (pair(key, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig)))
             |  EnvGroup EnvOut
     
 
@@ -1768,7 +1768,7 @@ ADEM
                 |  (rid)
                 |  EnvGroup EnvIn
                 (Proto)_PermitTokenVerificationIn/1
-                |  (pair(key, pair(oi, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig))))
+                |  (pair(key, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig)))
                 |  EnvGroup EnvIn
             Ac: (Proto)_Eq/2
                 |  (verify(tokenSig, pair(pubTerm(const_emblem_pub()), E), key), ok())
@@ -1778,7 +1778,7 @@ ADEM
                 |  (rid)
                 |  StateGroup
                 (Proto)_ValidTokenOut/1
-                |  (pair(key, pair(oi, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig))))
+                |  (pair(key, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig)))
                 |  EnvGroup EnvOut
         
 
@@ -2869,7 +2869,7 @@ ADEM
                 |  (rid)
                 |  EnvGroup EnvIn
                 (Proto)_PermitTokenVerificationIn_TokenVerifier/2
-                |  (rid, pair(key, pair(oi, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig))))
+                |  (rid, pair(key, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig)))
                 |  EnvGroup EnvIn
             Ac: (Proto)_Eq/2
                 |  (verify(tokenSig, pair(pubTerm(const_emblem_pub()), E), key), ok())
@@ -2879,7 +2879,7 @@ ADEM
                 |  (rid)
                 |  StateGroup
                 (Proto)_ValidTokenOut_TokenVerifier/2
-                |  (rid, pair(key, pair(oi, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig))))
+                |  (rid, pair(key, pair(pair(pubTerm(const_emblem_pub()), E), tokenSig)))
                 |  EnvGroup EnvOut
         
 
