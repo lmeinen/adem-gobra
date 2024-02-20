@@ -296,10 +296,6 @@ func noop(_ string) {
 	// avoids UnusedVar compiler errors
 }
 
-// TODO: (lmeinen) Add ghost function to inspect stored keys
-// TODO: (lmeinen) Add function that consumes lock permissions to return permissions to those keys
-// TODO: (lmeinen) With this, we can then safely implement jwk.Set operations on trustedKeys
-
 /*@
 pred WaitInv() {
 	true
