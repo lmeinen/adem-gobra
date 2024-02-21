@@ -21,7 +21,7 @@ var ErrAlgMissing = errors.New("input key misses algorithm")
 
 // Get the KID of a key endorsed in an emblem. If the endorsed key has no KID,
 // it will be calculated.
-// @ preserves acc(PkgMem(), _)
+// @ preserves acc(PkgMem(), _) && acc(t.Mem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
 // @ requires t != nil
 // @ ensures err == nil ==> kid != ""

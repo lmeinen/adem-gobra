@@ -18,7 +18,7 @@ type ADEMToken struct {
 
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(sig, _)
-// @ requires t != nil
+// @ requires t != nil && acc(t.Mem(), _)
 // @ ensures err == nil ==> res != nil && ValidToken(res)
 // @ ensures err != nil ==> res == nil
 func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.Token) (res *ADEMToken, err error) {

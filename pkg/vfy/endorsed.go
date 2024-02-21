@@ -43,33 +43,47 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 		// @ unfold acc(EndListElem(i0, endorsement), p)
 		// @ unfold acc(Endorsement(endorsement), p)
 		// @ unfold acc(ValidToken(endorsement), p / 2)
+		// @ unfold acc(Emblem(emblem), p)
+		// @ unfold acc(ValidToken(emblem), p / 2)
 		if endorsedKID, err := tokens.GetEndorsedKID(endorsement.Token); err != nil {
 			log.Printf("could not not get endorsed kid: %s", err)
+			// @ fold acc(ValidToken(emblem), p / 2)
+			// @ fold acc(Emblem(emblem), p)
 			// @ fold acc(ValidToken(endorsement), p / 2)
 			// @ fold acc(Endorsement(endorsement), p)
 			// @ fold acc(EndListElem(i0, endorsement), p)
 			continue
 		} else if /*@ unfolding acc(ValidToken(root), p) in @*/ root.Token.Issuer() != endorsement.Token.Subject() {
+			// @ fold acc(ValidToken(emblem), p / 2)
+			// @ fold acc(Emblem(emblem), p)
 			// @ fold acc(ValidToken(endorsement), p / 2)
 			// @ fold acc(Endorsement(endorsement), p)
 			// @ fold acc(EndListElem(i0, endorsement), p)
 			continue
 		} else if endorsement.Token.Issuer() == "" {
+			// @ fold acc(ValidToken(emblem), p / 2)
+			// @ fold acc(Emblem(emblem), p)
 			// @ fold acc(ValidToken(endorsement), p / 2)
 			// @ fold acc(Endorsement(endorsement), p)
 			// @ fold acc(EndListElem(i0, endorsement), p)
 			continue
 		} else if end, _ := endorsement.Token.Get("end"); !end.(bool) {
+			// @ fold acc(ValidToken(emblem), p / 2)
+			// @ fold acc(Emblem(emblem), p)
 			// @ fold acc(ValidToken(endorsement), p / 2)
 			// @ fold acc(Endorsement(endorsement), p)
 			// @ fold acc(EndListElem(i0, endorsement), p)
 			continue
 		} else if /*@ unfolding acc(ValidToken(root), p) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ ) != endorsedKID {
+			// @ fold acc(ValidToken(emblem), p / 2)
+			// @ fold acc(Emblem(emblem), p)
 			// @ fold acc(ValidToken(endorsement), p / 2)
 			// @ fold acc(Endorsement(endorsement), p)
 			// @ fold acc(EndListElem(i0, endorsement), p)
 			continue
-		} else if err := tokens.VerifyConstraints( /*@ unfolding acc(Emblem(emblem), p) in unfolding acc(ValidToken(emblem), p / 2) in @*/ emblem.Token, endorsement.Token); err != nil {
+		} else if err := tokens.VerifyConstraints(emblem.Token, endorsement.Token); err != nil {
+			// @ fold acc(ValidToken(emblem), p / 2)
+			// @ fold acc(Emblem(emblem), p)
 			// @ fold acc(ValidToken(endorsement), p / 2)
 			// @ fold acc(Endorsement(endorsement), p)
 			// @ fold acc(EndListElem(i0, endorsement), p)
@@ -81,6 +95,8 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 			issuers = append( /*@ perm(1/2), @*/ issuers, endorsement.Token.Issuer())
 			_, ok := trustedKeys.LookupKeyID(endorsement.VerificationKey.KeyID( /*@ none[perm] @*/ ) /*@, perm(1/2) @*/)
 			trustedFound = trustedFound || ok
+			// @ fold acc(ValidToken(emblem), p / 2)
+			// @ fold acc(Emblem(emblem), p)
 			// @ fold acc(ValidToken(endorsement), p / 2)
 			// @ fold acc(Endorsement(endorsement), p)
 			// @ fold acc(EndListElem(i0, endorsement), p)

@@ -65,37 +65,46 @@ type JwtClaim interface {
 // JwtToken represents a generic JWT token.
 type JwtToken interface {
 
+	// @ pred Mem()
+
 	// Expiration returns the value for "exp" field of the token
+	// @ requires acc(Mem(), _)
 	// @ decreases _
 	// @ pure
 	Expiration() time.Time
 
 	// IssuedAt returns the value for "iat" field of the token
+	// @ requires acc(Mem(), _)
 	// @ decreases _
 	// @ pure
 	IssuedAt() time.Time
 
 	// Issuer returns the value for "iss" field of the token
+	// @ requires acc(Mem(), _)
 	// @ decreases _
 	// @ pure
 	Issuer() string
 
 	// NotBefore returns the value for "nbf" field of the token
+	// @ requires acc(Mem(), _)
 	// @ decreases _
 	// @ pure
 	NotBefore() time.Time
 
 	// Subject returns the value for "sub" field of the token
+	// @ requires acc(Mem(), _)
 	// @ decreases _
 	// @ pure
 	Subject() string
 
 	// @ ghost
+	// @ requires acc(Mem(), _)
 	// @ decreases _
 	// @ pure
 	Contains(key string) bool
 
 	// @ ghost
+	// @ requires acc(Mem(), _)
 	// @ requires acc(&Custom, _) && acc(Custom, _)
 	// @ ensures Contains(key) ==> claim != nil
 	// @ ensures Contains(key) && key in domain(Custom) ==> (
@@ -109,7 +118,9 @@ type JwtToken interface {
 	// `nbf`, `exp`, `iat`, and other user-defined fields. If the field does not
 	// exist in the token, the second return value will be `false`
 	// TODO: (lmeinen) Though not strictly required for this project, we could add standard registered claims here, too
+	// @ requires acc(Mem(), _)
 	// @ requires acc(&Custom, _) && acc(Custom, _)
+	// @ ensures acc(Mem(), _)
 	// @ ensures acc(&Custom, _) && acc(Custom, _)
 	// @ ensures Contains(key) == old(Contains(key))
 	// @ ensures Contains(key) == ok
@@ -184,7 +195,7 @@ type Validator interface {
 	// @ pred Constraints(JwtToken)
 
 	// Validate should return an error if a required conditions is not met.
-	// @ preserves acc(Mem(), _)
+	// @ preserves acc(Mem(), _) && acc(t.Mem(), _)
 	// @ requires t != nil
 	// @ ensures err == nil ==> Constraints(t)
 	Validate(c context.Context, t JwtToken) (err ValidationError)
@@ -236,7 +247,7 @@ func WithValidator(v Validator) (o ValidateOption)
 // Parse parses the JWT token payload and creates a new `jwt.Token` object.
 // The token must be encoded in either JSON format or compact format.
 // @ preserves acc(&Custom, _) && acc(Custom, _)
-// @ ensures err == nil ==> t != nil
+// @ ensures err == nil ==> t != nil && t.Mem()
 func Parse(s []byte, options ...ParseOption) (t JwtToken, err error)
 
 // WithKeyProvider allows users to specify an object to provide keys to

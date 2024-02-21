@@ -17,7 +17,8 @@ pred ValidToken(t *ADEMToken) {
 	t.VerificationKey != nil &&
 		acc(t.VerificationKey.Mem(), _) &&
 	t.Headers != nil &&
-	t.Token != nil
+	t.Token != nil && 
+		acc(t.Token.Mem(), _)
 }
 
 pred Endorsement(t *ADEMToken) {
@@ -26,8 +27,9 @@ pred Endorsement(t *ADEMToken) {
 	t.Token != nil &&
 		jwt.IsValid(t.Token) &&
 		acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
-		t.Token.Contains("end") &&
-		typeOf(t.Token.PureGet("end")) == type[bool]
+		unfolding acc(ValidToken(t), 1/2) in 
+			t.Token.Contains("end") &&
+			typeOf(t.Token.PureGet("end")) == type[bool]
 }
 
 pred Emblem(t *ADEMToken) {
@@ -36,7 +38,7 @@ pred Emblem(t *ADEMToken) {
 	t.Token != nil &&
 		jwt.IsValid(t.Token) &&
 		acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
-		t.Token.Contains("ass")
+		unfolding acc(ValidToken(t), 1/2) in t.Token.Contains("ass")
 }
 
 // predicate wrapper to ensure injectivity of t
@@ -69,19 +71,19 @@ pure func AbsBytes(rawToken []byte) (res Bytes)
 
 ghost
 requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 requires unfolding acc(ValidToken(t), _) in (
 	t.Headers.ContentType() == string(consts.EmblemCty) ? t.Token.Contains("ass") : t.Token.Contains("key"))
-requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 pure func Abs(t *ADEMToken) Bytes {
 	// (1) note the PureGet call, it is a consequence of Gobra's limitation that a pure function cannot have multiple return values - as a consequence AbsAI can't require any permissions, either
 	return unfolding acc(ValidToken(t), _) in
-		let ai := stringB("ai") in
         let oi := t.Token.Issuer() in
         let sub := t.Token.Subject() in
 		let key := keyB(t.VerificationKey) in
 		let sig := stringB("sig") in 
 		t.Headers.ContentType() == string(consts.EmblemCty) ?
-			// let ai := ident.AbsAI(t.Token.PureGet("ass").([]*ident.AI)) in
+			let ai := ident.AbsAI(t.Token.PureGet("ass").([]*ident.AI)) in
+			// let ai := stringB("ai") in
 			// emblem
 			(t.Headers.Algorithm() == jwa.NoSignature ?
 				// unsigned
@@ -93,8 +95,8 @@ pure func Abs(t *ADEMToken) Bytes {
                     // organizational
                     tuple4B(key, stringB(oi), tuple3B(emblemB(), ai, stringB(oi)), sig)) :
 			// endorsement
-        	// let endKey := keyB(t.Token.PureGet("key").(tokens.EmbeddedKey).Key) in
-			let endKey := stringB("key") in
+        	let endKey := keyB(t.Token.PureGet("key").(tokens.EmbeddedKey).Key) in
+			// let endKey := stringB("key") in
             (oi == "" ?
                 // anonymous
                 tuple3B(key, tuple2B(endorsementB(), endKey), sig) :
@@ -104,8 +106,6 @@ pure func Abs(t *ADEMToken) Bytes {
                     // internal
                     tuple4B(key, stringB(oi), tuple3B(endorsementB(), stringB(oi), endKey), sig)))
 }
-
-// TODO: Sample usage functions
 
 ghost
 requires acc(ValidToken(t), _)
@@ -142,6 +142,7 @@ requires unfolding acc(ValidToken(t), _) in
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 func organizationalEmblem(t *ADEMToken) {
 	b := Abs(t)
+	assert false
 	assert exists b1, b2, b3, b4 Bytes :: b == tuple4B(b1, b2, b3, b4)
 }
 
@@ -156,6 +157,7 @@ requires unfolding acc(ValidToken(t), _) in
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 func rootEndorsement(t *ADEMToken) {
 	b := Abs(t)
+	assert false // TODO: Fix
 	assert exists b1, b2, b3, b4 Bytes :: b == tuple4B(b1, b2, b3, b4)
 }
 

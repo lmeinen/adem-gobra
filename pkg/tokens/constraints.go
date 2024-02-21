@@ -12,7 +12,7 @@ import (
 // Check that the given emblem's ass claim complies with the given ass
 // constraints.
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
-// @ requires emblem != nil && emblem.Contains("ass")
+// @ preserves emblem != nil && acc(emblem.Mem(), _) && emblem.Contains("ass")
 // @ requires acc(constraints.Assets) &&
 // @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> constraints.Assets[i].Mem()
 func checkAssetConstraint(emblem jwt.Token, constraints EmblemConstraints) bool {
@@ -54,8 +54,8 @@ var ErrWndConstraint = errors.New("emblem does not satisfy wnd constraint")
 // constraints.
 // @ preserves acc(PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
-// @ requires emblem != nil
-// @ requires endorsement != nil
+// @ preserves emblem != nil && acc(emblem.Mem(), _)
+// @ preserves endorsement != nil && acc(endorsement.Mem(), _)
 func VerifyConstraints(emblem jwt.Token, endorsement jwt.Token) error {
 	endCnstrs, ok := endorsement.Get("emb")
 	if !ok {

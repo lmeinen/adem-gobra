@@ -40,17 +40,19 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	for _, endorsement := range endorsements /*@ with i0 @*/ {
 		// @ unfold acc(EndListElem(i0, endorsements[i0]), p)
 		// @ unfold acc(Endorsement(endorsement), p)
+		// @ unfold acc(ValidToken(endorsement), p / 2)
 		kid, err := tokens.GetEndorsedKID(endorsement.Token)
 		end, _ := endorsement.Token.Get("end")
+		// @ fold acc(ValidToken(endorsement), p / 2)
 		// @ fold acc(Endorsement(endorsement), p)
 		if err != nil {
 			log.Printf("could not get endorsed kid: %s\n", err)
 			// @ fold acc(EndListElem(i0, endorsements[i0]), p)
 			continue
-		} else if /*@ unfolding acc(Emblem(emblem), p) in unfolding acc(Endorsement(endorsement), p) in @*/ emblem.Token.Issuer() != endorsement.Token.Issuer() {
+		} else if /*@ unfolding acc(Emblem(emblem), p) in unfolding acc(ValidToken(emblem), p / 2) in unfolding acc(Endorsement(endorsement), p) in unfolding acc(ValidToken(endorsement), p / 2) in @*/ emblem.Token.Issuer() != endorsement.Token.Issuer() {
 			// @ fold acc(EndListElem(i0, endorsements[i0]), p)
 			continue
-		} else if /*@ unfolding acc(Emblem(emblem), p) in unfolding acc(Endorsement(endorsement), p) in @*/ emblem.Token.Issuer() != endorsement.Token.Subject() {
+		} else if /*@ unfolding acc(Emblem(emblem), p) in unfolding acc(ValidToken(emblem), p / 2) in unfolding acc(Endorsement(endorsement), p) in unfolding acc(ValidToken(endorsement), p / 2) in @*/ emblem.Token.Issuer() != endorsement.Token.Subject() {
 			// @ fold acc(EndListElem(i0, endorsements[i0]), p)
 			continue
 		} else if /*@ unfolding acc(Emblem(emblem), p) in unfolding acc(ValidToken(emblem), p / 2) in @*/ kid != emblem.VerificationKey.KeyID( /*@ none[perm] @*/ ) && !end.(bool) {
@@ -98,12 +100,19 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 				}
 			}
 			@*/
-			if err := tokens.VerifyConstraints(
-				/*@ unfolding acc(Emblem(emblem), p / 2) in unfolding acc(ValidToken(emblem), p / 4) in @*/ emblem.Token,
-				/*@ unfolding acc(ValidToken(endorsing), p / 4) in @*/ endorsing.Token); err != nil {
+			// @ unfold acc(Emblem(emblem), p / 2)
+			// @ unfold acc(ValidToken(emblem), p / 4)
+			// @ unfold acc(ValidToken(endorsing), p / 4)
+			if err := tokens.VerifyConstraints(emblem.Token, endorsing.Token); err != nil {
+				// @ fold acc(ValidToken(endorsing), p / 4)
+				// @ fold acc(ValidToken(emblem), p / 4)
+				// @ fold acc(Emblem(emblem), p / 2)
 				log.Printf("emblem does not comply with endorsement constraints: %s", err)
 				return []consts.VerificationResult{consts.INVALID}, nil
 			} else {
+				// @ fold acc(ValidToken(endorsing), p / 4)
+				// @ fold acc(ValidToken(emblem), p / 4)
+				// @ fold acc(Emblem(emblem), p / 2)
 				/*@
 				ghost {
 					if endorses == none[string] {
@@ -138,7 +147,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ unfold acc(ValidToken(root), p / 4)
 	_, rootLogged := root.Token.Get("log")
 	// @ fold acc(ValidToken(root), p / 2)
-	if /*@ unfolding acc(Emblem(emblem), p / 2) in @*/ emblem.Token.Issuer() != "" && !rootLogged {
+	if /*@ unfolding acc(Emblem(emblem), p / 2) in unfolding acc(ValidToken(emblem), p / 4) in @*/ emblem.Token.Issuer() != "" && !rootLogged {
 		return []consts.VerificationResult{consts.INVALID}, nil
 	} else if rootLogged {
 		results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL)

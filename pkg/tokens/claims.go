@@ -232,7 +232,7 @@ var ErrEndMissing = jwt.NewValidationError(errors.New("endorsements require end 
 type EmblemValidatorS struct{}
 
 // Validation function for emblem tokens.
-// @ preserves acc(v.Mem(), _)
+// @ preserves acc(v.Mem(), _) && acc(t.Mem(), _)
 // @ requires t != nil
 // @ ensures err == nil ==> v.Constraints(t)
 func (v EmblemValidatorS) Validate(_ context.Context, t jwt.Token) (err jwt.ValidationError) {
@@ -258,7 +258,7 @@ var EmblemValidator = EmblemValidatorS{}
 type EndorsementValidatorS struct{}
 
 // Validation function for endorsement tokens.
-// @ preserves acc(v.Mem(), _)
+// @ preserves acc(v.Mem(), _) && acc(t.Mem(), _)
 // @ requires t != nil
 // @ ensures err == nil ==> v.Constraints(t)
 func (v EndorsementValidatorS) Validate(_ context.Context, t jwt.Token) (err jwt.ValidationError) {
@@ -303,7 +303,7 @@ func validateOI(oi string) error {
 }
 
 // Validate claims shared by emblems and endorsements.
-// @ preserves acc(PkgMem(), _)
+// @ preserves acc(PkgMem(), _) && acc(t.Mem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
 // @ requires t != nil
 // @ ensures err == nil ==> CommonConstraints(t)
@@ -343,23 +343,23 @@ pred (EmblemValidatorS) Mem() {
 pred CommonConstraints(t jwt.Token) {
 	acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
 	t != nil &&
+	acc(t.Mem(), _) &&
 	jwt.IsValid(t) &&
 	t.Contains("ver") &&
 	t.PureGet("ver") != string(consts.V1)
 }
 
 pred (EmblemValidatorS) Constraints(t jwt.Token) {
-	t != nil &&
-	t.Contains("ass") &&
-	CommonConstraints(t)
+	CommonConstraints(t) &&
+	unfolding CommonConstraints(t) in t.Contains("ass")
 }
 
 pred (EndorsementValidatorS) Constraints(t jwt.Token) {
-	t != nil &&
+	CommonConstraints(t) &&
 	acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
-	t.Contains("end") &&
-	typeOf(t.PureGet("end")) == type[bool] &&
-	CommonConstraints(t)
+	unfolding CommonConstraints(t) in
+		t.Contains("end") &&
+		typeOf(t.PureGet("end")) == type[bool]
 }
 
 pred LogMem(log []*LogConfig) {
