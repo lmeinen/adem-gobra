@@ -959,7 +959,7 @@ ADEM
             |  (rid, oi, rootKey)
             |  StateGroup
             (Proto)_ValidTokenIn/1
-            |  (pair(endKey, pair(auth, pair(pair(pubTerm(const_root_end_pub()), pair(auth, pair(oi, rootKey))), endSig))))
+            |  (pair(endKey, pair(auth, pair(pair(pubTerm(const_root_end_pub()), pair(oi, rootKey)), endSig))))
             |  EnvGroup EnvIn
         Ac: (Proto)_Neq/2
             |  (auth, oi)
@@ -1985,7 +1985,7 @@ ADEM
                 |  (rid, oi, rootKey)
                 |  StateGroup
                 (Proto)_ValidTokenIn/1
-                |  (pair(endKey, pair(auth, pair(pair(pubTerm(const_root_end_pub()), pair(auth, pair(oi, rootKey))), endSig))))
+                |  (pair(endKey, pair(auth, pair(pair(pubTerm(const_root_end_pub()), pair(oi, rootKey)), endSig))))
                 |  EnvGroup EnvIn
             Ac: (Proto)_Neq/2
                 |  (auth, oi)
@@ -3086,7 +3086,7 @@ ADEM
                 |  (rid, oi, rootKey)
                 |  StateGroup
                 (Proto)_ValidTokenIn_Verifier/2
-                |  (rid, pair(endKey, pair(auth, pair(pair(pubTerm(const_root_end_pub()), pair(auth, pair(oi, rootKey))), endSig))))
+                |  (rid, pair(endKey, pair(auth, pair(pair(pubTerm(const_root_end_pub()), pair(oi, rootKey)), endSig))))
                 |  EnvGroup EnvIn
             Ac: (Proto)_Neq/2
                 |  (auth, oi)

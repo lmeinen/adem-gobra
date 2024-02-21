@@ -64,42 +64,118 @@ requires acc(rawToken, _)
 decreases _
 pure func AbsBytes(rawToken []byte) (res Bytes)
 
-// TODO: Add proper patterns
+// TODO: Is there any way to get the signature in here? Do we even need it?
 // TODO: Ensure that all proper constraints are collected by the end of organizastional/endorsed verification calls
 
 ghost
 requires acc(ValidToken(t), _)
-requires unfolding acc(ValidToken(t), _) in t.Token.Contains("ass")
+requires unfolding acc(ValidToken(t), _) in (
+	t.Headers.ContentType() == string(consts.EmblemCty) ? t.Token.Contains("ass") : t.Token.Contains("key"))
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 pure func Abs(t *ADEMToken) Bytes {
 	// (1) note the PureGet call, it is a consequence of Gobra's limitation that a pure function cannot have multiple return values - as a consequence AbsAI can't require any permissions, either
 	return unfolding acc(ValidToken(t), _) in
-		let ai := t.Token.PureGet("ass") in
+		let ai := stringB("ai") in
         let oi := t.Token.Issuer() in
-        let endKey := t.Token.PureGet("end") in
+        let sub := t.Token.Subject() in
+		let key := keyB(t.VerificationKey) in
+		let sig := stringB("sig") in 
 		t.Headers.ContentType() == string(consts.EmblemCty) ?
+			// let ai := ident.AbsAI(t.Token.PureGet("ass").([]*ident.AI)) in
 			// emblem
 			(t.Headers.Algorithm() == jwa.NoSignature ?
 				// unsigned
-				tuple2B(stringB("emblem"), ident.AbsAI(ai.([]*ident.AI))) :
+				tuple2B(emblemB(), ai) :
 				// signed
                 oi == "" ?
                     // anonymous
-                    stringB("anon") :
+                    tuple3B(key, tuple2B(emblemB(), ai), sig) :
                     // organizational
-                    stringB("org")) :
+                    tuple4B(key, stringB(oi), tuple3B(emblemB(), ai, stringB(oi)), sig)) :
 			// endorsement
+        	// let endKey := keyB(t.Token.PureGet("key").(tokens.EmbeddedKey).Key) in
+			let endKey := stringB("key") in
             (oi == "" ?
                 // anonymous
-                stringB("anon") :
-                t.Token.Contains("log") ?
+                tuple3B(key, tuple2B(endorsementB(), endKey), sig) :
+                (t.Token.Contains("log") ?
                     // root
-                    stringB("root_end") :
+                    tuple4B(key, stringB(oi), tuple3B(rootEndB(), stringB(sub), endKey), sig) :
                     // internal
-                    stringB("internal"))
+                    tuple4B(key, stringB(oi), tuple3B(endorsementB(), stringB(oi), endKey), sig)))
 }
 
-// TODO: Reformulate this as a predicate which can be used to obtain term format constraints needed to unfold iospec
+// TODO: Sample usage functions
+
+ghost
+requires acc(ValidToken(t), _)
+requires unfolding acc(ValidToken(t), _) in 
+	t.Headers.ContentType() == string(consts.EmblemCty) && 
+	t.Token.Contains("ass") &&
+	t.Headers.Algorithm() == jwa.NoSignature
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+func unsignedEmblem(t *ADEMToken) {
+	b := Abs(t)
+	assert exists b1, b2 Bytes :: b == tuple2B(b1,b2)
+}
+
+ghost
+requires acc(ValidToken(t), _)
+requires unfolding acc(ValidToken(t), _) in 
+	t.Headers.ContentType() == string(consts.EmblemCty) && 
+	t.Token.Contains("ass") &&
+	t.Headers.Algorithm() == jwa.ES256 &&
+	t.Token.Issuer() == ""
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+func signedEmblem(t *ADEMToken) {
+	b := Abs(t)
+	assert exists b1, b2, b3 Bytes :: b == tuple3B(b1, b2, b3)
+}
+
+ghost
+requires acc(ValidToken(t), _)
+requires unfolding acc(ValidToken(t), _) in 
+	t.Headers.ContentType() == string(consts.EmblemCty) && 
+	t.Token.Contains("ass") &&
+	t.Headers.Algorithm() == jwa.ES256 &&
+	t.Token.Issuer() == "https://emblem.flinker.com"
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+func organizationalEmblem(t *ADEMToken) {
+	b := Abs(t)
+	assert exists b1, b2, b3, b4 Bytes :: b == tuple4B(b1, b2, b3, b4)
+}
+
+ghost
+requires acc(ValidToken(t), _)
+requires unfolding acc(ValidToken(t), _) in 
+	t.Headers.ContentType() == string(consts.EndorsementCty) && 
+	t.Token.Contains("key") &&
+	t.Token.Contains("log") &&
+	t.Token.Issuer() == "https://emblem.flinker.com" &&
+	t.Token.Subject() == "https://emblem.flinker.com"
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+func rootEndorsement(t *ADEMToken) {
+	b := Abs(t)
+	assert exists b1, b2, b3, b4 Bytes :: b == tuple4B(b1, b2, b3, b4)
+}
+
+ghost
+requires acc(ValidToken(t1), _) && acc(ValidToken(t2), _)
+requires unfolding acc(ValidToken(t1), _) in t1.Token.Contains("ass") && t1.Headers.ContentType() == string(consts.EmblemCty) && t1.Headers.Algorithm() != jwa.NoSignature && t1.Token.Issuer() != ""
+requires unfolding acc(ValidToken(t2), _) in t2.Token.Contains("ass") && t2.Headers.ContentType() == string(consts.EmblemCty) && t2.Headers.Algorithm() != jwa.NoSignature && t2.Token.Issuer() != ""
+requires unfolding acc(ValidToken(t1), _) in unfolding acc(ValidToken(t2), _) in t1.Token.Issuer() != t2.Token.Issuer()
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+func foo(t1 *ADEMToken, t2 *ADEMToken) {
+	b := Abs(t1)
+	bb := Abs(t2)
+	assert exists b1,b2,b3,b4 Bytes :: b == tuple4B(b1,b2,b3,b4)
+	assert exists b1,b2,b3,b4 Bytes :: bb == tuple4B(b1,b2,b3,b4)
+	assert b == Abs(t1)
+	assert bb == Abs(t2)
+	// TODO: Do we need injectivity of the Bytes domain?
+	// assert b != bb
+}
+
 /*
 func termConstraints(t *ADEMToken, endorsedBy map[string]*ADEMToken) {
 	if t.Headers.ContentType() == string(consts.EmblemCty) {

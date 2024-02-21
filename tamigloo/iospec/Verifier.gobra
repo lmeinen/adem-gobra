@@ -212,7 +212,7 @@ pred phiR_Verifier_12(tami_p Place, tami_rid Term, ghost tami_s mset[Fact]) {
             (M(tami_lp, tami_s) &&
              tami_lp == mset[Fact] {
                             St_Verifier_4(rid, oi, rootKey),
-                            ValidTokenIn_Verifier(rid, pair(endKey, pair(auth, pair(pair(pubTerm(const_root_end_pub()), pair(auth, pair(oi, rootKey))), endSig))))} &&
+                            ValidTokenIn_Verifier(rid, pair(endKey, pair(auth, pair(pair(pubTerm(const_root_end_pub()), pair(oi, rootKey)), endSig))))} &&
              tami_ap == mset[Claim] {
                             Neq(auth, oi),
                             VerifiedAuthorityEndorsement(rid, auth, endKey, oi, rootKey)} &&
