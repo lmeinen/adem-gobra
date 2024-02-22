@@ -16,7 +16,6 @@ type Bytes domain {
     func tuple3B(Bytes, Bytes, Bytes) Bytes
     func tuple4B(Bytes, Bytes, Bytes, Bytes) Bytes
     func stringB(string) Bytes
-    func keyB(jwk.Key) Bytes // TODO: Does this make sense?
     func emblemB() Bytes
     func endorsementB() Bytes
     func rootEndB() Bytes

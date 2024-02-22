@@ -256,8 +256,8 @@ pred (ai *AI) Mem() {
 }
 
 ghost
-requires acc(ass) &&
-	forall i int :: 0 <= i && i < len(ass) ==> ass[i].Mem()
+requires acc(ass, _) &&
+	forall i int :: 0 <= i && i < len(ass) ==> acc(ass[i].Mem(), _)
 pure func AbsAI(ass []*AI) Bytes
 
 @*/
