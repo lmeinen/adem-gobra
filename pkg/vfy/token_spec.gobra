@@ -70,7 +70,6 @@ pure func AbsBytes(rawToken []byte) (res Bytes)
 // TODO: Ensure that all proper constraints are collected by the end of organizastional/endorsed verification calls
 
 ghost
-trusted
 requires acc(ValidToken(t), _)
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 requires unfolding acc(ValidToken(t), _) in (

@@ -2,6 +2,20 @@
 // ##(--onlyFilesWithHeader)
 package tokens
 
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"net/url"
+
+	"github.com/adem-wg/adem-proto/pkg/consts"
+	"github.com/adem-wg/adem-proto/pkg/ident"
+	"github.com/adem-wg/adem-proto/pkg/util"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+)
+
 (EndorsementValidatorS) implements jwt.Validator
 (EmblemValidatorS) implements jwt.Validator
 
@@ -15,7 +29,7 @@ pred (EmblemValidatorS) Mem() {
 	acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
 }
 
-pred CommonConstraints(t jwt.Token) {
+pred CommonConstraints(t jwt.JwtToken) {
 	acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
 	t != nil &&
 	acc(t.Mem(), _) &&
@@ -24,12 +38,12 @@ pred CommonConstraints(t jwt.Token) {
 	t.Values()["ver"] == string(consts.V1)
 }
 
-pred (EmblemValidatorS) Constraints(t jwt.Token) {
+pred (EmblemValidatorS) Constraints(t jwt.JwtToken) {
 	CommonConstraints(t) &&
 	unfolding CommonConstraints(t) in t.Contains("ass")
 }
 
-pred (EndorsementValidatorS) Constraints(t jwt.Token) {
+pred (EndorsementValidatorS) Constraints(t jwt.JwtToken) {
 	CommonConstraints(t) &&
 	acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
 	unfolding CommonConstraints(t) in
