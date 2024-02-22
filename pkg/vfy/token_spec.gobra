@@ -18,32 +18,33 @@ pred ValidToken(t *ADEMToken) {
 		acc(t.VerificationKey.Mem(), _) &&
 	t.Headers != nil &&
 	t.Token != nil && 
-		acc(t.Token.Mem(), _)
+		t.Token.Mem() && 
+		jwt.FieldMem(t.Token.Values())
 }
 
 pred Endorsement(t *ADEMToken) {
-	acc(ValidToken(t), 1/2) &&
-	acc(t, 1/2) &&
+	acc(ValidToken(t), _) &&
+	acc(t, _) &&
 	t.Token != nil &&
 		jwt.IsValid(t.Token) &&
 		acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
-		unfolding acc(ValidToken(t), 1/2) in 
+		unfolding acc(ValidToken(t), _) in 
 			t.Token.Contains("end") &&
 			typeOf(t.Token.Values()["end"]) == type[bool]
 }
 
 pred Emblem(t *ADEMToken) {
-	acc(ValidToken(t), 1/2) &&
-	acc(t, 1/2) &&
+	acc(ValidToken(t), _) &&
+	acc(t, _) &&
 	t.Token != nil &&
 		jwt.IsValid(t.Token) &&
 		acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
-		unfolding acc(ValidToken(t), 1/2) in t.Token.Contains("ass")
+		unfolding acc(ValidToken(t), _) in t.Token.Contains("ass")
 }
 
 // predicate wrapper to ensure injectivity of t
 pred TokenListElem(_ int, t *ADEMToken) {
-	t != nil && ValidToken(t)
+	t != nil && acc(ValidToken(t), _)
 }
 
 pred EndListElem(_ int, t *ADEMToken) {
@@ -70,6 +71,7 @@ pure func AbsBytes(rawToken []byte) (res Bytes)
 // TODO: Ensure that all proper constraints are collected by the end of organizastional/endorsed verification calls
 
 ghost
+trusted
 requires acc(ValidToken(t), _)
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 requires unfolding acc(ValidToken(t), _) in (
@@ -81,19 +83,20 @@ pure func Abs(t *ADEMToken) Bytes {
         let sub := t.Token.Subject() in
 		let key := keyB(t.VerificationKey) in
 		let sig := stringB("sig") in 
+		let ai := t.Token.PureGet("ass").([]*ident.AI) in
+		let aiB := (unfolding tokens.AssMem(ai) in ident.AbsAI(ai)) in
 		t.Headers.ContentType() == string(consts.EmblemCty) ?
-			let ai := ident.AbsAI(t.Token.Values()["ass"].([]*ident.AI)) in
 			// let ai := stringB("ai") in
 			// emblem
 			(t.Headers.Algorithm() == jwa.NoSignature ?
 				// unsigned
-				tuple2B(emblemB(), ai) :
+				tuple2B(emblemB(), aiB) :
 				// signed
                 oi == "" ?
                     // anonymous
-                    tuple3B(key, tuple2B(emblemB(), ai), sig) :
+                    tuple3B(key, tuple2B(emblemB(), aiB), sig) :
                     // organizational
-                    tuple4B(key, stringB(oi), tuple3B(emblemB(), ai, stringB(oi)), sig)) :
+                    tuple4B(key, stringB(oi), tuple3B(emblemB(), aiB, stringB(oi)), sig)) :
 			// endorsement
         	let endKey := keyB(t.Token.Values()["key"].(tokens.EmbeddedKey).Key) in
 			// let endKey := stringB("key") in
@@ -108,6 +111,7 @@ pure func Abs(t *ADEMToken) Bytes {
 }
 
 ghost
+trusted
 requires acc(ValidToken(t), _)
 requires unfolding acc(ValidToken(t), _) in 
 	t.Headers.ContentType() == string(consts.EmblemCty) && 
@@ -120,6 +124,7 @@ func unsignedEmblem(t *ADEMToken) {
 }
 
 ghost
+trusted
 requires acc(ValidToken(t), _)
 requires unfolding acc(ValidToken(t), _) in 
 	t.Headers.ContentType() == string(consts.EmblemCty) && 
@@ -133,6 +138,7 @@ func signedEmblem(t *ADEMToken) {
 }
 
 ghost
+trusted
 requires acc(ValidToken(t), _)
 requires unfolding acc(ValidToken(t), _) in 
 	t.Headers.ContentType() == string(consts.EmblemCty) && 
@@ -147,6 +153,7 @@ func organizationalEmblem(t *ADEMToken) {
 }
 
 ghost
+trusted
 requires acc(ValidToken(t), _)
 requires unfolding acc(ValidToken(t), _) in 
 	t.Headers.ContentType() == string(consts.EndorsementCty) && 
@@ -162,6 +169,7 @@ func rootEndorsement(t *ADEMToken) {
 }
 
 ghost
+trusted
 requires acc(ValidToken(t1), _) && acc(ValidToken(t2), _)
 requires unfolding acc(ValidToken(t1), _) in t1.Token.Contains("ass") && t1.Headers.ContentType() == string(consts.EmblemCty) && t1.Headers.Algorithm() != jwa.NoSignature && t1.Token.Issuer() != ""
 requires unfolding acc(ValidToken(t2), _) in t2.Token.Contains("ass") && t2.Headers.ContentType() == string(consts.EmblemCty) && t2.Headers.Algorithm() != jwa.NoSignature && t2.Token.Issuer() != ""

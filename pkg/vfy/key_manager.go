@@ -239,6 +239,7 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 		err = e
 	} else if logs, ok := t.Get("log"); ok {
 		headerKey := sig.ProtectedHeaders().JWK()
+		// @ unfold jwt.FieldMem(t.Values())
 		// @ unfold tokens.LogMem(logs.([]*tokens.LogConfig))
 		results := roots.VerifyBindingCerts(t.Issuer(), headerKey, logs.([]*tokens.LogConfig))
 		// @ invariant acc(PkgMem(), _)

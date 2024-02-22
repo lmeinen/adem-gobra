@@ -32,7 +32,7 @@ type AI struct {
 	port       *uint16
 }
 
-// @ preserves acc(labels, 1/2)
+// @ preserves acc(labels, _)
 func joinDomain(labels []string) string {
 	if len(labels) == 1 && labels[0] == "*" {
 		return ""
@@ -45,13 +45,13 @@ func joinDomain(labels []string) string {
 	}
 }
 
-// @ preserves ai.Mem()
-// @ preserves than.Mem()
+// @ preserves acc(ai.Mem(), _)
+// @ preserves acc(than.Mem(), _)
 func (ai *AI) MoreGeneral(than *AI) bool {
-	// @ unfold ai.Mem()
-	// @ ghost defer fold ai.Mem()
-	// @ unfold than.Mem()
-	// @ ghost defer fold than.Mem()
+	// @ unfold acc(ai.Mem(), _)
+	// @ ghost defer fold acc(ai.Mem(), _)
+	// @ unfold acc(than.Mem(), _)
+	// @ ghost defer fold acc(than.Mem(), _)
 
 	if ai.port != nil && (ai.port != than.port || *ai.port != *than.port) {
 		return false
@@ -77,9 +77,11 @@ func (ai *AI) MoreGeneral(than *AI) bool {
 		if than.ipAddr != nil {
 			return ai.ipPrefix.Contains(than.ipAddr)
 		} else if than.ipPrefix != nil {
+			// @ unfold acc(than.ipPrefix.Mem(), _)
+			// @ ghost defer fold acc(than.ipPrefix.Mem(), _)
 			// TODO: Can something weird happen if than.IPPrefix.IP is actual shorter
 			// than ai.IPPrefix but has matching leading bytes?
-			return /*@ unfolding than.ipPrefix.Mem() in @*/ ai.ipPrefix.Contains(than.ipPrefix.IP)
+			return ai.ipPrefix.Contains(than.ipPrefix.IP)
 		} else {
 			return false
 		}
@@ -233,6 +235,7 @@ func isIPv6(s string) bool {
 }
 
 /*@
+
 pred PkgMem() {
 	acc(portReg) &&
 		ErrIllegalAI != nil &&
@@ -250,10 +253,11 @@ pred (ai *AI) Mem() {
 		(ai.ipAddr != nil ==> ai.ipAddr.Mem()) &&
 		(ai.ipPrefix != nil ==> ai.ipPrefix.Mem()) &&
 		(ai.port != nil ==> acc(ai.port))
-
 }
 
 ghost
+requires acc(ass) &&
+	forall i int :: 0 <= i && i < len(ass) ==> ass[i].Mem()
 pure func AbsAI(ass []*AI) Bytes
 
 @*/

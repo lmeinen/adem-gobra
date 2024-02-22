@@ -21,7 +21,7 @@ var ErrAlgMissing = errors.New("input key misses algorithm")
 
 // Get the KID of a key endorsed in an emblem. If the endorsed key has no KID,
 // it will be calculated.
-// @ preserves acc(PkgMem(), _) && acc(t.Mem(), _)
+// @ preserves acc(PkgMem(), _) && acc(t.Mem(), _) && acc(jwt.FieldMem(t.Values()), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
 // @ requires t != nil
 // @ ensures err == nil ==> kid != ""
@@ -31,8 +31,9 @@ func GetEndorsedKID(t jwt.Token) (kid string, err error) {
 		return "",
 			/*@ unfolding acc(PkgMem(), _) in @*/ ErrNoEndorsedKey
 	} else {
-		// @ unfold KeyMem(jwKey.(EmbeddedKey))
-		if kid, err := GetKID(jwKey.(EmbeddedKey).Key /*@, some(perm(1/2)) @*/); err != nil {
+		// @ unfold acc(jwt.FieldMem(t.Values()), _)
+		// @ unfold acc(KeyMem(jwKey.(EmbeddedKey)), _)
+		if kid, err := GetKID(jwKey.(EmbeddedKey).Key /*@, none[perm] @*/); err != nil {
 			return "", err
 		} else {
 			return kid, nil

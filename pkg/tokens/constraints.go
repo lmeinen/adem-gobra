@@ -12,26 +12,27 @@ import (
 // Check that the given emblem's ass claim complies with the given ass
 // constraints.
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
-// @ preserves emblem != nil && acc(emblem.Mem(), _) && emblem.Contains("ass")
-// @ requires acc(constraints.Assets) &&
-// @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> constraints.Assets[i].Mem()
+// @ preserves emblem != nil && acc(emblem.Mem(), _) && emblem.Contains("ass") && acc(jwt.FieldMem(emblem.Values()), _)
+// @ requires acc(constraints.Assets, _) &&
+// @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> acc(constraints.Assets[i].Mem(), _)
 func checkAssetConstraint(emblem jwt.Token, constraints EmblemConstraints) bool {
 	ass, _ := emblem.Get("ass")
 
 	// FIXME: (lmeinen) Gobra can't parse the range expression properly when the type cast is inlined
 	casted := ass.([]*ident.AI)
-	// @ unfold AssMem(casted)
+	// @ unfold acc(jwt.FieldMem(emblem.Values()), _)
+	// @ unfold acc(AssMem(casted), _)
 
-	// @ invariant acc(casted) &&
-	// @ 	forall i int :: 0 <= i && i < len(casted) ==> casted[i].Mem()
-	// @ invariant acc(constraints.Assets) &&
-	// @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> constraints.Assets[i].Mem()
+	// @ invariant acc(casted, _) &&
+	// @ 	forall i int :: 0 <= i && i < len(casted) ==> acc(casted[i].Mem(), _)
+	// @ invariant acc(constraints.Assets, _) &&
+	// @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> acc(constraints.Assets[i].Mem(), _)
 	for _, ai := range casted {
 		// FIXME: (lmeinen) Gobra parses unannotated Go code for reserved keywords - had to rename match variable to constraintFound
 		constraintFound := false
-		// @ invariant ai.Mem()
-		// @ invariant acc(constraints.Assets) &&
-		// @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> constraints.Assets[i].Mem()
+		// @ invariant acc(ai.Mem(), _)
+		// @ invariant acc(constraints.Assets, _) &&
+		// @ 	forall i int :: 0 <= i && i < len(constraints.Assets) ==> acc(constraints.Assets[i].Mem(), _)
 		for _, constraint := range constraints.Assets {
 			if constraint.MoreGeneral(ai) {
 				constraintFound = true
@@ -42,6 +43,7 @@ func checkAssetConstraint(emblem jwt.Token, constraints EmblemConstraints) bool 
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -54,20 +56,22 @@ var ErrWndConstraint = errors.New("emblem does not satisfy wnd constraint")
 // constraints.
 // @ preserves acc(PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
-// @ preserves emblem != nil && acc(emblem.Mem(), _) && emblem.Contains("ass")
-// @ preserves endorsement != nil && acc(endorsement.Mem(), _)
+// @ preserves emblem != nil && acc(emblem.Mem(), _) && emblem.Contains("ass") && acc(jwt.FieldMem(emblem.Values()), _)
+// @ preserves endorsement != nil && acc(endorsement.Mem(), _) && acc(jwt.FieldMem(endorsement.Values()), _)
 func VerifyConstraints(emblem jwt.Token, endorsement jwt.Token) error {
 	endCnstrs, ok := endorsement.Get("emb")
+	// @ unfold acc(jwt.FieldMem(emblem.Values()), _)
+	// @ unfold acc(jwt.FieldMem(endorsement.Values()), _)
 	if !ok {
 		return nil
 	} else {
-		// @ unfold EmbMem(endCnstrs.(EmblemConstraints))
+		// @ unfold acc(EmbMem(endCnstrs.(EmblemConstraints)), _)
 		if !checkAssetConstraint(emblem, endCnstrs.(EmblemConstraints)) {
 			return /*@ unfolding acc(PkgMem(), _) in @*/ ErrAssetConstraint
 		} else if embCnstrs, ok := emblem.Get("emb"); !ok {
 			return nil
 		} else {
-			// @ unfold EmbMem(embCnstrs.(EmblemConstraints))
+			// @ unfold acc(EmbMem(embCnstrs.(EmblemConstraints)), _)
 			embPrp := embCnstrs.(EmblemConstraints).Purpose
 			endPrp := endCnstrs.(EmblemConstraints).Purpose
 			if endPrp != nil && *endPrp&*embPrp != *embPrp {

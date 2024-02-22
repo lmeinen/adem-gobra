@@ -44,6 +44,10 @@ pred StringMem(_ string) { true }
 
 pred IsValid(_ JwtToken) { true }
 
+pred FieldMem(ghost fields dict[string]JwtClaim) {
+	forall k string :: { fields[k] } k in domain(fields) ==> fields[k].Mem()
+}
+
 @*/
 
 // @ ghost
@@ -110,6 +114,14 @@ type JwtToken interface {
 	// @ pure
 	Contains(key string) (ok bool)
 
+	// @ ghost
+	// @ requires acc(Mem(), _)
+	// @ requires acc(&Custom, _) && acc(Custom, _)
+	// @ ensures key in domain(Values()) ==> claim === Values()[key] && (key in domain(Custom) ==> typeOf(claim) == typeOf(Custom[key]))
+	// @ pure
+	// @ decreases _
+	PureGet(key string) (claim JwtClaim)
+
 	// Get returns the value of the corresponding field in the token, such as
 	// `nbf`, `exp`, `iat`, and other user-defined fields. If the field does not
 	// exist in the token, the second return value will be `false`
@@ -118,7 +130,7 @@ type JwtToken interface {
 	// @ requires acc(&Custom, _) && acc(Custom, _)
 	// @ ensures acc(Mem(), _)
 	// @ ensures acc(&Custom, _) && acc(Custom, _)
-	// @ ensures ok == key in domain(Values()) && (ok ==> claim === Values()[key] && claim.Mem() && (key in domain(Custom) ==> typeOf(claim) == typeOf(Custom[key])))
+	// @ ensures ok == key in domain(Values()) && (ok ==> claim === Values()[key] && (key in domain(Custom) ==> typeOf(claim) == typeOf(Custom[key])))
 	Get(key string) (claim JwtClaim, ok bool)
 }
 
@@ -242,7 +254,7 @@ func WithValidator(v Validator) (o ValidateOption)
 // Parse parses the JWT token payload and creates a new `jwt.Token` object.
 // The token must be encoded in either JSON format or compact format.
 // @ preserves acc(&Custom, _) && acc(Custom, _)
-// @ ensures err == nil ==> t != nil && t.Mem()
+// @ ensures err == nil ==> t != nil && t.Mem() && FieldMem(t.Values())
 func Parse(s []byte, options ...ParseOption) (t JwtToken, err error)
 
 // WithKeyProvider allows users to specify an object to provide keys to

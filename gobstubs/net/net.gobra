@@ -35,27 +35,27 @@ pred (ipnet *IPNet) Mem() {
 	acc(ipnet) && ipnet.IP.Mem() && ipnet.Mask.Mem()
 }
 
-requires ip.Mem()
+requires acc(ip.Mem(), _)
 decreases _
 pure func (ip IP) String() string
 
 // Equal reports whether ip and x are the same IP address.
 // An IPv4 address and that same address in IPv6 form are
 // considered to be equal.
-requires ip.Mem()
-requires x != nil ==> x.Mem()
+requires acc(ip.Mem(), _)
+requires x != nil ==> acc(x.Mem(), _)
 decreases _
 pure func (ip IP) Equal(x IP) bool // {
 
 // Contains reports whether the network includes ip.
-requires n.Mem()
-requires ip != nil ==> ip.Mem()
+requires acc(n.Mem(), _)
+requires ip != nil ==> acc(ip.Mem(), _)
 decreases _
 pure func (n *IPNet) Contains(ip IP) bool
 
 // String returns the CIDR notation of n like "192.0.2.0/24"
 // or "2001:db8::/48" as defined in RFC 4632 and RFC 4291.
-requires n.Mem()
+requires acc(n.Mem(), _)
 decreases _
 pure func (n *IPNet) String() string
 

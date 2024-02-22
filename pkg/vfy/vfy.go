@@ -407,12 +407,15 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 				if k, ok := result.token.Token.Get("key"); ok {
 					// (lmeinen) the below unfold stmt doesn't terminate - replaced with corresponding viper stmts
 					//  unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
+					// @ unfold jwt.FieldMem(result.token.Token.Values())
 					// @ assert tokens.KeyMem(k.(tokens.EmbeddedKey))
 					// @ exhale tokens.KeyMem(k.(tokens.EmbeddedKey))
 					// @ inhale k.(tokens.EmbeddedKey).Key.Mem() && k.(tokens.EmbeddedKey).Key != nil
 					km.put(k.(tokens.EmbeddedKey).Key)
+					// @ fold acc(tokens.KeyMem(k.(tokens.EmbeddedKey)), _)
+					// @ fold acc(jwt.FieldMem(result.token.Token.Values()), _)
 				}
-				// @ fold ValidToken(result.token)
+				// @ fold acc(ValidToken(result.token), _)
 				// @ fold TokenListElem(len(ts) - 1, result.token)
 				// @ fold TokenList(ts)
 			}
@@ -439,7 +442,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ invariant protected != nil ==> acc(protected)
 	for _, t := range ts /*@ with i0 @*/ {
 		// @ unfold TokenListElem(i0, t)
-		// @ unfold ValidToken(t)
+		// @ unfold acc(ValidToken(t), _)
 		if t.Headers.ContentType() == string(consts.EmblemCty) {
 			// @ fold acc(tokens.EmblemValidator.Mem(), _)
 			if emblem != nil {
@@ -455,7 +458,8 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 			ass, _ := emblem.Token.Get("ass")
 			protected = ass.([]*ident.AI)
-			// @ unfold tokens.AssMem(protected)
+			// @ unfold acc(jwt.FieldMem(emblem.Token.Values()), _)
+			// @ unfold acc(tokens.AssMem(protected), _)
 
 			if emblem.Headers.Algorithm() == jwa.NoSignature {
 				// TODO: Apply IsUnsignedEmblem rule
@@ -468,6 +472,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			}
 
 			// @ unfold tokens.EmblemValidator.Constraints(emblem.Token)
+			// @ fold acc(ValidToken(emblem), _)
 			// @ fold Emblem(emblem)
 		} else if t.Headers.ContentType() == string(consts.EndorsementCty) {
 			// @ fold acc(tokens.EndorsementValidator.Mem(), _)
@@ -479,7 +484,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 				// @ unfold tokens.EndorsementValidator.Constraints(t.Token)
 				// @ unfold EndorsementList(endorsements)
 				endorsements = append( /*@ perm(1/2), @*/ endorsements, t)
-				// @ fold acc(ValidToken(t), 1/2)
+				// @ fold acc(ValidToken(t), _)
 				// @ fold Endorsement(t)
 				// @ fold EndListElem(i0, t)
 				// @ fold EndorsementList(endorsements)
@@ -494,20 +499,13 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		return ResultInvalid()
 	}
 
-	// @ assert acc(Emblem(emblem), 1/2)
-	// @ assert acc(EndorsementList(endorsements), 1/2)
-
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
-	vfyResults, root := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, perm(1/2) @*/)
+	vfyResults, root := verifySignedOrganizational(emblem, endorsements, trustedKeys)
 	if util.ContainsVerificationResult(vfyResults, consts.INVALID /*@, perm(1/2) @*/) {
 		return ResultInvalid()
 	}
 
-	// @ assert acc(EndorsementList(endorsements), 1/4)
-	// @ assert acc(Emblem(emblem), 1/4)
-	// @ assert acc(ValidToken(root), 1/4)
-
-	endorsedResults, endorsedBy := verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, perm(1/4) @*/)
+	endorsedResults, endorsedBy := verifyEndorsed(emblem, root, endorsements, trustedKeys)
 	if util.ContainsVerificationResult(endorsedResults, consts.INVALID /*@, perm(1/2) @*/) {
 		return ResultInvalid()
 	}
