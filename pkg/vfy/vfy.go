@@ -405,12 +405,8 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 				// @ unfold ValidToken(result.token)
 				ts = append( /*@ perm(1/2), @*/ ts, result.token)
 				if k, ok := result.token.Token.Get("key"); ok {
-					// (lmeinen) the below unfold stmt doesn't terminate - replaced with corresponding viper stmts
-					//  unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
 					// @ unfold jwt.FieldMem(result.token.Token.Values())
-					// @ assert tokens.KeyMem(k.(tokens.EmbeddedKey))
-					// @ exhale tokens.KeyMem(k.(tokens.EmbeddedKey))
-					// @ inhale k.(tokens.EmbeddedKey).Key.Mem() && k.(tokens.EmbeddedKey).Key != nil
+					// @ unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
 					km.put(k.(tokens.EmbeddedKey).Key)
 					// @ fold acc(tokens.KeyMem(k.(tokens.EmbeddedKey)), _)
 					// @ fold acc(jwt.FieldMem(result.token.Token.Values()), _)
@@ -427,8 +423,6 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	var protected []*ident.AI
 	endorsements := []*ADEMToken{}
 	// @ fold EndorsementList(endorsements)
-
-	// @ assert iospec.P_Verifier(p, ridT, s)
 
 	// @ unfold TokenList(ts)
 
