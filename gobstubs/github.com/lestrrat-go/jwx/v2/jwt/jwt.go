@@ -67,6 +67,12 @@ type JwtToken interface {
 
 	// @ pred Mem()
 
+	// @ ghost
+	// @ requires acc(Mem(), _)
+	// @ ensures forall c JwtClaim :: c in range(r) ==> c != nil
+	// @ decreases _
+	// @ pure Values() (ghost r dict[string]JwtClaim)
+
 	// Expiration returns the value for "exp" field of the token
 	// @ requires acc(Mem(), _)
 	// @ decreases _
@@ -99,20 +105,10 @@ type JwtToken interface {
 
 	// @ ghost
 	// @ requires acc(Mem(), _)
+	// @ ensures ok == key in domain(Values())
 	// @ decreases _
 	// @ pure
-	Contains(key string) bool
-
-	// @ ghost
-	// @ requires acc(Mem(), _)
-	// @ requires acc(&Custom, _) && acc(Custom, _)
-	// @ ensures Contains(key) ==> claim != nil
-	// @ ensures Contains(key) && key in domain(Custom) ==> (
-	// @		typeOf(claim) == typeOf(Custom[key]) &&
-	// @ 		typeOf(claim) == type[JwtClaim])
-	// @ decreases _
-	// @ pure
-	PureGet(key string) (claim any)
+	Contains(key string) (ok bool)
 
 	// Get returns the value of the corresponding field in the token, such as
 	// `nbf`, `exp`, `iat`, and other user-defined fields. If the field does not
@@ -122,10 +118,8 @@ type JwtToken interface {
 	// @ requires acc(&Custom, _) && acc(Custom, _)
 	// @ ensures acc(Mem(), _)
 	// @ ensures acc(&Custom, _) && acc(Custom, _)
-	// @ ensures Contains(key) == old(Contains(key))
-	// @ ensures Contains(key) == ok
-	// @ ensures claim === PureGet(key)
-	Get(key string) (claim any, ok bool)
+	// @ ensures ok == key in domain(Values()) && (ok ==> claim === Values()[key] && claim.Mem() && (key in domain(Custom) ==> typeOf(claim) == typeOf(Custom[key])))
+	Get(key string) (claim JwtClaim, ok bool)
 }
 
 type ValidationError interface {
@@ -222,7 +216,8 @@ func RegisterCustomField(name string, object JwtClaim /*@, ghost fields Fields @
 // is not satisfied
 //
 // The return value should only be used for comparison using `errors.Is()`
-func ErrInvalidIssuer() ValidationError
+// @ ensures e != nil
+func ErrInvalidIssuer() (e ValidationError)
 
 // Validate makes sure that the essential claims stand.
 //

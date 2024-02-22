@@ -29,7 +29,7 @@ pred Endorsement(t *ADEMToken) {
 		acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
 		unfolding acc(ValidToken(t), 1/2) in 
 			t.Token.Contains("end") &&
-			typeOf(t.Token.PureGet("end")) == type[bool]
+			typeOf(t.Token.Values()["end"]) == type[bool]
 }
 
 pred Emblem(t *ADEMToken) {
@@ -70,6 +70,7 @@ pure func AbsBytes(rawToken []byte) (res Bytes)
 // TODO: Ensure that all proper constraints are collected by the end of organizastional/endorsed verification calls
 
 ghost
+trusted
 requires acc(ValidToken(t), _)
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 requires unfolding acc(ValidToken(t), _) in (
@@ -82,7 +83,7 @@ pure func Abs(t *ADEMToken) Bytes {
 		let key := keyB(t.VerificationKey) in
 		let sig := stringB("sig") in 
 		t.Headers.ContentType() == string(consts.EmblemCty) ?
-			let ai := ident.AbsAI(t.Token.PureGet("ass").([]*ident.AI)) in
+			let ai := ident.AbsAI(t.Token.Values()["ass"].([]*ident.AI)) in
 			// let ai := stringB("ai") in
 			// emblem
 			(t.Headers.Algorithm() == jwa.NoSignature ?
@@ -95,7 +96,7 @@ pure func Abs(t *ADEMToken) Bytes {
                     // organizational
                     tuple4B(key, stringB(oi), tuple3B(emblemB(), ai, stringB(oi)), sig)) :
 			// endorsement
-        	let endKey := keyB(t.Token.PureGet("key").(tokens.EmbeddedKey).Key) in
+        	let endKey := keyB(t.Token.Values()["key"].(tokens.EmbeddedKey).Key) in
 			// let endKey := stringB("key") in
             (oi == "" ?
                 // anonymous

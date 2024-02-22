@@ -54,7 +54,7 @@ var ErrWndConstraint = errors.New("emblem does not satisfy wnd constraint")
 // constraints.
 // @ preserves acc(PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
-// @ preserves emblem != nil && acc(emblem.Mem(), _)
+// @ preserves emblem != nil && acc(emblem.Mem(), _) && emblem.Contains("ass")
 // @ preserves endorsement != nil && acc(endorsement.Mem(), _)
 func VerifyConstraints(emblem jwt.Token, endorsement jwt.Token) error {
 	endCnstrs, ok := endorsement.Get("emb")

@@ -315,7 +315,6 @@ func validateCommon(t jwt.Token) (err jwt.ValidationError) {
 	if !ok || ver.(string) != string(consts.V1) {
 		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrIllegalVersion
 	}
-
 	if validateOI(t.Issuer()) != nil {
 		return jwt.ErrInvalidIssuer()
 	}
@@ -346,7 +345,8 @@ pred CommonConstraints(t jwt.Token) {
 	acc(t.Mem(), _) &&
 	jwt.IsValid(t) &&
 	t.Contains("ver") &&
-	t.PureGet("ver") != string(consts.V1)
+	t.Values()["ver"] == string(consts.V1)
+	// t.PureGet("ver") != string(consts.V1)
 }
 
 pred (EmblemValidatorS) Constraints(t jwt.Token) {
@@ -359,7 +359,8 @@ pred (EndorsementValidatorS) Constraints(t jwt.Token) {
 	acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
 	unfolding CommonConstraints(t) in
 		t.Contains("end") &&
-		typeOf(t.PureGet("end")) == type[bool]
+		typeOf(t.Values()["end"]) == type[bool]
+		// typeOf(t.PureGet("end")) == type[bool]
 }
 
 pred LogMem(log []*LogConfig) {
@@ -372,7 +373,7 @@ pred LogMem(log []*LogConfig) {
 }
 
 pred KeyMem(key EmbeddedKey) {
-	key.Key.Mem()
+	key.Key.Mem() && key.Key != nil
 }
 
 (EmbeddedKey) implements jwt.JwtClaim {
@@ -392,7 +393,7 @@ pred EmbMem(emb EmblemConstraints) {
 	acc(emb.Purpose) &&
 	acc(emb.Distribution) &&
 	acc(emb.Assets) &&
-		forall i int :: 0 <= i && i < len(emb.Assets) ==> emb.Assets[i].Mem() &&
+		(forall i int :: 0 <= i && i < len(emb.Assets) ==> emb.Assets[i].Mem()) &&
 	acc(emb.Window)
 }
 

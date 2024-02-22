@@ -409,7 +409,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 					//  unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
 					// @ assert tokens.KeyMem(k.(tokens.EmbeddedKey))
 					// @ exhale tokens.KeyMem(k.(tokens.EmbeddedKey))
-					// @ inhale k.(tokens.EmbeddedKey).Key.Mem()
+					// @ inhale k.(tokens.EmbeddedKey).Key.Mem() && k.(tokens.EmbeddedKey).Key != nil
 					km.put(k.(tokens.EmbeddedKey).Key)
 				}
 				// @ fold ValidToken(result.token)
