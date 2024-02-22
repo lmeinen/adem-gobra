@@ -54,8 +54,8 @@ type Gamma domain {
 
     // TODO: Add an entry for each function symbol
     axiom { // homomorphism
-        (forall t1, t2 term.Term :: { gamma(term.pair(t1,t2)) } gamma(term.pair(t1, t2)) == tuple2B(gamma(t1), gamma(t2))) &&
-        (forall t1, t2, t3 term.Term :: { gamma(term.pair(t1, term.pair(t2, t3))) } gamma(term.pair(t1, term.pair(t2, t3))) == tuple3B(gamma(t1), gamma(t2), gamma(t3))) &&
-        (forall t1, t2, t3, t4 term.Term :: { gamma(term.pair(t1, term.pair(t2, term.pair(t3, t4)))) } gamma(term.pair(t1, term.pair(t2, term.pair(t3, t4)))) == tuple4B(gamma(t1), gamma(t2), gamma(t3), gamma(t4)))
+        (forall t1, t2 term.Term :: { gamma(term.pair(t1,t2)) } gamma(term.pair(t1,t2)) == tuple2B(gamma(t1), gamma(t2))) &&
+        (forall t1, t2, t3 term.Term :: { gamma(tuple3(t1,t2,t3)) } gamma(tuple3(t1,t2,t3)) == tuple3B(gamma(t1), gamma(t2), gamma(t3))) &&
+        (forall t1, t2, t3, t4 term.Term :: { gamma(tuple4(t1,t2,t3,t4)) } gamma(tuple4(t1,t2,t3,t4)) == tuple4B(gamma(t1), gamma(t2), gamma(t3), gamma(t4)))
     }
 }
