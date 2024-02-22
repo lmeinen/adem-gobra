@@ -1,0 +1,104 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
+package tokens
+
+(EndorsementValidatorS) implements jwt.Validator
+(EmblemValidatorS) implements jwt.Validator
+
+pred (EndorsementValidatorS) Mem() {
+	PkgMem() &&
+	acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
+}
+
+pred (EmblemValidatorS) Mem() {
+	PkgMem() &&
+	acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
+}
+
+pred CommonConstraints(t jwt.Token) {
+	acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
+	t != nil &&
+	acc(t.Mem(), _) &&
+	jwt.IsValid(t) &&
+	t.Contains("ver") &&
+	t.Values()["ver"] == string(consts.V1)
+}
+
+pred (EmblemValidatorS) Constraints(t jwt.Token) {
+	CommonConstraints(t) &&
+	unfolding CommonConstraints(t) in t.Contains("ass")
+}
+
+pred (EndorsementValidatorS) Constraints(t jwt.Token) {
+	CommonConstraints(t) &&
+	acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
+	unfolding CommonConstraints(t) in
+		t.Contains("end") &&
+		typeOf(t.Values()["end"]) == type[bool]
+}
+
+pred LogMem(log []*LogConfig) {
+	acc(log) &&
+		forall i int :: 0 <= i && i < len(log) ==> acc(log[i]) && acc(log[i].Hash.Raw)
+}
+
+([]*LogConfig) implements jwt.JwtClaim {
+	pred Mem := LogMem
+}
+
+pred KeyMem(key EmbeddedKey) {
+	key.Key.Mem() && key.Key != nil
+}
+
+(EmbeddedKey) implements jwt.JwtClaim {
+	pred Mem := KeyMem
+}
+
+pred AssMem(ass []*ident.AI) {
+	acc(ass) &&
+	forall i int :: 0 <= i && i < len(ass) ==> ass[i].Mem()
+}
+
+([]*ident.AI) implements jwt.JwtClaim {
+	pred Mem := AssMem
+}
+
+pred EmbMem(emb EmblemConstraints) {
+	acc(emb.Purpose) &&
+	acc(emb.Distribution) &&
+	acc(emb.Assets) &&
+		(forall i int :: 0 <= i && i < len(emb.Assets) ==> emb.Assets[i].Mem()) &&
+	acc(emb.Window)
+}
+
+(EmblemConstraints) implements jwt.JwtClaim {
+	pred Mem := EmbMem
+}
+
+pred PkgMem() {
+	ErrAssetConstraint != nil &&
+	ErrPrpConstraint != nil &&
+	ErrDstConstraint != nil &&
+	ErrWndConstraint != nil &&
+	ErrIllegalConst != nil &&
+	ErrIllegalVersion != nil &&
+	ErrIllegalType != nil &&
+	ErrEndMissing != nil &&
+	ErrAssMissing != nil &&
+	ErrNoEndorsedKey != nil &&
+	ErrAlgMissing != nil
+}
+
+ghost
+requires acc(f, _)
+decreases _
+pure func CustomFields(f jwt.Fields) bool {
+	return (
+		domain(f) == set[string] { "log", "key", "ass", "emb", "ver" } &&
+		typeOf(f["log"]) == type[[]*LogConfig] &&
+		typeOf(f["key"]) == type[EmbeddedKey] &&
+		typeOf(f["ass"]) == type[[]*ident.AI] &&
+		typeOf(f["emb"]) == type[EmblemConstraints] &&
+		typeOf(f["ver"]) == type[string])
+}
+
