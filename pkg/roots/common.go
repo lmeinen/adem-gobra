@@ -31,17 +31,21 @@ type VerificationResult struct {
 // @ preserves key != nil && key.Mem()
 // @ requires acc(logs) &&
 // @ 	forall i int :: 0 <= i && i < len(logs) ==> acc(logs[i]) && acc(logs[i].Hash.Raw)
-// @ ensures acc(r) && forall i int :: 0 <= i && i < len(r) ==> acc(r[i])
+// @ ensures acc(r) &&
+// @ 	forall i int :: 0 <= i && i < len(r) ==> acc(r[i]) && (r[i].Ok ==> iss != "")
+// @ ensures len(r) == len(logs)
 func VerifyBindingCerts(iss string, key jwk.Key, logs []*tokens.LogConfig) (r []*VerificationResult) {
 	// FIXME: (lmeinen) Gobra doesn't support slices of structs - refactored to pointers
 	verified := []*VerificationResult{}
 	// @ invariant acc(PkgMem(), _)
 	// @ invariant key.Mem()
 	// @ invariant acc(tokens.PkgMem(), _)
-	// @ invariant acc(logs)
+	// @ invariant acc(logs, _)
 	// @ invariant forall i int :: 0 <= i && i < len(logs) ==> acc(logs[i]) && acc(logs[i].Hash.Raw)
-	// @ invariant acc(verified) && forall i int :: 0 <= i && i < len(verified) ==> acc(verified[i])
-	for _, logConfig := range logs {
+	// @ invariant acc(verified) &&
+	// @ 	forall i int :: { verified[i] } 0 <= i && i < len(verified) ==> acc(verified[i]) && (verified[i].Ok ==> iss != "")
+	// @ invariant (0 <= i0 && i0 <= len(logs) ==> len(verified) == i0)
+	for _, logConfig := range logs /*@ with i0 @*/ {
 		result := &VerificationResult{LogID: logConfig.Id}
 		if logConfig.Ver != "v1" {
 			log.Printf("log %s illegal version", logConfig.Id)

@@ -9,6 +9,7 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	// @ "github.com/lestrrat-go/jwx/v2/jwa"
 	// @ "github.com/lestrrat-go/jwx/v2/jwt"
 )
 
@@ -132,6 +133,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		}
 	}
 
+	// @ assert emblem.Headers.ContentType() == string(consts.EmblemCty) && emblem.Headers.Algorithm() != jwa.NoSignature
 	results := []consts.VerificationResult{consts.SIGNED}
 	if trustedFound {
 		results = append( /*@ perm(1/2), @*/ results, consts.SIGNED_TRUSTED)
@@ -143,6 +145,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	if /*@ unfolding acc(Emblem(emblem), _) in unfolding acc(ValidToken(emblem), _) in @*/ emblem.Token.Issuer() != "" && !rootLogged {
 		return []consts.VerificationResult{consts.INVALID}, nil
 	} else if rootLogged {
+		// @ assert emblem.Token.Issuer() != ""
 		results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL)
 		if _, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(ValidToken(root), _) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ ) /*@, perm(1/2) @*/); ok {
 			results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL_TRUSTED)

@@ -458,7 +458,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			if emblem.Headers.Algorithm() == jwa.NoSignature {
 				// TODO: Apply IsUnsignedEmblem rule
 				// --> constraints on emblem term: <'emblem', $E>
-
+				// @ assert emblem.Headers.ContentType() == string(consts.EmblemCty) && emblem.Headers.Algorithm() == jwa.NoSignature
 				return VerificationResults{
 					results:   []consts.VerificationResult{consts.UNSIGNED},
 					protected: protected,

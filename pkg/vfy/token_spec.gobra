@@ -20,7 +20,8 @@ pred ValidToken(t *ADEMToken) {
 	t.Headers != nil &&
 	t.Token != nil && 
 		t.Token.Mem() && 
-		jwt.FieldMem(t.Token.Values())
+		jwt.FieldMem(t.Token.Values()) &&
+	(t.Token.Contains("log") ==> t.Token.Issuer() != "")
 }
 
 pred Endorsement(t *ADEMToken) {
@@ -90,7 +91,6 @@ pure func Abs(t *ADEMToken) Bytes {
 		t.Headers.ContentType() == string(consts.EmblemCty) ?
 			let ai := t.Token.PureGet("ass").([]*ident.AI) in
 			let aiB := (unfolding acc(tokens.AssMem(ai), _) in ident.AbsAI(ai)) in
-			// let ai := stringB("ai") in
 			// emblem
 			(t.Headers.Algorithm() == jwa.NoSignature ?
 				// unsigned
@@ -105,7 +105,6 @@ pure func Abs(t *ADEMToken) Bytes {
         	let sub := t.Token.Subject() in
         	let endKey := t.Token.PureGet("key").(tokens.EmbeddedKey) in
 			let endKeyB := (unfolding acc(tokens.KeyMem(endKey), _) in AbsKey(endKey.Key)) in
-			// let endKey := stringB("key") in
             (oi == "" ?
                 // anonymous
                 tuple3B(key, tuple2B(endorsementB(), endKeyB), sig) :

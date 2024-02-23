@@ -43,7 +43,8 @@ var ErrWrongEntryType = errors.New("do not recognize entry type")
 // @ preserves acc(hash)
 // @ preserves acc(cl) && acc(cl.jsonClient)
 // @ preserves rootKey != nil && rootKey.Mem()
-func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk.Key) error {
+// @ ensures err == nil ==> issuer != ""
+func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk.Key) (err error) {
 
 	kid, err := tokens.CalcKID(rootKey /*@, some(perm(1/2)) @*/)
 	if err != nil {
@@ -51,6 +52,8 @@ func VerifyBinding(cl *client.LogClient, hash []byte, issuer string, rootKey jwk
 		return err
 	}
 	issuerUrl, err := url.Parse(issuer)
+	// TODO: How to put this into url lib stub?
+	// @ assume err == nil ==> (issuerUrl.Hostname() == "") == (issuer == "")
 	if err != nil {
 		log.Print("could not parse issuer")
 		return err

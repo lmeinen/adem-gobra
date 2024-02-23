@@ -244,8 +244,10 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 		casted := logs.([]*tokens.LogConfig)
 		results := roots.VerifyBindingCerts(t.Issuer(), headerKey, casted)
 		// @ invariant acc(PkgMem(), _)
-		// @ invariant acc(results) && forall i int :: 0 <= i && i < len(results) ==> acc(results[i])
-		for _, r := range results {
+		// @ invariant acc(t.Mem(), _)
+		// @ invariant acc(results) && forall i int :: 0 <= i && i < len(results) ==> acc(results[i]) && (results[i].Ok ==> t.Issuer() != "")
+		// @ invariant (err == nil) == (forall i int :: 0 <= i && i < i0 && i < len(results) ==> results[i].Ok)
+		for _, r := range results /*@ with i0 @*/ {
 			if !r.Ok {
 				log.Printf("could not verify root key commitment for log ID %s", r.LogID)
 				err = /*@ unfolding acc(PkgMem(), _) in @*/ ErrRootKeyUnbound
@@ -253,6 +255,8 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 			}
 		}
 		if err == nil && len(casted) > 0 {
+			// @ assert results[0].Ok
+			// @ assert t.Issuer() != ""
 			km.put(headerKey)
 		}
 	}
