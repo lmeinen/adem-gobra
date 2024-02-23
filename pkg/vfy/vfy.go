@@ -431,7 +431,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant acc(ts, _) &&
 	// @ 	forall i int :: { ts[i] } 0 <= i && i0 <= i && i < len(ts) ==> TokenListElem(i, ts[i])
-	// @ invariant emblem != nil ==> Emblem(emblem)
+	// @ invariant emblem != nil ==> Emblem(emblem) && unfolding Emblem(emblem) in unfolding acc(ValidToken(emblem), _) in emblem.Headers.ContentType() == string(consts.EmblemCty) && emblem.Headers.Algorithm() != jwa.NoSignature
 	// @ invariant EndorsementList(endorsements)
 	// @ invariant protected != nil ==> acc(protected)
 	for _, t := range ts /*@ with i0 @*/ {

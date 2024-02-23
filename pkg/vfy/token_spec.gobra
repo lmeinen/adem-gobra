@@ -20,8 +20,7 @@ pred ValidToken(t *ADEMToken) {
 	t.Headers != nil &&
 	t.Token != nil && 
 		t.Token.Mem() && 
-		jwt.FieldMem(t.Token.Values()) &&
-	(t.Token.Contains("log") ==> t.Token.Issuer() != "")
+		jwt.FieldMem(t.Token.Values())
 }
 
 pred Endorsement(t *ADEMToken) {

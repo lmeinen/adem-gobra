@@ -16,7 +16,11 @@ import (
 // @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
-// @ requires Emblem(emblem)
+// @ requires acc(Emblem(emblem), _) &&
+// @ 	unfolding acc(Emblem(emblem), _) in
+// @ 	unfolding acc(ValidToken(emblem), _) in
+// @ 	emblem.Headers.ContentType() == string(consts.EmblemCty) &&
+// @ 	emblem.Headers.Algorithm() != jwa.NoSignature
 // @ requires EndorsementList(endorsements)
 // @ ensures acc(Emblem(emblem), _)
 // @ ensures acc(EndorsementList(endorsements), _)
@@ -30,7 +34,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-	// @ invariant Emblem(emblem)
+	// @ invariant acc(Emblem(emblem), _)
 	// @ invariant acc(endorsements) &&
 	// @ 	forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> (
 	// @ 		(i < i0 ==> acc(EndListElem(i, endorsements[i]), _)) &&
@@ -48,13 +52,13 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 			log.Printf("could not get endorsed kid: %s\n", err)
 			// @ fold EndListElem(i0, endorsements[i0])
 			continue
-		} else if /*@ unfolding Emblem(emblem) in unfolding acc(ValidToken(emblem), _) in unfolding Endorsement(endorsement) in unfolding acc(ValidToken(endorsement), _) in @*/ emblem.Token.Issuer() != endorsement.Token.Issuer() {
+		} else if /*@ unfolding acc(Emblem(emblem), _) in unfolding acc(ValidToken(emblem), _) in unfolding Endorsement(endorsement) in unfolding acc(ValidToken(endorsement), _) in @*/ emblem.Token.Issuer() != endorsement.Token.Issuer() {
 			// @ fold EndListElem(i0, endorsements[i0])
 			continue
-		} else if /*@ unfolding Emblem(emblem) in unfolding acc(ValidToken(emblem), _) in unfolding Endorsement(endorsement) in unfolding acc(ValidToken(endorsement), _) in @*/ emblem.Token.Issuer() != endorsement.Token.Subject() {
+		} else if /*@ unfolding acc(Emblem(emblem), _) in unfolding acc(ValidToken(emblem), _) in unfolding Endorsement(endorsement) in unfolding acc(ValidToken(endorsement), _) in @*/ emblem.Token.Issuer() != endorsement.Token.Subject() {
 			// @ fold EndListElem(i0, endorsements[i0])
 			continue
-		} else if /*@ unfolding Emblem(emblem) in unfolding acc(ValidToken(emblem), _) in @*/ kid != emblem.VerificationKey.KeyID( /*@ none[perm] @*/ ) && !end.(bool) {
+		} else if /*@ unfolding acc(Emblem(emblem), _) in unfolding acc(ValidToken(emblem), _) in @*/ kid != emblem.VerificationKey.KeyID( /*@ none[perm] @*/ ) && !end.(bool) {
 			// @ fold EndListElem(i0, endorsements[i0])
 			continue
 		} else if _, ok := endorsedBy[kid]; ok {
@@ -133,7 +137,12 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		}
 	}
 
-	// @ assert emblem.Headers.ContentType() == string(consts.EmblemCty) && emblem.Headers.Algorithm() != jwa.NoSignature
+	/*@ assert
+		unfolding acc(Emblem(emblem), _) in
+		unfolding acc(ValidToken(emblem), _) in
+		emblem.Headers.ContentType() == string(consts.EmblemCty) &&
+		emblem.Headers.Algorithm() != jwa.NoSignature
+	@*/
 	results := []consts.VerificationResult{consts.SIGNED}
 	if trustedFound {
 		results = append( /*@ perm(1/2), @*/ results, consts.SIGNED_TRUSTED)
@@ -145,7 +154,8 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	if /*@ unfolding acc(Emblem(emblem), _) in unfolding acc(ValidToken(emblem), _) in @*/ emblem.Token.Issuer() != "" && !rootLogged {
 		return []consts.VerificationResult{consts.INVALID}, nil
 	} else if rootLogged {
-		// @ assert emblem.Token.Issuer() != ""
+		// TODO: We don't actually know this
+		//  assert emblem.Token.Issuer() != ""
 		results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL)
 		if _, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(ValidToken(root), _) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ ) /*@, perm(1/2) @*/); ok {
 			results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL_TRUSTED)
