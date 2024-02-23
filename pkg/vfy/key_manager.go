@@ -241,7 +241,8 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 		headerKey := sig.ProtectedHeaders().JWK()
 		// @ unfold jwt.FieldMem(t.Values())
 		// @ unfold tokens.LogMem(logs.([]*tokens.LogConfig))
-		results := roots.VerifyBindingCerts(t.Issuer(), headerKey, logs.([]*tokens.LogConfig))
+		casted := logs.([]*tokens.LogConfig)
+		results := roots.VerifyBindingCerts(t.Issuer(), headerKey, casted)
 		// @ invariant acc(PkgMem(), _)
 		// @ invariant acc(results) && forall i int :: 0 <= i && i < len(results) ==> acc(results[i])
 		for _, r := range results {
@@ -251,7 +252,7 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 				break
 			}
 		}
-		if err == nil {
+		if err == nil && len(casted) > 0 {
 			km.put(headerKey)
 		}
 	}
