@@ -7,7 +7,7 @@ import (
 
 	"github.com/adem-wg/adem-proto/pkg/consts"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
-	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
+	// @ "lib"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	// @ "github.com/lestrrat-go/jwx/v2/jwa"
 	// @ "github.com/lestrrat-go/jwx/v2/jwt"
@@ -26,7 +26,7 @@ import (
 // @ requires trustedKeys != nil
 // @ ensures endorsedResults != nil ==> (
 // @	acc(endorsedResults) &&
-// @	(!goblib.GhostContainsResult(endorsedResults, consts.INVALID) ==> endorsedBy != nil))
+// @	(!lib.GhostContainsResult(endorsedResults, consts.INVALID) ==> endorsedBy != nil))
 // @ ensures endorsedBy != nil ==> acc(endorsedBy)
 func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set) (endorsedResults []consts.VerificationResult, endorsedBy []string) {
 	// @ unfold acc(EndorsementList(endorsements), _)

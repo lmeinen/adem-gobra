@@ -7,7 +7,7 @@ import (
 
 	"github.com/adem-wg/adem-proto/pkg/consts"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
-	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
+	// @ "lib"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	// @ "github.com/lestrrat-go/jwx/v2/jwa"
 	// @ "github.com/lestrrat-go/jwx/v2/jwt"
@@ -25,7 +25,7 @@ import (
 // @ ensures acc(Emblem(emblem), _)
 // @ ensures acc(EndorsementList(endorsements), _)
 // @ ensures acc(vfyResults)
-// @ ensures !goblib.GhostContainsResult(vfyResults, consts.INVALID) ==> t != nil && acc(ValidToken(t), _)
+// @ ensures !lib.GhostContainsResult(vfyResults, consts.INVALID) ==> t != nil && acc(ValidToken(t), _)
 func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set) (vfyResults []consts.VerificationResult, t *ADEMToken) {
 	// @ unfold EndorsementList(endorsements)
 	// @ ghost defer fold acc(EndorsementList(endorsements), _)

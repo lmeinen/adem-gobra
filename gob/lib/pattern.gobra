@@ -1,11 +1,9 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
-package goblib
+package lib
 
 import (
     "term"
-
-	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
 type Bytes domain {

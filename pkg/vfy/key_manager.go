@@ -12,11 +12,15 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	"github.com/adem-wg/adem-proto/pkg/util"
 
-	// @ "github.com/adem-wg/adem-proto/pkg/goblib"
+	// @ "lib"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	//@ "fact"
+	//@ "place"
+	//@ "iospec"
+	//@ "term"
 )
 
 var ErrNoKeyFound = errors.New("no key found")
@@ -230,11 +234,14 @@ func (km *keyManager) getVerificationKey(sig *jws.Signature) (p util.Promise) {
 // key will be used for verification. All other keys will register a listener
 // and wait for their verification key to be verified externally.
 // @ requires km.Mem() && ctx != nil && sink != nil && acc(sig, _) && acc(m, _)
-func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.Signature, m *jws.Message) error {
+// @ requires place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
+// @ 	fact.Setup_TokenVerifier(rid) in s && fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) in s &&
+// @ 	m.AbsMsg() == lib.gamma(tokenT)
+func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.Signature, m *jws.Message /*@, ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term @*/) error {
 	// @ unfold km.Mem()
 	var promise util.Promise
 	var err error
-	if t, e := jwt.Parse(m.Payload(), jwt.WithVerify(false)); e != nil {
+	if t /*@, p, s @*/, e := jwt.Parse(m.Payload() /*@, p, rid, s, tokenT @*/, jwt.WithVerify(false)); e != nil {
 		log.Printf("could not decode payload: %s", e)
 		err = e
 	} else if logs, ok := t.Get("log"); ok {

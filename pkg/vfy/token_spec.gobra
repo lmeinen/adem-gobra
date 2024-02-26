@@ -6,7 +6,7 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/consts"
 	"github.com/adem-wg/adem-proto/pkg/ident"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
-	. "github.com/adem-wg/adem-proto/pkg/goblib"
+	. "lib"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -61,11 +61,6 @@ pred EndorsementList(ts []*ADEMToken) {
 	acc(ts) &&
 	forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> EndListElem(i, ts[i])
 }
-
-ghost
-requires acc(rawToken, _)
-decreases _
-pure func AbsBytes(rawToken []byte) (res Bytes)
 
 ghost
 requires acc(k.Mem(), _)

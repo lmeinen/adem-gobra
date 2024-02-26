@@ -15,7 +15,7 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/ident"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	"github.com/adem-wg/adem-proto/pkg/util"
-	// @ . "github.com/adem-wg/adem-proto/pkg/goblib"
+	// @ . "lib"
 	// @ "github.com/adem-wg/adem-proto/pkg/roots"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -94,9 +94,22 @@ type TokenVerificationResult struct {
 // @ 	km.lock.LockInv() == LockInv!<km!>
 // @ requires acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 // @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
-// @ requires ValidationPerm(tokenT)
+// @ requires ValidationPerm(tokenT) && gamma(tokenT) == AbsBytes(rawToken)
 func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup, ghost tokenT term.Term @*/) {
 	// @ share threadCount, loc, results, vfyWaitGroup
+	// @ ghost p := place.place(42)
+	// @ ghost ridT := term.freshTerm(fresh.fr_integer64(rid))
+	// @ ghost s := mset[fact.Fact]{}
+
+	// TODO: argument for why this is sound
+	// @ inhale iospec.P_TokenVerifier(p, ridT, s)
+
+	// @ unfold iospec.P_TokenVerifier(p, ridT, s)
+	// @ unfold iospec.phiRF_TokenVerifier_11(p, ridT, s)
+	// @ p = iospec.get_e_Setup_TokenVerifier_placeDst(p, ridT)
+	// @ s = mset[fact.Fact] { fact.Setup_TokenVerifier(ridT) }
+
+	// @ inhale place.token(p)
 
 	// @ unfold acc(PkgMems(), 1 / threadCount)
 	result /*@@@*/ := TokenVerificationResult{}
@@ -120,8 +133,13 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 		// @ vfyWaitGroup.Done()
 	}() /*@ as f @*/
 
+	// @ unfold iospec.P_TokenVerifier(p, ridT, s)
+	// @ unfold iospec.phiRF_TokenVerifier_7(p, ridT, s)
+	// @ tokenT, p = permissionIn(tokenT, p, ridT)
+	// @ s = s union mset[fact.Fact] { fact.PermitTokenVerificationIn_TokenVerifier(ridT, tokenT) }
+
 	// @ fold km.Mem()
-	jwtT, err := jwt.Parse(rawToken, jwt.WithKeyProvider(km))
+	jwtT /*@, p, s @*/, err := jwt.Parse(rawToken /*@, p, ridT, s, tokenT @*/, jwt.WithKeyProvider(km))
 	if err != nil {
 		result.err = err
 		return
@@ -130,10 +148,10 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	if msg, err := jws.Parse(rawToken); err != nil {
 		result.err = err
 		return
-	} else if len(msg.Signatures( /*@ 1/2 @*/ )) > 1 {
+	} else if len(msg.Signatures()) > 1 {
 		result.err = /*@ unfolding acc(PkgMem(), _) in @*/ ErrTokenNonCompact
 		return
-	} else if ademT, err := MkADEMToken(km, msg.Signatures( /*@ 1/2 @*/ )[0], jwtT); err != nil {
+	} else if ademT, err := MkADEMToken(km, msg.Signatures()[0], jwtT); err != nil {
 		result.err = err
 		return
 	} else {

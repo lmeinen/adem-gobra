@@ -1,4 +1,4 @@
-// +gobra
+// -gobra
 // ##(--onlyFilesWithHeader)
 // @ initEnsures acc(&Custom) && acc(Custom) && Custom.IsEmpty()
 package jwt
@@ -8,6 +8,11 @@ import (
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jws"
+	// @ "lib"
+	// @ "iospec"
+	// @ "fact"
+	// @ "term"
+	// @ "place"
 )
 
 type Fields map[string]JwtClaim
@@ -164,9 +169,13 @@ type ParseOption interface {
 
 	// Ident returns the "indentity" of this option, a unique identifier that
 	// can be used to differentiate between options
+	// @ decreases _
+	// @ pure
 	Ident() interface{}
 
 	// Value returns the corresponding value.
+	// @ decreases _
+	// @ pure
 	Value() interface{}
 	// ---------------------------------------------------------------
 
@@ -254,8 +263,18 @@ func WithValidator(v Validator) (o ValidateOption)
 // Parse parses the JWT token payload and creates a new `jwt.Token` object.
 // The token must be encoded in either JSON format or compact format.
 // @ preserves acc(&Custom, _) && acc(Custom, _)
-// @ ensures err == nil ==> t != nil && t.Mem() && FieldMem(t.Values())
-func Parse(s []byte, options ...ParseOption) (t JwtToken, err error)
+// @ requires acc(bytes, _)
+// @ requires forall i int :: 0 <= i && i < len(options) ==> acc(&options[i]) && options[i] != nil
+// @ requires !(exists i int :: 0 <= i && i < len(options) && options[i] === WithVerify(false)) ==> (
+// @ 	place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
+// @ 	fact.Setup_TokenVerifier(rid) in s && fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) in s)
+// @ requires lib.AbsBytes(bytes) == lib.gamma(tokenT)
+// @ ensures forall i int :: 0 <= i && i < len(options) ==> acc(&options[i]) && options[i] != nil && old(options)[i] === options[i]
+// @ ensures !(exists i int :: 0 <= i && i < len(options) && options[i] === WithVerify(false)) ==> (
+// @ 	place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
+// @ 	fact.Setup_TokenVerifier(rid) in s && fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) in s)
+// @ ensures err == nil ==> (t != nil && t.Mem() && FieldMem(t.Values()))
+func Parse(bytes []byte /*@, ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term @*/, options ...ParseOption) (t JwtToken, err error)
 
 // WithKeyProvider allows users to specify an object to provide keys to
 // sign/verify tokens using arbitrary code.
@@ -265,4 +284,9 @@ func WithKeyProvider(v jws.KeyProvider) ParseOption
 // WithVerify is passed to `Parse()` method to denote that the
 // signature verification should be performed after a successful
 // deserialization of the incoming payload.
-func WithVerify(v bool) ParseOption
+// @ ensures o != nil && typeOf(o.Ident()) == type[identWithVerify] && o.Value() === v && typeOf(o.Value()) == type[bool]
+// @ pure
+func WithVerify(v bool) (o ParseOption)
+
+type identWithKeyProvider struct{}
+type identWithVerify struct{}

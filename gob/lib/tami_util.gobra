@@ -1,6 +1,6 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
-package goblib
+package lib
 
 import "term"
 import "pub"

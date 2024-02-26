@@ -17,7 +17,7 @@ type ADEMToken struct {
 }
 
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
-// @ preserves acc(sig, _)
+// @ requires acc(sig, _)
 // @ requires t != nil && t.Mem() && jwt.FieldMem(t.Values())
 // @ ensures err == nil ==> res != nil && ValidToken(res)
 // @ ensures err != nil ==> res == nil

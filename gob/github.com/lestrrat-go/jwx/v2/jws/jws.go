@@ -7,6 +7,11 @@ import (
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	// @ "lib"
+	// @ "iospec"
+	// @ "fact"
+	// @ "term"
+	// @ "place"
 )
 
 // The `sink` argument passed to the KeyProvider is a temporary storage
@@ -26,11 +31,15 @@ type KeyProvider interface {
 	// @ pred Mem()
 
 	// @ requires Mem() && c != nil && sink != nil && acc(sig, _) && acc(m, _)
-	FetchKeys(c context.Context, sink KeySink, sig *Signature, m *Message) error
+	// @ requires place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
+	// @ 	fact.Setup_TokenVerifier(rid) in s && fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) in s &&
+	// @ 	m.AbsMsg() == lib.gamma(tokenT)
+	FetchKeys(c context.Context, sink KeySink, sig *Signature, m *Message /*@, ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term @*/) error
 }
 
 // Headers describe a standard Header set.
 type Headers interface {
+
 	// @ decreases _
 	// @ pure
 	Algorithm() jwa.SignatureAlgorithm
@@ -67,38 +76,44 @@ type ParseOption interface {
 }
 
 type Signature struct {
-	dc        DecodeCtx
-	headers   Headers // Unprotected Headers
 	protected Headers // Protected Headers
-	signature []byte  // Signature
-	detached  bool
 }
 
 type Message struct {
-	dc         DecodeCtx
 	payload    []byte
 	signatures []*Signature
-	b64        bool // true if payload should be base64 encoded
 }
 
-// @ ensures h != nil
-func (s Signature) ProtectedHeaders() (h Headers)
+// TODO: (lmeinen) Add proper preconditions
+
+// @ trusted
+// @ ensures h != nil && h === s.protected
+func (s Signature) ProtectedHeaders() (h Headers) {
+	return s.protected
+}
 
 // Payload returns the decoded payload
-// @ ensures acc(r)
-func (m Message) Payload() (r []byte)
+// @ trusted
+// @ ensures acc(r, _) && lib.AbsBytes(r) == m.AbsMsg()
+// @ ensures r === m.payload
+func (m Message) Payload() (r []byte) {
+	return m.payload
+}
 
-// @ requires p > 0
-// @ requires acc(m.signatures, p)
-// @ requires forall i int :: 0 <= i && i < len(m.signatures) ==> acc(m.signatures[i], p)
-// @ ensures acc(s, p)
-// @ ensures forall i int :: 0 <= i && i < len(s) ==> acc(s[i], p)
-// @ ensures len(m.signatures) == old(len(m.signatures))
-// @ ensures len(s) == len(m.signatures)
-// @ ensures forall i int :: 0 <= i && i < len(s) ==> old(m.signatures[i]) == s[i]
-func (m Message) Signatures( /*@ ghost p perm @*/ ) (s []*Signature) {
+// @ trusted
+// @ ensures acc(s, _) &&
+// @ 	forall i int :: { s[i] } 0 <= i && i < len(s) ==> acc(s[i], _)
+// @ ensures s === m.signatures
+func (m Message) Signatures() (s []*Signature) {
 	return m.signatures
 }
+
+/*@
+ghost
+pure
+decreases _
+func (m Message) AbsMsg() (ghost b lib.Bytes)
+@*/
 
 // Parse parses contents from the given source and creates a jws.Message
 // struct. The input can be in either compact or full JSON serialization.
@@ -106,10 +121,7 @@ func (m Message) Signatures( /*@ ghost p perm @*/ ) (s []*Signature) {
 // Parse() currently does not take any options, but the API accepts it
 // in anticipation of future addition.
 // TODO: (lmeinen) Valid assumption w.r.t. len of msg.signatures? Check library implementation.
-// @ ensures err == nil ==> (
-// @ 	acc(msg) &&
-// @ 	acc(msg.payload) &&
-// @ 	acc(msg.signatures) &&
-// @ 	len(msg.signatures) > 0 &&
-// @ 	forall i int :: 0 <= i && i < len(msg.signatures) ==> acc(msg.signatures[i]))
-func Parse(src []byte, _ ...ParseOption) (msg *Message, err error)
+// @ requires acc(src, _)
+// @ requires forall i int :: 0 <= i && i < len(options) ==> acc(&options[i] ,_) && options[i] != nil
+// @ ensures err == nil ==> acc(msg)
+func Parse(src []byte, options ...ParseOption) (msg *Message, err error)

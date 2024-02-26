@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/adem-wg/adem-proto/pkg/tokens"
-	. "github.com/adem-wg/adem-proto/pkg/goblib"
+	. "lib"
 	"github.com/adem-wg/adem-proto/pkg/roots"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
@@ -146,8 +146,17 @@ func permissionOut(ghost p place.Place, ghost rid term.Term, ghost t term.Term) 
 }
 
 ghost
+requires place.token(p) && iospec.e_PermitTokenVerificationIn(p, rid)
+requires ValidationPerm(t) // TODO: Do we need this at all for the soundness argument?
+ensures gamma(t) == gamma(tt)
+ensures tt == old(iospec.get_e_PermitTokenVerificationIn_r1(p, rid))
+ensures pp == old(iospec.get_e_PermitTokenVerificationIn_placeDst(p, rid)) && place.token(pp)
 decreases _
-func permissionIn(ghost p place.Place, ghost rid term.Term, ghost t term.Term) (ghost pp place.Place) {
-	// TODO: Inverse of permissionOut
+func permissionIn(ghost t term.Term, ghost p place.Place, ghost rid term.Term) (ghost tt term.Term, ghost pp place.Place) {
+	tt := iospec.get_e_PermitTokenVerificationIn_r1(p, rid)
+	assume gamma(t) == gamma(tt)
+	pp := iospec.get_e_PermitTokenVerificationIn_placeDst(p, rid)
+	inhale place.token(pp)
+	return tt, pp
 }
 

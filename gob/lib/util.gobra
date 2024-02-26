@@ -1,6 +1,6 @@
 // +gobra
 // ##(--onlyFilesWithHeader)
-package goblib
+package lib
 
 import "github.com/adem-wg/adem-proto/pkg/consts"
 
@@ -37,3 +37,8 @@ pure func toSeqString(s []string) (res seq[string]) {
   return (len(s) == 0 ? seq[string]{} :
                         toSeqString(s[:len(s)-1]) ++ seq[string]{s[len(s) - 1]})
 }
+
+ghost
+requires acc(rawToken, _)
+decreases _
+pure func AbsBytes(rawToken []byte) (res Bytes)

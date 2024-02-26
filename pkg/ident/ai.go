@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/adem-wg/adem-proto/pkg/util"
-	// @ . "github.com/adem-wg/adem-proto/pkg/goblib"
+	// @ . "lib"
 )
 
 func init() {
