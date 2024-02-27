@@ -70,6 +70,11 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 			// @ fold acc(Endorsement(endorsement), _)
 			// @ fold acc(EndListElem(i0, endorsement), _)
 			continue
+		} else if _, logged := endorsement.Token.Get("log"); !logged {
+			// @ fold acc(Emblem(emblem), _)
+			// @ fold acc(Endorsement(endorsement), _)
+			// @ fold acc(EndListElem(i0, endorsement), _)
+			continue
 		} else if /*@ unfolding acc(ValidToken(root), _) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ ) != endorsedKID {
 			// @ fold acc(Emblem(emblem), _)
 			// @ fold acc(Endorsement(endorsement), _)
