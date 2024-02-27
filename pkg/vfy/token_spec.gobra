@@ -68,12 +68,14 @@ decreases _
 pure func AbsKey(k jwk.Key) Bytes
 
 // TODO: Is there any way to get the signature in here? Do we even need it?
+// 	--> Add signature term to channel invariant
 // TODO: Ensure that all proper constraints are collected by the end of organizastional/endorsed verification calls
 
 ghost
 requires acc(ValidToken(t), _)
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 requires unfolding acc(ValidToken(t), _) in (
+	// TODO: (lmeinen) Move this into func body
 	t.Headers.ContentType() == string(consts.EmblemCty) ? t.Token.Contains("ass") : t.Token.Contains("key"))
 pure func Abs(t *ADEMToken) Bytes {
 	// (1) note the PureGet call, it is a consequence of Gobra's limitation that a pure function cannot have multiple return values - as a consequence AbsAI can't require any permissions, either

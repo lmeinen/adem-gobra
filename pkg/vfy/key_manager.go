@@ -239,6 +239,14 @@ func (km *keyManager) getVerificationKey(sig *jws.Signature) (p util.Promise) {
 // @ 	m.AbsMsg() == lib.gamma(tokenT)
 func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.Signature, m *jws.Message /*@, ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term @*/) error {
 	// @ unfold km.Mem()
+
+	// TODO: (lmeinen) Add postcondition with IOSpec
+	// TODO: (lmeinen) How do we express that multiple parts together are abstracted to be tokenT? Do we maybe already add information here that tokenT consists of multiple parts? <key, token, sig>
+	// TODO: (lmeinen) Maybe wrap all of this in a predicate so it's easier to recognize that this makes sense
+	// @ assert place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
+	// @ 	fact.Setup_TokenVerifier(rid) in s && fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) in s &&
+	// @ 	m.AbsMsg() == lib.gamma(tokenT)
+
 	var promise util.Promise
 	var err error
 	if t /*@, p, s @*/, e := jwt.Parse(m.Payload() /*@, p, rid, s, tokenT @*/, jwt.WithVerify(false)); e != nil {
@@ -249,6 +257,7 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 		// @ unfold jwt.FieldMem(t.Values())
 		// @ unfold tokens.LogMem(logs.([]*tokens.LogConfig))
 		casted := logs.([]*tokens.LogConfig)
+		// TODO: (lmeinen) Wrap in trusted for now
 		results := roots.VerifyBindingCerts(t.Issuer(), headerKey, casted)
 		// @ invariant acc(PkgMem(), _)
 		// @ invariant acc(t.Mem(), _)

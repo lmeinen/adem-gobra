@@ -101,7 +101,7 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	// @ ghost ridT := term.freshTerm(fresh.fr_integer64(rid))
 	// @ ghost s := mset[fact.Fact]{}
 
-	// TODO: argument for why this is sound
+	// TODO: (lmeinen) argument for why this is sound
 	// @ inhale iospec.P_TokenVerifier(p, ridT, s)
 
 	// @ unfold iospec.P_TokenVerifier(p, ridT, s)
@@ -145,6 +145,11 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 		return
 	}
 
+	// TODO: (lmeinen) This feels wrong - shouldn't we only have this at the end of the following chain of if err clauses?
+	// @ assert place.token(p) && iospec.P_TokenVerifier(p, ridT, s) &&
+	// @ 	fact.St_TokenVerifier_0(ridT) in s && fact.ValidTokenOut_TokenVerifier(ridT, tokenT) in s &&
+	// @ 	jwtT.Abs() == gamma(tokenT)
+
 	if msg, err := jws.Parse(rawToken); err != nil {
 		result.err = err
 		return
@@ -159,6 +164,11 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	}
 }
 
+// TODO: (lmeinen) Write results send wrapper with e_ValidTokenOut as precondition
+
+// TODO: (lmeinen) Add ValidTokenIn_Verifier stuff
+// --> or do we instead add a sort of "exchange" function which takes the ValidTokenOut pred from vfyToken and produces a corresonding In fact
+//
 //	ensures r != nil ==> Abs(r) == gamma(rT)
 //
 // @ requires results.RecvChannel() &&
