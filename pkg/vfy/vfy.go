@@ -527,7 +527,13 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		return ResultInvalid()
 	}
 
-	endorsedResults, endorsedBy := verifyEndorsed(emblem, root, endorsements, trustedKeys)
+	var endorsedResults []consts.VerificationResult
+	var endorsedBy []string
+
+	if util.ContainsVerificationResult(vfyResults, consts.ORGANIZATIONAL /*@, perm(1/2) @*/) {
+		endorsedResults, endorsedBy = verifyEndorsed(emblem, root, endorsements, trustedKeys)
+	}
+
 	if util.ContainsVerificationResult(endorsedResults, consts.INVALID /*@, perm(1/2) @*/) {
 		return ResultInvalid()
 	}
