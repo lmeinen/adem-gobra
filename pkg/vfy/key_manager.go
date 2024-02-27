@@ -257,22 +257,8 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 		// @ unfold jwt.FieldMem(t.Values())
 		// @ unfold tokens.LogMem(logs.([]*tokens.LogConfig))
 		casted := logs.([]*tokens.LogConfig)
-		// TODO: (lmeinen) Wrap in trusted for now
-		results := roots.VerifyBindingCerts(t.Issuer(), headerKey, casted)
-		// @ invariant acc(PkgMem(), _)
-		// @ invariant acc(t.Mem(), _)
-		// @ invariant acc(results) && forall i int :: 0 <= i && i < len(results) ==> acc(results[i]) && (results[i].Ok ==> t.Issuer() != "")
-		// @ invariant (err == nil) == (forall i int :: 0 <= i && i < i0 && i < len(results) ==> results[i].Ok)
-		for _, r := range results /*@ with i0 @*/ {
-			if !r.Ok {
-				log.Printf("could not verify root key commitment for log ID %s", r.LogID)
-				err = /*@ unfolding acc(PkgMem(), _) in @*/ ErrRootKeyUnbound
-				break
-			}
-		}
+		err = verifyLog(t, headerKey, casted)
 		if err == nil && len(casted) > 0 {
-			// @ assert results[0].Ok
-			// @ assert t.Issuer() != ""
 			km.put(headerKey)
 		}
 	}
@@ -297,6 +283,29 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 
 	sink.Key(jwa.SignatureAlgorithm(verificationKey.Algorithm( /*@ none[perm] @*/ ).String()), verificationKey)
 	return nil
+}
+
+// @ trusted
+// @ preserves acc(PkgMem(), _) && acc(roots.PkgMem(), _) && acc(tokens.PkgMem(), _)
+// @ preserves acc(t.Mem(), _) && t != nil
+// @ preserves headerKey != nil && headerKey.Mem()
+// @ requires acc(casted) &&
+// @ 	forall i int :: 0 <= i && i < len(casted) ==> acc(casted[i]) && acc(casted[i].Hash.Raw)
+func verifyLog(t jwt.Token, headerKey jwk.Key, casted []*tokens.LogConfig) (e error) {
+	var err error
+	results := roots.VerifyBindingCerts(t.Issuer(), headerKey, casted)
+	// @ invariant acc(PkgMem(), _)
+	// @ invariant acc(t.Mem(), _)
+	// @ invariant acc(results) && forall i int :: 0 <= i && i < len(results) ==> acc(results[i]) && (results[i].Ok ==> t.Issuer() != "")
+	// @ invariant (err == nil) == (forall i int :: 0 <= i && i < i0 && i < len(results) ==> results[i].Ok)
+	for _, r := range results /*@ with i0 @*/ {
+		if !r.Ok {
+			log.Printf("could not verify root key commitment for log ID %s", r.LogID)
+			err = /*@ unfolding acc(PkgMem(), _) in @*/ ErrRootKeyUnbound
+			break
+		}
+	}
+	return err
 }
 
 // @ trusted
