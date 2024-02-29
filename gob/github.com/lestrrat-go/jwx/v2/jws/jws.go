@@ -8,7 +8,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	// @ "lib"
-	// @ "iospec"
 	// @ "fact"
 	// @ "term"
 	// @ "place"
@@ -31,10 +30,9 @@ type KeyProvider interface {
 	// @ pred Mem()
 
 	// @ requires Mem() && c != nil && sink != nil && acc(sig, _) && acc(m, _)
-	// @ requires place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
-	// @ 	fact.Setup_TokenVerifier(rid) in s && fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) in s &&
-	// @ 	m.AbsMsg() == lib.gamma(tokenT)
-	FetchKeys(c context.Context, sink KeySink, sig *Signature, m *Message /*@, ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term @*/) error
+	// @ requires lib.TokenVerifierInitState(p, rid, s, tokenT)
+	// @ requires m.AbsMsg() == lib.gamma(tokenT)
+	FetchKeys(c context.Context, sink KeySink, sig *Signature, m *Message /*@, ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term @*/) (e error /*@, ghost p1 place.Place, ghost s1 mset[fact.Fact] @*/)
 }
 
 // Headers describe a standard Header set.

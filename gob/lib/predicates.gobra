@@ -2,6 +2,23 @@
 // ##(--onlyFilesWithHeader)
 package lib
 
+import (
+	"iospec"
+	"fact"
+	"term"
+	"place"
+)
+
 pred BytesMem(bytes []byte) {
     forall i int :: 0 <= i && i < len(bytes) ==> acc(&bytes[i])
+}
+
+pred TokenVerifierInitState(ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term) {
+	place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
+	fact.Setup_TokenVerifier(rid) in s && fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) in s
+}
+
+pred TokenVerifierTermState(ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term) {
+	place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
+	fact.St_TokenVerifier_0(rid) in s && fact.ValidTokenOut_TokenVerifier(rid, tokenT) in s
 }

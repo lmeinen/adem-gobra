@@ -234,55 +234,52 @@ func (km *keyManager) getVerificationKey(sig *jws.Signature) (p util.Promise) {
 // key will be used for verification. All other keys will register a listener
 // and wait for their verification key to be verified externally.
 // @ requires km.Mem() && ctx != nil && sink != nil && acc(sig, _) && acc(m, _)
-// @ requires place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
-// @ 	fact.Setup_TokenVerifier(rid) in s && fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) in s &&
-// @ 	m.AbsMsg() == lib.gamma(tokenT)
-func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.Signature, m *jws.Message /*@, ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term @*/) error {
+// @ requires lib.TokenVerifierInitState(p, rid, s, tokenT)
+// @ requires m.AbsMsg() == lib.gamma(tokenT)
+func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.Signature, m *jws.Message /*@, ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term @*/) (e error /*@, ghost p1 place.Place, ghost s1 mset[fact.Fact] @*/) {
 	// @ unfold km.Mem()
 
-	// TODO: (lmeinen) Add postcondition with IOSpec
+	// TODO: (lmeinen) Return IOspec from function
+	// TODO: (lmeinen) Add IOSpec operations for CT log requests
 	// TODO: (lmeinen) How do we express that multiple parts together are abstracted to be tokenT? Do we maybe already add information here that tokenT consists of multiple parts? <key, token, sig>
 	// TODO: (lmeinen) Maybe wrap all of this in a predicate so it's easier to recognize that this makes sense
-	// @ assert place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
-	// @ 	fact.Setup_TokenVerifier(rid) in s && fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) in s &&
-	// @ 	m.AbsMsg() == lib.gamma(tokenT)
 
 	var promise util.Promise
 	var err error
-	if t /*@, p, s @*/, e := jwt.Parse(m.Payload() /*@, p, rid, s, tokenT @*/, jwt.WithVerify(false)); e != nil {
+	if t /*@, p1, s1 @*/, e := jwt.Parse(m.Payload() /*@, p, rid, s, tokenT @*/, jwt.WithVerify(false)); e != nil {
 		log.Printf("could not decode payload: %s", e)
 		err = e
+		// @ assert err != nil
 	} else if logs, ok := t.Get("log"); ok {
 		headerKey := sig.ProtectedHeaders().JWK()
 		// @ unfold jwt.FieldMem(t.Values())
 		// @ unfold tokens.LogMem(logs.([]*tokens.LogConfig))
 		casted := logs.([]*tokens.LogConfig)
-		err = verifyLog(t, headerKey, casted)
+		err = verifyLog(t, headerKey, casted /*@, p, rid @*/)
 		if err == nil && len(casted) > 0 {
 			km.put(headerKey)
 		}
 	}
-
 	promise = km.getVerificationKey(sig)
 	// @ fold WaitInv!<!>()
 	// @ km.init.PayDebt(WaitInv!<!>)
 	km.init.Done()
 	if err != nil {
 		log.Printf("err: %s", err)
-		return err
+		return err /*@, p, s @*/
 	}
 
 	verificationKey := promise.Get()
 	if verificationKey == nil {
-		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrNoKeyFound
+		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrNoKeyFound /*@, p, s @*/
 	}
 
 	if verificationKey.Algorithm( /*@ none[perm] @*/ ) != sig.ProtectedHeaders().Algorithm() {
-		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrAlgsDiffer
+		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrAlgsDiffer /*@, p, s @*/
 	}
 
 	sink.Key(jwa.SignatureAlgorithm(verificationKey.Algorithm( /*@ none[perm] @*/ ).String()), verificationKey)
-	return nil
+	return nil /*@, p, s @*/
 }
 
 // @ trusted
@@ -291,7 +288,7 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 // @ preserves headerKey != nil && headerKey.Mem()
 // @ requires acc(casted) &&
 // @ 	forall i int :: 0 <= i && i < len(casted) ==> acc(casted[i]) && acc(casted[i].Hash.Raw)
-func verifyLog(t jwt.Token, headerKey jwk.Key, casted []*tokens.LogConfig) (e error) {
+func verifyLog(t jwt.Token, headerKey jwk.Key, casted []*tokens.LogConfig /*@, ghost p place.Place, ghost rid term.Term @*/) (e error) {
 	var err error
 	results := roots.VerifyBindingCerts(t.Issuer(), headerKey, casted)
 	// @ invariant acc(PkgMem(), _)

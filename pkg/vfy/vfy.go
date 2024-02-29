@@ -138,8 +138,10 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	// @ tokenT, p = permissionIn(tokenT, p, ridT)
 	// @ s = s union mset[fact.Fact] { fact.PermitTokenVerificationIn_TokenVerifier(ridT, tokenT) }
 
+	// @ fold TokenVerifierInitState(p, ridT, s, tokenT)
 	// @ fold km.Mem()
 	jwtT /*@, p, s @*/, err := jwt.Parse(rawToken /*@, p, ridT, s, tokenT @*/, jwt.WithKeyProvider(km))
+	// @ unfold TokenVerifierTermState(p, ridT, s, tokenT)
 	if err != nil {
 		result.err = err
 		return
