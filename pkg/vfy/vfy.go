@@ -152,7 +152,6 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	}
 	// @ unfold TokenVerifierTermState(p, ridT, s, tokenT)
 
-	// TODO: (lmeinen) This feels wrong - shouldn't we only have this at the end of the following chain of if err clauses?
 	// @ assert place.token(p) && iospec.P_TokenVerifier(p, ridT, s) &&
 	// @ 	fact.St_TokenVerifier_0(ridT) in s && fact.ValidTokenOut_TokenVerifier(ridT, tokenT) in s &&
 	// @ 	jwtT.Abs() == gamma(tokenT)
@@ -163,12 +162,11 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	} else if len(msg.Signatures()) > 1 {
 		result.err = /*@ unfolding acc(PkgMem(), _) in @*/ ErrTokenNonCompact
 		return
-	} else if ademT, err := MkADEMToken(km, msg.Signatures()[0], jwtT); err != nil {
+	} else if ademT, err := MkADEMToken(km, msg.Signatures()[0], jwtT /*@, tokenT @*/); err != nil {
 		result.err = err
 		return
 	} else {
 		// TODO: (lmeinen) get rid of all the inhale stmts
-		// @ inhale Abs(ademT) == gamma(tokenT)
 		// @ inhale iospec.e_ValidTokenOut(p, ridT, tokenT)
 		result.token = ademT
 	}
