@@ -95,10 +95,11 @@ type TokenVerificationResult struct {
 // @ requires acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 // @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
 // @ requires ValidationPerm(tokenT) && gamma(tokenT) == AbsBytes(rawToken)
+// @ requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup, ghost tokenT term.Term @*/) {
-	// @ share threadCount, loc, results, vfyWaitGroup
-	// @ ghost p := place.place(42)
-	// @ ghost ridT := term.freshTerm(fresh.fr_integer64(rid))
+	// @ share threadCount, loc, results, vfyWaitGroup, tokenT
+	// @ ghost p@ := GenericPlace()
+	// @ ghost ridT@ := term.freshTerm(fresh.fr_integer64(rid))
 	// @ ghost s := mset[fact.Fact]{}
 
 	// TODO: (lmeinen) argument for why this is sound
@@ -114,20 +115,23 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	// @ unfold acc(PkgMems(), 1 / threadCount)
 	result /*@@@*/ := TokenVerificationResult{}
 	defer
-	// @ requires acc(&threadCount) && acc(&loc) && acc(&results) && acc(&vfyWaitGroup)
+	// @ requires acc(&threadCount) && acc(&loc) && acc(&results) && acc(&vfyWaitGroup) && acc(&p) && acc(&ridT) && acc(&tokenT)
+	// @ requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ requires threadCount > 0
 	// @ requires acc(&result) &&
 	// @ 			(result.err == nil ==> (
 	// @ 				result.token != nil &&
-	// @ 				ValidToken(result.token))) &&
+	// @ 				ValidToken(result.token) &&
+	// @ 				iospec.e_ValidTokenOut(p, ridT, tokenT) &&
+	// @ 				Abs(result.token) == gamma(tokenT))) &&
 	// @ 			(result.err != nil ==> result.token == nil)
 	// @ requires acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 	// @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
 	func /*@ f @*/ () {
 		// @ unfold acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 		// @ fold ResultPerm(&result)
-		// @ fold SendToken!<loc, threadCount, _!>(&result)
-		results <- &result
+		// @ fold SendToken(loc, threadCount, &result)
+		resultsSend(results, &result /*@, loc, threadCount, p, ridT, tokenT @*/)
 		// @ fold SendFraction!<results, threadCount!>()
 		// @ vfyWaitGroup.PayDebt(SendFraction!<results, threadCount!>)
 		// @ vfyWaitGroup.Done()
@@ -140,12 +144,13 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 
 	// @ fold TokenVerifierInitState(p, ridT, s, tokenT)
 	// @ fold km.Mem()
-	jwtT /*@, p, s @*/, err := jwt.Parse(rawToken /*@, p, ridT, s, tokenT @*/, jwt.WithKeyProvider(km))
-	// @ unfold TokenVerifierTermState(p, ridT, s, tokenT)
+	options := []jwt.ParseOption{jwt.WithKeyProvider(km)}
+	jwtT /*@, p, s @*/, err := jwt.Parse(rawToken /*@, p, ridT, s, tokenT @*/, options...)
 	if err != nil {
 		result.err = err
 		return
 	}
+	// @ unfold TokenVerifierTermState(p, ridT, s, tokenT)
 
 	// TODO: (lmeinen) This feels wrong - shouldn't we only have this at the end of the following chain of if err clauses?
 	// @ assert place.token(p) && iospec.P_TokenVerifier(p, ridT, s) &&
@@ -162,11 +167,29 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 		result.err = err
 		return
 	} else {
+		// TODO: (lmeinen) get rid of all the inhale stmts
+		// @ inhale Abs(ademT) == gamma(tokenT)
+		// @ inhale iospec.e_ValidTokenOut(p, ridT, tokenT)
 		result.token = ademT
 	}
 }
 
-// TODO: (lmeinen) Write results send wrapper with e_ValidTokenOut as precondition
+// @ preserves n > 0 &&
+// @ 	acc(results.SendChannel(), perm(1/(2 * n))) &&
+// @ 	results.SendGivenPerm() == SendToken!<loc, n, _!> &&
+// @ 	results.SendGotPerm() == PredTrue!<!>
+// @ requires SendToken(loc, n, result)
+// @ requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+// @ requires unfolding SendToken(loc, n, result) in unfolding ResultPerm(result) in result.err == nil ==> Abs(result.token) == gamma(tokenT)
+// @ requires let isValid := (unfolding SendToken(loc, n, result) in unfolding ResultPerm(result) in result.err == nil) in
+// @ 	isValid ==>  iospec.e_ValidTokenOut(p, rid, tokenT)
+// @ ensures PredTrue!<!>()
+func resultsSend(results chan *TokenVerificationResult, result *TokenVerificationResult /*@, ghost loc *int, ghost n int, ghost p place.Place, ghost rid term.Term, ghost tokenT term.Term @*/) {
+	// we use the non-partially-evaluated version of SendToken in the precondition as Gobra doesn't support unfolding ... in stmts otherwise
+	// @ unfold SendToken(loc, n, result)
+	// @ fold SendToken!<loc, n, _!>(result)
+	results <- result
+}
 
 // TODO: (lmeinen) Add ValidTokenIn_Verifier stuff
 // --> or do we instead add a sort of "exchange" function which takes the ValidTokenOut pred from vfyToken and produces a corresonding In fact
@@ -300,6 +323,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ 	km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(ResultsInv(loc, threadCount, results), (threadCount - i0) / threadCount)
 	// @ invariant acc(wg.UnitDebt(SendFraction!<results, threadCount!>), threadCount - i0)
+	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	for i, rawToken := range rawTokens /*@ with i0 @*/ {
 		// Produce In fact for token
 		/*@

@@ -99,6 +99,7 @@ func (m Message) Payload() (r []byte) {
 }
 
 // @ trusted
+// @ preserves acc(m.Mem(), _)
 // @ ensures acc(s, _) &&
 // @ 	forall i int :: { s[i] } 0 <= i && i < len(s) ==> acc(s[i], _)
 // @ ensures s === m.signatures
@@ -111,6 +112,10 @@ ghost
 pure
 decreases _
 func (m Message) AbsMsg() (ghost b lib.Bytes)
+
+pred (m Message) Mem() {
+	acc(m.payload) && acc(m.signatures)
+}
 @*/
 
 // Parse parses contents from the given source and creates a jws.Message
@@ -118,8 +123,7 @@ func (m Message) AbsMsg() (ghost b lib.Bytes)
 //
 // Parse() currently does not take any options, but the API accepts it
 // in anticipation of future addition.
-// TODO: (lmeinen) Valid assumption w.r.t. len of msg.signatures? Check library implementation.
 // @ requires acc(src, _)
 // @ requires forall i int :: 0 <= i && i < len(options) ==> acc(&options[i] ,_) && options[i] != nil
-// @ ensures err == nil ==> acc(msg)
+// @ ensures err == nil ==> acc(msg) && msg.Mem() && len(msg.signatures) > 0
 func Parse(src []byte, options ...ParseOption) (msg *Message, err error)

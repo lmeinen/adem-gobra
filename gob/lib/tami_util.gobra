@@ -2,6 +2,7 @@
 // ##(--onlyFilesWithHeader)
 package lib
 
+import "place"
 import "term"
 import "pub"
 import "fresh"
@@ -33,3 +34,5 @@ type TermUtil domain {
         forall t1, t2, t3, t4 Term :: { tuple4(t1, t2, t3, t4) } getFirst(tuple4(t1, t2, t3, t4)) == t1 && getSecond(tuple4(t1, t2, t3, t4)) == t2 && getThird(tuple4(t1, t2, t3, t4)) == t3 && getFourth(tuple4(t1, t2, t3, t4)) == t4
     }
 }
+
+func GenericPlace() place.Place

@@ -281,7 +281,7 @@ func Parse(bytes []byte, ghost p place.Place, ghost rid term.Term, ghost s mset[
 
 // WithKeyProvider allows users to specify an object to provide keys to
 // sign/verify tokens using arbitrary code.
-ensures o != nil && typeOf(o.Ident()) == type[identWithKeyProvider] && o.Value() === v && typeOf(o.Value()) == type[jws.KeyProvider]
+ensures o != nil && typeOf(o.Ident()) == type[identWithKeyProvider] && o.Value() === v
 decreases _
 pure func WithKeyProvider(v jws.KeyProvider) (o ParseOption)
 
