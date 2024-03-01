@@ -191,17 +191,35 @@ func resultsSend(results chan *TokenVerificationResult, result *TokenVerificatio
 	results <- result
 }
 
+// @ ghost func GenericTerm() term.Term
+
 // TODO: (lmeinen) Add ValidTokenIn_Verifier stuff
 // --> or do we instead add a sort of "exchange" function which takes the ValidTokenOut pred from vfyToken and produces a corresonding In fact
 // @ preserves n > 0 &&
 // @ 	results.RecvChannel() &&
 // @ 	results.RecvGivenPerm() == PredTrue!<!> &&
 // @ 	results.RecvGotPerm() == SendToken!<loc, n, _!>
+// @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ requires PredTrue!<!>()
-// @ ensures r != nil ==> SendToken!<loc, n, _!>(r)
-func resultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghost n int, ghost p place.Place, ghost rid term.Term @*/) (r *TokenVerificationResult) {
+// @ requires iospec.e_ValidTokenIn(p, rid)
+// @ ensures r != nil ==> SendToken(loc, n, r) && unfolding SendToken(loc, n, r) in unfolding ResultPerm(r) in r.err == nil ==> Abs(r.token) == gamma(tokenT)
+// @ ensures place.token(pp) && pp == old(iospec.get_e_ValidTokenIn_placeDst(p, rid)) && tokenT == old(iospec.get_e_ValidTokenIn_r1(p, rid))
+func resultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghost n int, ghost p place.Place, ghost rid term.Term @*/) (r *TokenVerificationResult /*@, ghost pp place.Place, ghost tokenT term.Term @*/) {
 	r = <-results
-	return r
+	/*@
+	ghost pp := iospec.get_e_ValidTokenIn_placeDst(p, rid)
+	ghost tokenT := iospec.get_e_ValidTokenIn_r1(p, rid)
+
+	ghost {
+		inhale place.token(pp)
+		if r != nil {
+			unfold SendToken!<loc, n, _!>(r)
+			fold SendToken(loc, n, r)
+			assume unfolding SendToken(loc, n, r) in unfolding ResultPerm(r) in r.err == nil ==> Abs(r.token) == gamma(tokenT)
+		}
+	}
+	@*/
+	return r /*@, pp, tokenT @*/
 }
 
 // Verify a slice of ADEM tokens.
@@ -418,7 +436,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			// new verification, we miss verification keys and verification will be
 			// aborted.
 			km.killListeners()
-		} else if result := resultsRecv(results /*@, loc, n, p, ridT @*/); result == nil {
+		} else if result /*@, pp, tokenT @*/ := resultsRecv(results /*@, loc, n, p, ridT @*/); result == nil {
 			//  p = p0
 
 			// All threads have terminated
