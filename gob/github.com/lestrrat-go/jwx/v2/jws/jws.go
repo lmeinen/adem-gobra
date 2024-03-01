@@ -32,6 +32,7 @@ type KeyProvider interface {
 	// @ requires Mem() && c != nil && sink != nil && acc(sig, _) && acc(m, _)
 	// @ requires lib.TokenVerifierInitState(p, rid, s, tokenT)
 	// @ requires m.AbsMsg() == lib.gamma(tokenT)
+	// @ ensures e == nil ==> lib.TokenVerifierInitState(p1, rid, s1, tokenT)
 	FetchKeys(c context.Context, sink KeySink, sig *Signature, m *Message /*@, ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term @*/) (e error /*@, ghost p1 place.Place, ghost s1 mset[fact.Fact] @*/)
 }
 
