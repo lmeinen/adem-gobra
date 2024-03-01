@@ -74,9 +74,6 @@ pure func AbsKey(k jwk.Key) Bytes
 ghost
 requires acc(ValidToken(t), _)
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-requires unfolding acc(ValidToken(t), _) in (
-	// TODO: (lmeinen) Move this into func body
-	t.Headers.ContentType() == string(consts.EmblemCty) ? t.Token.Contains("ass") : t.Token.Contains("key"))
 pure func Abs(t *ADEMToken) Bytes {
 	// (1) note the PureGet call, it is a consequence of Gobra's limitation that a pure function cannot have multiple return values - as a consequence AbsAI can't require any permissions, either
 	return unfolding acc(ValidToken(t), _) in
@@ -84,7 +81,7 @@ pure func Abs(t *ADEMToken) Bytes {
         let oi := t.Token.Issuer() in
 		let key := AbsKey(t.VerificationKey) in
 		let sig := stringB("sig") in 
-		t.Headers.ContentType() == string(consts.EmblemCty) ?
+		t.Headers.ContentType() == string(consts.EmblemCty) && t.Token.Contains("ass") ?
 			let ai := t.Token.PureGet("ass").([]*ident.AI) in
 			let aiB := (unfolding acc(tokens.AssMem(ai), _) in ident.AbsAI(ai)) in
 			// emblem
@@ -98,18 +95,23 @@ pure func Abs(t *ADEMToken) Bytes {
                     // organizational
                     tuple4B(key, stringB(oi), tuple3B(emblemB(), aiB, stringB(oi)), sig)) :
 			// endorsement
-        	let sub := t.Token.Subject() in
-        	let endKey := t.Token.PureGet("key").(tokens.EmbeddedKey) in
-			let endKeyB := (unfolding acc(tokens.KeyMem(endKey), _) in AbsKey(endKey.Key)) in
-            (oi == "" ?
-                // anonymous
-                tuple3B(key, tuple2B(endorsementB(), endKeyB), sig) :
-                (t.Token.Contains("log") ?
-                    // root
-                    tuple4B(key, stringB(oi), tuple3B(rootEndB(), stringB(sub), endKeyB), sig) :
-                    // internal
-                    tuple4B(key, stringB(oi), tuple3B(endorsementB(), stringB(oi), endKeyB), sig)))
+			(t.Headers.ContentType() == string(consts.EndorsementCty) && t.Token.Contains("key") ?
+        		let sub := t.Token.Subject() in
+        		let endKey := t.Token.PureGet("key").(tokens.EmbeddedKey) in
+				let endKeyB := (unfolding acc(tokens.KeyMem(endKey), _) in AbsKey(endKey.Key)) in
+        		(oi == "" ?
+        		    // anonymous
+        		    tuple3B(key, tuple2B(endorsementB(), endKeyB), sig) :
+        		    (t.Token.Contains("log") ?
+        		        // root
+        		        tuple4B(key, stringB(oi), tuple3B(rootEndB(), stringB(sub), endKeyB), sig) :
+        		        // internal
+        		        tuple4B(key, stringB(oi), tuple3B(endorsementB(), stringB(oi), endKeyB), sig))) :
+				GenericBytes(t))
 }
+
+ghost
+pure func GenericBytes(t *ADEMToken) Bytes
 
 ghost
 requires acc(ValidToken(t), _)
