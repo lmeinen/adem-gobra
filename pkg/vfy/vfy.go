@@ -193,17 +193,12 @@ func resultsSend(results chan *TokenVerificationResult, result *TokenVerificatio
 
 // TODO: (lmeinen) Add ValidTokenIn_Verifier stuff
 // --> or do we instead add a sort of "exchange" function which takes the ValidTokenOut pred from vfyToken and produces a corresonding In fact
-//
-//	ensures r != nil ==> Abs(r) == gamma(rT)
-//
-// @ requires results.RecvChannel() &&
+// @ preserves n > 0 &&
+// @ 	results.RecvChannel() &&
 // @ 	results.RecvGivenPerm() == PredTrue!<!> &&
 // @ 	results.RecvGotPerm() == SendToken!<loc, n, _!>
-// @ requires results.RecvGivenPerm()()
-// @ ensures results.RecvChannel() &&
-// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
-// @ 	results.RecvGotPerm() == SendToken!<loc, n, _!>
-// @ ensures r != nil ==> results.RecvGotPerm()(r)
+// @ requires PredTrue!<!>()
+// @ ensures r != nil ==> SendToken!<loc, n, _!>(r)
 func resultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghost n int, ghost p place.Place, ghost rid term.Term @*/) (r *TokenVerificationResult) {
 	r = <-results
 	return r
@@ -423,8 +418,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			// new verification, we miss verification keys and verification will be
 			// aborted.
 			km.killListeners()
-			// } else if result /*@, resT, p0 @*/ := ResultsRecv(results /*@, loc, n, p, ridT @*/); result == nil {
-		} else if result := <-results; result == nil {
+		} else if result := resultsRecv(results /*@, loc, n, p, ridT @*/); result == nil {
 			//  p = p0
 
 			// All threads have terminated
@@ -471,6 +465,8 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			}
 		}
 	}
+
+	// @ assert iospec.P_Verifier(p, ridT, s)
 
 	// (lmeinen) 2 - validate the JWT tokens AND that the required fields are present and valid
 	var emblem *ADEMToken
