@@ -167,8 +167,10 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 		return
 	} else {
 		// TODO: (lmeinen) get rid of all the inhale stmts
-		// @ inhale iospec.e_ValidTokenOut(p, ridT, tokenT)
+		// @ unfold iospec.P_TokenVerifier(p, ridT, s)
+		// @ unfold iospec.phiRG_TokenVerifier_6(p, ridT, s)
 		result.token = ademT
+		// Note that we don't have access to the IOSpec past this point
 	}
 }
 
