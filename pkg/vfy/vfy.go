@@ -424,9 +424,6 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ invariant TokenList(ts)
 	// @ invariant len(ts) <= n - threadCount
 	for {
-		// @ fold PredTrue!<!>()
-		//  unfold iospec.P_Verifier(p, ridT, s)
-		//  unfold iospec.phiRF_Verifier_17(p, ridT, s)
 		// [waiting] is the number of unresolved promises in the key manager, i.e.,
 		// blocked threads that wait for a verification key.
 		// [threadCount] is the number of threads that could still provide
@@ -436,50 +433,55 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			// new verification, we miss verification keys and verification will be
 			// aborted.
 			km.killListeners()
-		} else if result /*@, pp, tokenT @*/ := resultsRecv(results /*@, loc, n, p, ridT @*/); result == nil {
-			//  p = p0
-
-			// All threads have terminated
-			break
 		} else {
-			//  p = p0
-			//  s = s union mset[fact.Fact] { fact.ValidTokenIn_Verifier(ridT, resT) }
+			// @ fold PredTrue!<!>()
+			// @ unfold iospec.P_Verifier(p, ridT, s)
+			// @ unfold iospec.phiRF_Verifier_17(p, ridT, s)
+			// @ s = s union mset[fact.Fact] { fact.ValidTokenIn_Verifier(ridT, iospec.get_e_ValidTokenIn_r1(p, ridT)) }
+			if result /*@, pp, tokenT @*/ := resultsRecv(results /*@, loc, n, p, ridT @*/); result == nil {
+				// @ p = pp
 
-			// @ unfold SendToken!<loc, n, _!>(result)
-			// @ unfold acc(SingleUse(loc), 1 / n)
-			// @ unfold ResultPerm(result)
-
-			// We got a new non-nil result from <-results, and hence, one thread must
-			// have terminated. Decrement the counter accordingly.
-			threadCount -= 1
-
-			if threadCount == 0 {
-				// @ unfold VfyWg(vfyWaitGroup, n, results, fractionSeq)
-				// @ vfyWaitGroup.Wait(perm(1), fractionSeq)
-				// @ collectDebt(fractionSeq, n, results)
-				// @ fold PredTrue!<!>()
-
-				// Every call to [vfyToken] will write exactly one result. Hence, only
-				// close the [results] channel, when all threads have terminated.
-				close(results /*@, 1, 2, PredTrue!<!>@*/)
-			}
-
-			if result.err != nil {
-				log.Printf("discarding invalid token: %s", result.err)
+				// All threads have terminated
+				break
 			} else {
-				// @ unfold TokenList(ts)
-				// @ unfold ValidToken(result.token)
-				ts = append( /*@ perm(1/2), @*/ ts, result.token)
-				if k, ok := result.token.Token.Get("key"); ok {
-					// @ unfold jwt.FieldMem(result.token.Token.Values())
-					// @ unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
-					km.put(k.(tokens.EmbeddedKey).Key)
-					// @ fold acc(tokens.KeyMem(k.(tokens.EmbeddedKey)), _)
-					// @ fold acc(jwt.FieldMem(result.token.Token.Values()), _)
+				// @ p = pp
+
+				// @ unfold SendToken(loc, n, result)
+				// @ unfold acc(SingleUse(loc), 1 / n)
+				// @ unfold ResultPerm(result)
+
+				// We got a new non-nil result from <-results, and hence, one thread must
+				// have terminated. Decrement the counter accordingly.
+				threadCount -= 1
+
+				if threadCount == 0 {
+					// @ unfold VfyWg(vfyWaitGroup, n, results, fractionSeq)
+					// @ vfyWaitGroup.Wait(perm(1), fractionSeq)
+					// @ collectDebt(fractionSeq, n, results)
+					// @ fold PredTrue!<!>()
+
+					// Every call to [vfyToken] will write exactly one result. Hence, only
+					// close the [results] channel, when all threads have terminated.
+					close(results /*@, 1, 2, PredTrue!<!>@*/)
 				}
-				// @ fold acc(ValidToken(result.token), _)
-				// @ fold TokenListElem(len(ts) - 1, result.token)
-				// @ fold TokenList(ts)
+
+				if result.err != nil {
+					log.Printf("discarding invalid token: %s", result.err)
+				} else {
+					// @ unfold TokenList(ts)
+					// @ unfold ValidToken(result.token)
+					ts = append( /*@ perm(1/2), @*/ ts, result.token)
+					if k, ok := result.token.Token.Get("key"); ok {
+						// @ unfold jwt.FieldMem(result.token.Token.Values())
+						// @ unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
+						km.put(k.(tokens.EmbeddedKey).Key)
+						// @ fold acc(tokens.KeyMem(k.(tokens.EmbeddedKey)), _)
+						// @ fold acc(jwt.FieldMem(result.token.Token.Values()), _)
+					}
+					// @ fold acc(ValidToken(result.token), _)
+					// @ fold TokenListElem(len(ts) - 1, result.token)
+					// @ fold TokenList(ts)
+				}
 			}
 		}
 	}
