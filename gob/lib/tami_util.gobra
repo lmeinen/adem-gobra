@@ -2,6 +2,7 @@
 // ##(--onlyFilesWithHeader)
 package lib
 
+import "fact"
 import "place"
 import "term"
 import "pub"
@@ -36,3 +37,5 @@ type TermUtil domain {
 }
 
 func GenericPlace() place.Place
+
+func GenericSet() (ghost mset[fact.Fact])

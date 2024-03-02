@@ -563,8 +563,10 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		return ResultInvalid()
 	}
 
+	// @ assert iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
+
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
-	vfyResults, root := verifySignedOrganizational(emblem, endorsements, trustedKeys)
+	vfyResults, root /*@, p, s @*/ := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, p, ridT, s @*/)
 	if util.ContainsVerificationResult(vfyResults, consts.INVALID /*@, perm(1/2) @*/) {
 		return ResultInvalid()
 	}

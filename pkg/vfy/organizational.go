@@ -11,11 +11,19 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	// @ "github.com/lestrrat-go/jwx/v2/jwa"
 	// @ "github.com/lestrrat-go/jwx/v2/jwt"
+	//@ "claim"
+	//@ "fact"
+	//@ "place"
+	//@ "iospec"
+	//@ "term"
+	//@ "pub"
+	//@ "fresh"
 )
 
 // @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
+// @ requires iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
 // @ requires acc(Emblem(emblem), _) &&
 // @ 	unfolding acc(Emblem(emblem), _) in
 // @ 	unfolding acc(ValidToken(emblem), _) in
@@ -25,8 +33,8 @@ import (
 // @ ensures acc(Emblem(emblem), _)
 // @ ensures acc(EndorsementList(endorsements), _)
 // @ ensures acc(vfyResults)
-// @ ensures !lib.GhostContainsResult(vfyResults, consts.INVALID) ==> t != nil && acc(ValidToken(t), _)
-func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set) (vfyResults []consts.VerificationResult, t *ADEMToken) {
+// @ ensures !lib.GhostContainsResult(vfyResults, consts.INVALID) ==> t != nil && acc(ValidToken(t), _) && iospec.P_Verifier(p, ridT, s) && place.token(p)
+func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost p place.Place, ghost ridT term.Term, ghost s mset[fact.Fact] @*/) (vfyResults []consts.VerificationResult, t *ADEMToken /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact] @*/) {
 	// @ unfold EndorsementList(endorsements)
 	// @ ghost defer fold acc(EndorsementList(endorsements), _)
 
@@ -34,6 +42,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+	// @ invariant iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
 	// @ invariant acc(Emblem(emblem), _)
 	// @ invariant acc(endorsements) &&
 	// @ 	forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> (
@@ -64,7 +73,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		} else if _, ok := endorsedBy[kid]; ok {
 			// @ fold EndListElem(i0, endorsements[i0])
 			log.Println("illegal branch in endorsements")
-			return []consts.VerificationResult{consts.INVALID}, nil
+			return []consts.VerificationResult{consts.INVALID}, nil /*@, lib.GenericPlace(), lib.GenericSet() @*/
 		} else {
 			// @ fold acc(EndListElem(i0, endorsements[i0]), _)
 			// @ fold acc(EndorsedByElem(kid, endorsement), _)
@@ -82,6 +91,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ invariant acc(trustedKeys.Mem(), 1/2) && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+	// @ invariant iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
 	// @ invariant acc(endorsedBy) &&
 	// @ 	forall k string :: { endorsedBy[k] } k in endorsedBy && some(k) != endorses ==> let t, _ := endorsedBy[k] in acc(EndorsedByElem(k, t), _)
 	// @ invariant endorses == none[string] ?
@@ -109,7 +119,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 			if err := tokens.VerifyConstraints(emblem.Token, endorsing.Token); err != nil {
 				// @ fold acc(Emblem(emblem), _)
 				log.Printf("emblem does not comply with endorsement constraints: %s", err)
-				return []consts.VerificationResult{consts.INVALID}, nil
+				return []consts.VerificationResult{consts.INVALID}, nil /*@, lib.GenericPlace(), lib.GenericSet() @*/
 			} else {
 				// @ fold acc(Emblem(emblem), _)
 				/*@
@@ -152,7 +162,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ unfold acc(ValidToken(root), _)
 	_, rootLogged := root.Token.Get("log")
 	if /*@ unfolding acc(Emblem(emblem), _) in unfolding acc(ValidToken(emblem), _) in @*/ emblem.Token.Issuer() != "" && !rootLogged {
-		return []consts.VerificationResult{consts.INVALID}, nil
+		return []consts.VerificationResult{consts.INVALID}, nil /*@, lib.GenericPlace(), lib.GenericSet() @*/
 	} else if rootLogged {
 		// TODO: We don't actually know this
 		//  assert emblem.Token.Issuer() != ""
@@ -162,7 +172,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		}
 	}
 
-	return results, root
+	return results, root /*@, p, s @*/
 }
 
 /*@
