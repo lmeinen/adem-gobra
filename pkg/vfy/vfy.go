@@ -191,8 +191,6 @@ func resultsSend(results chan *TokenVerificationResult, result *TokenVerificatio
 	results <- result
 }
 
-// @ ghost func GenericTerm() term.Term
-
 // TODO: (lmeinen) Add ValidTokenIn_Verifier stuff
 // --> or do we instead add a sort of "exchange" function which takes the ValidTokenOut pred from vfyToken and produces a corresonding In fact
 // @ preserves n > 0 &&
@@ -390,6 +388,8 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	ts := []*ADEMToken{}
 	// @ fold TokenList(ts)
 
+	// @ ghost tTs := seq[term.Term]{}
+
 	/*@
 	unfold iospec.P_Verifier(p, ridT, s)
 	unfold iospec.phiR_Verifier_2(p, ridT, s)
@@ -399,6 +399,8 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	p = iospec.internBIO_e_ReceiveTokenFinish(p, ridT, l, a, r)
 	s = fact.U(l, r, s)
 	@*/
+
+	// TODO: (lmeinen) Collect token terms
 
 	/* invariant:
 	- retain receive permission to results channel: allows receiving nil to break out of loop
@@ -422,6 +424,8 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant TokenList(ts)
+	// @ invariant unfolding TokenList(ts) in len(ts) == len(tTs) &&
+	// @ 	forall i int :: { ts[i] } { tTs[i] } 0 <= i && i < len(tTs) ==> Abs(ts[i]) == gamma(tTs[i]) && (fact.ValidTokenIn_Verifier(ridT, tTs[i]) in s)
 	// @ invariant len(ts) <= n - threadCount
 	for {
 		// [waiting] is the number of unresolved promises in the key manager, i.e.,
@@ -566,7 +570,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ assert iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
 
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
-	vfyResults, root /*@, p, s @*/ := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, p, ridT, s @*/)
+	vfyResults, root /*@, p, s, aiT, oiT, rootKeyT @*/ := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, p, ridT, s @*/)
 	if util.ContainsVerificationResult(vfyResults, consts.INVALID /*@, perm(1/2) @*/) {
 		return ResultInvalid()
 	}

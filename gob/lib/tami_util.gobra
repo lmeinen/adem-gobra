@@ -36,6 +36,23 @@ type TermUtil domain {
     }
 }
 
-func GenericPlace() place.Place
+ghost func GenericPlace() place.Place
 
-func GenericSet() (ghost mset[fact.Fact])
+ghost func GenericSet() (ghost mset[fact.Fact])
+
+ghost func GenericTerm() term.Term
+
+ghost
+pure func SignedOut(ai term.Term) term.Term {
+    return term.pair(term.pubTerm(pub.const_SIGNED_pub()), ai)
+}
+
+ghost
+pure func OrganizationalOut(ai term.Term, oi term.Term) term.Term {
+    return term.pair(term.pubTerm(pub.const_ORGANIZATIONAL_pub()), term.pair(ai, oi))
+}
+
+ghost
+pure func EndorsedOut(auth term.Term) term.Term {
+    return term.pair(term.pubTerm(pub.const_ENDORSED_pub()), auth)
+}
