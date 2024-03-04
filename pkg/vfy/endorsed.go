@@ -13,16 +13,13 @@ import (
 	// @ "github.com/lestrrat-go/jwx/v2/jwt"
 )
 
-// @ preserves acc(ValidToken(root), _)
+// @ trusted
 // @ preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 // @ preserves acc(EndorsementList(endorsements), _)
 // @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-// @ requires acc(Emblem(emblem), _) &&
-// @ 	unfolding acc(Emblem(emblem), _) in
-// @ 	unfolding acc(ValidToken(emblem), _) in
-// @ 	emblem.Headers.ContentType() == string(consts.EmblemCty) &&
-// @ 	emblem.Headers.Algorithm() != jwa.NoSignature
+// @ requires acc(Emblem(emblem), _)
+// @ requires acc(ValidToken(root), _)
 // @ requires trustedKeys != nil
 // @ ensures endorsedResults != nil ==> (
 // @	acc(endorsedResults) &&

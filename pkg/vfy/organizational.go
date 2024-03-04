@@ -24,36 +24,35 @@ import (
 // TODO: (lmeinen) Add term equivalence for ai
 // TODO: (lmeinen) Add state transitions until we can add proper return values
 
-//	trusted
-//
+// @ trusted
 // @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 // @ requires iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
-// @ requires acc(Emblem(emblem), _) &&
-// @ 	unfolding acc(Emblem(emblem), _) in
-// @ 	unfolding acc(ValidToken(emblem), _) in
-// @ 	emblem.Headers.ContentType() == string(consts.EmblemCty) &&
-// @ 	emblem.Headers.Algorithm() != jwa.NoSignature
+// @ requires acc(Emblem(emblem), _)
 // @ requires EndorsementList(endorsements)
 // @ ensures acc(Emblem(emblem), _)
 // @ ensures acc(EndorsementList(endorsements), _)
 // @ ensures acc(vfyResults)
-// @ ensures !lib.GhostContainsResult(vfyResults, consts.INVALID) ==> (
-// @ 	t != nil && acc(ValidToken(t), _) &&
-// @ 	lib.GhostContainsResult(vfyResults, consts.SIGNED) &&
-// @ 	iospec.P_Verifier(p, ridT, s) && place.token(p))
-// @ ensures lib.GhostContainsResult(vfyResults, consts.SIGNED) ==> (
-// @ 	!lib.GhostContainsResult(vfyResults, consts.INVALID) &&
-// @ 	fact.OutFact_Verifier(ridT, lib.SignedOut(aiT)) in s0 &&
-// @ 	(!lib.GhostContainsResult(vfyResults, consts.ORGANIZATIONAL) ==> fact.St_Verifier_0(ridT) in s0))
-// @ ensures lib.GhostContainsResult(vfyResults, consts.ORGANIZATIONAL) ==> (
-// @ 	!lib.GhostContainsResult(vfyResults, consts.INVALID) &&
-// @ 	let oiB := lib.stringB(emblem.Token.Issuer()) in
-// @ 	let rootKeyB := AbsKey(t.VerificationKey) in
-// @ 		emblem.Token.Issuer() != "" && oiB == lib.gamma(oiT) &&
-// @ 		rootKeyB == lib.gamma(rootKeyT) &&
-// @ 		(fact.St_Verifier_4(ridT, oiT, rootKeyT) in s0) && (fact.OutFact_Verifier(ridT, lib.OrganizationalOut(aiT, oiT)) in s0))
+// @ ensures let resSeq := lib.toSeqResult(vfyResults) in
+// @ 	(consts.ORGANIZATIONAL in resSeq ==> consts.SIGNED in resSeq) &&
+// @ 	(!(consts.INVALID in resSeq) ==> consts.SIGNED in resSeq) &&
+// @ 	(consts.SIGNED in resSeq ==> (
+// @ 		t != nil && acc(ValidToken(t), _) &&
+// @ 		(fact.OutFact_Verifier(ridT, lib.SignedOut(aiT)) in s0) &&
+// @ 		iospec.P_Verifier(p0, ridT, s0) &&
+// @ 		place.token(p0))) &&
+// @ 	(consts.ORGANIZATIONAL in resSeq ==> (
+// @ 		unfolding acc(Emblem(emblem), _) in
+// @ 		unfolding acc(ValidToken(emblem), _) in
+// @ 		unfolding acc(ValidToken(t), _) in
+// @ 		let oiB := lib.stringB(emblem.Token.Issuer()) in
+// @ 		let rootKeyB := AbsKey(t.VerificationKey) in
+// @ 			emblem.Token.Issuer() != "" && oiB == lib.gamma(oiT) &&
+// @ 			rootKeyB == lib.gamma(rootKeyT) &&
+// @ 			(fact.St_Verifier_4(ridT, oiT, rootKeyT) in s0) &&
+// @ 			(fact.OutFact_Verifier(ridT, lib.OrganizationalOut(aiT, oiT)) in s0))) &&
+// @ 	(consts.SIGNED in resSeq && !(consts.ORGANIZATIONAL in resSeq) ==> fact.St_Verifier_0(ridT) in s0)
 func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost p place.Place, ghost ridT term.Term, ghost s mset[fact.Fact] @*/) (vfyResults []consts.VerificationResult, t *ADEMToken /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost aiT term.Term, ghost oiT term.Term, ghost rootKeyT term.Term @*/) {
 	// @ unfold EndorsementList(endorsements)
 	// @ ghost defer fold acc(EndorsementList(endorsements), _)

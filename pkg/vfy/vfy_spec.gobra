@@ -8,6 +8,7 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	. "lib"
 	"github.com/adem-wg/adem-proto/pkg/roots"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"fact"
@@ -113,6 +114,29 @@ func collectDebt(fractionSeq seq[pred()], n int, results chan *TokenVerification
 		unfold sync.InjEval(fractionSeq[i], i)
 		unfold SendFraction!<results, n!>()
 	}
+}
+
+ghost
+trusted
+requires k != nil && k.Mem()
+ensures k === old(k) && acc(k.Mem(), _)
+func bar(k jwk.Key)
+
+ghost
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+requires ValidToken(t) && Abs(t) == gamma(tokenT)
+func foo(t *ADEMToken, tokenT term.Term) {
+	assert Abs(t) == gamma(tokenT)
+	unfold ValidToken(t) // ValidToken holds Mem permissions
+	if k, ok := t.Token.Get("key"); ok { // Get is non-pure but only requires wildcard permissions
+		unfold jwt.FieldMem(t.Token.Values())
+		unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
+		bar(k.(tokens.EmbeddedKey).Key)
+		fold acc(tokens.KeyMem(k.(tokens.EmbeddedKey)), _)
+		fold acc(jwt.FieldMem(t.Token.Values()), _)
+	}
+	fold acc(ValidToken(t), _)
+	// assert Abs(t) == gamma(tokenT) // fails
 }
 
 ghost

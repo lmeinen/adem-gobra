@@ -424,8 +424,9 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant TokenList(ts)
-	// @ invariant unfolding TokenList(ts) in len(ts) == len(tTs) &&
-	// @ 	forall i int :: { ts[i] } { tTs[i] } 0 <= i && i < len(tTs) ==> Abs(ts[i]) == gamma(tTs[i]) && (fact.ValidTokenIn_Verifier(ridT, tTs[i]) in s)
+	// @ invariant unfolding TokenList(ts) in
+	// @ 	len(ts) == len(tTs) &&
+	// @ 	forall i int :: { ts[i] } { tTs[i] } 0 <= i && i < len(tTs) ==> ((unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(tTs[i]))) && (fact.ValidTokenIn_Verifier(ridT, tTs[i]) in s)
 	// @ invariant len(ts) <= n - threadCount
 	for {
 		// [waiting] is the number of unresolved promises in the key manager, i.e.,
@@ -472,9 +473,12 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 				if result.err != nil {
 					log.Printf("discarding invalid token: %s", result.err)
 				} else {
+					// @ assert len(tTs) == len(ts)
+					// @ assert Abs(result.token) == gamma(tokenT)
 					// @ unfold TokenList(ts)
 					// @ unfold ValidToken(result.token)
 					ts = append( /*@ perm(1/2), @*/ ts, result.token)
+					// @ tTs = tTs ++ seq[term.Term] { tokenT }
 					if k, ok := result.token.Token.Get("key"); ok {
 						// @ unfold jwt.FieldMem(result.token.Token.Values())
 						// @ unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
@@ -483,6 +487,8 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 						// @ fold acc(jwt.FieldMem(result.token.Token.Values()), _)
 					}
 					// @ fold acc(ValidToken(result.token), _)
+					// @ assume Abs(result.token) == gamma(tokenT)
+					// @ assert Abs(ts[len(ts) - 1]) == gamma(tTs[len(tTs) - 1])
 					// @ fold TokenListElem(len(ts) - 1, result.token)
 					// @ fold TokenList(ts)
 				}
@@ -505,7 +511,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant acc(ts, _) &&
 	// @ 	forall i int :: { ts[i] } 0 <= i && i0 <= i && i < len(ts) ==> TokenListElem(i, ts[i])
-	// @ invariant emblem != nil ==> Emblem(emblem) && unfolding Emblem(emblem) in unfolding acc(ValidToken(emblem), _) in emblem.Headers.ContentType() == string(consts.EmblemCty) && emblem.Headers.Algorithm() != jwa.NoSignature
+	// @ invariant emblem != nil ==> Emblem(emblem)
 	// @ invariant EndorsementList(endorsements)
 	// @ invariant protected != nil ==> acc(protected)
 	for _, t := range ts /*@ with i0 @*/ {

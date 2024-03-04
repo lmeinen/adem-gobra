@@ -40,7 +40,10 @@ pred Emblem(t *ADEMToken) {
 	t.Token != nil &&
 		jwt.IsValid(t.Token) &&
 		acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
-		unfolding acc(ValidToken(t), _) in t.Token.Contains("ass")
+		(unfolding acc(ValidToken(t), _) in 
+			t.Token.Contains("ass") &&
+			t.Headers.ContentType() == string(consts.EmblemCty) && 
+			t.Headers.Algorithm() != jwa.NoSignature)
 }
 
 // predicate wrapper to ensure injectivity of t
@@ -171,7 +174,7 @@ requires unfolding acc(ValidToken(t1), _) in t1.Token.Contains("ass") && t1.Head
 requires unfolding acc(ValidToken(t2), _) in t2.Token.Contains("ass") && t2.Headers.ContentType() == string(consts.EmblemCty) && t2.Headers.Algorithm() != jwa.NoSignature && t2.Token.Issuer() != ""
 requires unfolding acc(ValidToken(t1), _) in unfolding acc(ValidToken(t2), _) in t1.Token.Issuer() != t2.Token.Issuer()
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-func foo(t1 *ADEMToken, t2 *ADEMToken) {
+func blub(t1 *ADEMToken, t2 *ADEMToken) {
 	b := Abs(t1)
 	bb := Abs(t2)
 	assert exists b1,b2,b3,b4 Bytes :: b == tuple4B(b1,b2,b3,b4)
