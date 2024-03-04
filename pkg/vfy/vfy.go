@@ -228,7 +228,15 @@ func resultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghos
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 // @ requires trustedKeys != nil && trustedKeys.Mem() && jwk.KeySeq(trustedKeys.Elems())
 // @ ensures acc(res.results) && acc(res.protected) && (res.endorsedBy != nil ==> acc(res.endorsedBy))
-func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost p place.Place @*/) (res VerificationResults) {
+// @ ensures forall i int :: 0 <= i && i < len(res.protected) ==> acc(res.protected[i].Mem(), _)
+// @ ensures let resSeq := toSeqResult(res.results) in
+// @ 	(consts.SIGNED in resSeq ==> ident.AbsAI(res.protected) == gamma(aiT) && iospec.e_OutFact(p0, ridT, SignedOut(aiT))) &&
+// @ 	(consts.ORGANIZATIONAL in resSeq ==> stringB(res.issuer) == gamma(oiT) && iospec.e_OutFact(p0, ridT, OrganizationalOut(aiT, oiT))) &&
+// @ 	(consts.ENDORSED in resSeq ==> (
+// @ 		len(res.endorsedBy) == len(authTs) &&
+// @ 		(forall i int :: { res.endorsedBy[i] }{ authTs[i] } 0 <= i && i < len(res.endorsedBy) ==> stringB(res.endorsedBy[i]) == gamma(authTs[i])) &&
+// @ 		(forall auth term.Term :: { auth } auth in authTs ==> iospec.e_OutFact(p0, ridT, EndorsedOut(auth)))))
+func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost p place.Place @*/) (res VerificationResults /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost aiT term.Term, ghost oiT term.Term, ghost rootKeyT term.Term, ghost ridT term.Term, ghost authTs seq[term.Term] @*/) {
 	// @ ghost ridT := term.freshTerm(fresh.fr_integer64(rid))
 	// @ ghost s := mset[fact.Fact]{}
 
@@ -242,7 +250,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	// Early termination for empty rawTokens slice
 	if len(rawTokens) == 0 {
-		return ResultInvalid()
+		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 	}
 
 	// Ensure trustedKeys is non-nil
@@ -522,10 +530,10 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			if emblem != nil {
 				// Multiple emblems
 				log.Print("Token set contains multiple emblems")
-				return ResultInvalid()
+				return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 			} else if err := jwt.Validate(t.Token, jwt.WithValidator(tokens.EmblemValidator)); err != nil {
 				log.Printf("Invalid emblem: %s", err)
-				return ResultInvalid()
+				return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 			} else {
 				emblem = t
 			}
@@ -542,7 +550,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 				return VerificationResults{
 					results:   []consts.VerificationResult{consts.UNSIGNED},
 					protected: protected,
-				}
+				} /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 			}
 
 			// @ unfold tokens.EmblemValidator.Constraints(emblem.Token)
@@ -570,7 +578,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	if emblem == nil {
 		log.Print("no emblem found")
-		return ResultInvalid()
+		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 	}
 
 	// @ assert iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
@@ -578,18 +586,22 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
 	vfyResults, root /*@, p, s, aiT, oiT, rootKeyT @*/ := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, p, ridT, s @*/)
 	if util.ContainsVerificationResult(vfyResults, consts.INVALID /*@, perm(1/2) @*/) {
-		return ResultInvalid()
+		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 	}
 
 	var endorsedResults []consts.VerificationResult
 	var endorsedBy []string
+	// @ ghost endorsedByTs := seq[term.Term] {}
 
 	if util.ContainsVerificationResult(vfyResults, consts.ORGANIZATIONAL /*@, perm(1/2) @*/) {
-		endorsedResults, endorsedBy = verifyEndorsed(emblem, root, endorsements, trustedKeys)
+		endorsedResults, endorsedBy /*@, p, s, endorsedByTs @*/ = verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, p, ridT, s, oiT, rootKeyT @*/)
+		// @ assert acc(Emblem(emblem), _)
+		// @ assert acc(EndorsementList(endorsements), _)
+		// @ assert acc(ValidToken(root), _)
 	}
 
 	if util.ContainsVerificationResult(endorsedResults, consts.INVALID /*@, perm(1/2) @*/) {
-		return ResultInvalid()
+		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 	}
 
 	// @ unfold acc(ValidToken(root), _)
@@ -600,5 +612,5 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		issuer:     root.Token.Issuer(),
 		endorsedBy: endorsedBy,
 		protected:  protected,
-	}
+	} /*@, p, s, aiT, oiT, rootKeyT, ridT, endorsedByTs @*/
 }

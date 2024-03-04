@@ -40,6 +40,8 @@ ghost func GenericPlace() place.Place
 
 ghost func GenericSet() (ghost mset[fact.Fact])
 
+ghost func GenericSeq() (ghost seq[term.Term])
+
 ghost func GenericTerm() term.Term
 
 ghost
