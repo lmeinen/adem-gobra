@@ -9,11 +9,10 @@ import (
 
 // FIXME: (lmeinen) Needed two separate concrete type instantiations for generic Contains function
 
-// @ preserves p > 0
-// @ preserves acc(slice, p)
-// @ ensures res == lib.GhostContainsResult(slice, v)
-func ContainsVerificationResult(slice []consts.VerificationResult, v consts.VerificationResult /*@, ghost p perm @*/) (res bool) {
-	// @ invariant acc(slice, p)
+// @ preserves acc(slice, 1/2)
+// @ ensures !res == forall j int :: { slice[j] } 0 <= j && j < len(slice) ==> slice[j] != v
+func ContainsVerificationResult(slice []consts.VerificationResult, v consts.VerificationResult) (res bool) {
+	// @ invariant acc(slice, 1/2)
 	// @ invariant forall j int :: 0 <= j && j < i && j < len(slice) ==> slice[j] != v
 	for _, elem := range slice /*@ with i @*/ {
 		if elem == v {
@@ -23,11 +22,10 @@ func ContainsVerificationResult(slice []consts.VerificationResult, v consts.Veri
 	return false
 }
 
-// @ preserves p > 0
-// @ preserves acc(slice, p)
-// @ ensures res == lib.GhostContainsString(slice, v)
-func ContainsString(slice []string, v string /*@, ghost p perm @*/) (res bool) {
-	// @ invariant acc(slice, p)
+// @ preserves acc(slice, 1/2)
+// @ ensures !res == forall j int :: { slice[j] } 0 <= j && j < len(slice) ==> slice[j] != v
+func ContainsString(slice []string, v string) (res bool) {
+	// @ invariant acc(slice, 1/2)
 	// @ invariant forall j int :: 0 <= j && j < i && j < len(slice) ==> slice[j] != v
 	for _, elem := range slice /*@ with i @*/ {
 		if elem == v {
