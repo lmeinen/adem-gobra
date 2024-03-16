@@ -19,6 +19,7 @@ type ADEMToken struct {
 	Token           jwt.Token
 }
 
+// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ requires acc(sig, _)

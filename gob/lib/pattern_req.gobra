@@ -1,0 +1,43 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
+package lib
+
+import (
+	"claim"
+	"fact"
+	"place"
+	"iospec"
+	"term"
+	"pub"
+	"fresh"
+)
+
+// TODO: (lmeinen) Do we even need the postcondition on s?
+
+ghost
+requires place.token(p) && iospec.P_Verifier(p, rid, s) && fact.St_Verifier_2(rid) in s
+requires gamma(t) == gamma(tuple3(someKey, term.pair(term.pubTerm(pub.const_emblem_pub()), someAI), someSig))
+ensures place.token(p) && iospec.P_Verifier(p, rid, s) && fact.St_Verifier_2(rid) in s
+ensures t == tuple3(key, term.pair(term.pubTerm(pub.const_emblem_pub()), ai), sig)
+func AnonEmblemPatternRequirement(t, rid, someKey, someAI, someSig term.Term, s mset[fact.Fact], p place.Place) (key, ai, sig term.Term)
+
+ghost
+requires place.token(p) && iospec.P_Verifier(p, rid, s) && fact.St_Verifier_3(rid, oi, rootkey, emblemkey) in s
+requires gamma(t) == gamma(tuple4(emblemkey, oi, tuple3(term.pubTerm(pub.const_emblem_pub()), someAI, oi), someSig))
+requires place.token(p) && iospec.P_Verifier(p, rid, s) && fact.St_Verifier_3(rid, oi, rootkey, emblemkey) in s
+requires t == tuple4(emblemkey, oi, tuple3(term.pubTerm(pub.const_emblem_pub()), ai, oi), sig)
+func SignedEmblemPatternRequirement(t, rid, rootkey, oi, emblemkey, someAI, someSig term.Term, s mset[fact.Fact], p place.Place) (ai, sig term.Term)
+
+ghost
+requires place.token(p) && iospec.P_Verifier(p, ridT, s) && fact.St_Verifier_2(ridT) in s
+requires gamma(t) == gamma(tuple4(someRootKey, someOi, tuple3(term.pubTerm(pub.const_root_end_pub()), someOi, someEndorsedKey), someSig))
+requires place.token(p) && iospec.P_Verifier(p, ridT, s) && fact.St_Verifier_2(ridT) in s
+requires t == tuple4(rootkey, oi, tuple3(term.pubTerm(pub.const_root_end_pub()), oi, endorsedkey), sig)
+func RootEndorsementPatternRequirement(t, ridT, someRootKey, someOi, someEndorsedKey, someSig term.Term, s mset[fact.Fact], p place.Place) (rootkey, oi, endorsedkey, sig term.Term)
+
+ghost
+requires place.token(p) && iospec.P_Verifier(p, rid, s) && fact.St_Verifier_4(rid, oi, rootkey) in s
+requires gamma(t) == gamma(tuple4(someKey, someAuth, tuple3(term.pubTerm(pub.const_root_end_pub()), oi, rootkey), someSig))
+ensures place.token(p) && iospec.P_Verifier(p, rid, s) && fact.St_Verifier_4(rid, oi, rootkey) in s
+ensures t == tuple4(key, auth, tuple3(term.pubTerm(pub.const_root_end_pub()), oi, rootkey), sig)
+func AuthorityEndorsementPatternRequirement(t, rid, someKey, someAuth, someSig, oi, rootkey term.Term, s mset[fact.Fact], p place.Place) (key, auth, sig term.Term)

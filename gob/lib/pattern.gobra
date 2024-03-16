@@ -4,6 +4,7 @@ package lib
 
 import (
     "term"
+    "pub"
 )
 
 type Bytes domain {
@@ -23,6 +24,7 @@ type Bytes domain {
     func getSecondB(Bytes) Bytes
     func getThirdB(Bytes) Bytes
     func getFourthB(Bytes) Bytes
+    func getString(Bytes) string
 
     // tuple2B deconstructors
     axiom {
@@ -37,6 +39,11 @@ type Bytes domain {
     // tuple4B deconstructors
     axiom {
         forall t1, t2, t3, t4 Bytes :: { tuple4B(t1, t2, t3, t4) } getFirstB(tuple4B(t1, t2, t3, t4)) == t1 && getSecondB(tuple4B(t1, t2, t3, t4)) == t2 && getThirdB(tuple4B(t1, t2, t3, t4)) == t3 && getFourthB(tuple4B(t1, t2, t3, t4)) == t4
+    }
+
+    // stringB deconstructor
+    axiom {
+        forall s string :: { stringB(s) } getString(stringB(s)) == s
     }
 }
 
@@ -54,6 +61,9 @@ type Gamma domain {
     axiom { // homomorphism
         (forall t1, t2 term.Term :: { gamma(term.pair(t1,t2)) } gamma(term.pair(t1,t2)) == tuple2B(gamma(t1), gamma(t2))) &&
         (forall t1, t2, t3 term.Term :: { gamma(tuple3(t1,t2,t3)) } gamma(tuple3(t1,t2,t3)) == tuple3B(gamma(t1), gamma(t2), gamma(t3))) &&
-        (forall t1, t2, t3, t4 term.Term :: { gamma(tuple4(t1,t2,t3,t4)) } gamma(tuple4(t1,t2,t3,t4)) == tuple4B(gamma(t1), gamma(t2), gamma(t3), gamma(t4)))
+        (forall t1, t2, t3, t4 term.Term :: { gamma(tuple4(t1,t2,t3,t4)) } gamma(tuple4(t1,t2,t3,t4)) == tuple4B(gamma(t1), gamma(t2), gamma(t3), gamma(t4))) &&
+        (gamma(term.pubTerm(pub.const_emblem_pub())) == emblemB()) &&
+        (gamma(term.pubTerm(pub.const_end_pub())) == endorsementB()) &&
+        (gamma(term.pubTerm(pub.const_root_end_pub())) == rootEndB())
     }
 }

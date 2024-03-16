@@ -7,3 +7,5 @@
 pkg/main/test.go
 **/builtin
 **/stubs
+.cache
+out

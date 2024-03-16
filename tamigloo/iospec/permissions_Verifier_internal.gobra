@@ -156,16 +156,16 @@ func internBIO_e_CollectInternalEndorsements(tami_p Place, rid Term, oi Term, ro
 
 
 // permission e_CollectAuthorityEndorsements
-pred e_CollectAuthorityEndorsements(ghost tami_p Place, ghost rid Term, ghost oi Term, ghost rootKey Term, ghost endorsedKey Term, ghost E Term, ghost emblemSig Term, ghost embKey Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
+pred e_CollectAuthorityEndorsements(ghost tami_p Place, ghost rid Term, ghost oi Term, ghost rootKey Term, ghost endorsedKey Term, ghost E Term, ghost emblemSig Term, ghost tami_lp mset[Fact], ghost tami_ap mset[Claim], ghost tami_rp mset[Fact])
 
 ghost
-requires e_CollectAuthorityEndorsements(tami_p, rid, oi, rootKey, endorsedKey, E, emblemSig, embKey, tami_lp, tami_ap, tami_rp)
-pure func get_e_CollectAuthorityEndorsements_placeDst(tami_p Place, rid Term, oi Term, rootKey Term, endorsedKey Term, E Term, emblemSig Term, embKey Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
+requires e_CollectAuthorityEndorsements(tami_p, rid, oi, rootKey, endorsedKey, E, emblemSig, tami_lp, tami_ap, tami_rp)
+pure func get_e_CollectAuthorityEndorsements_placeDst(tami_p Place, rid Term, oi Term, rootKey Term, endorsedKey Term, E Term, emblemSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (placeDst Place)
 
 ghost
-requires token(tami_p) && e_CollectAuthorityEndorsements(tami_p, rid, oi, rootKey, endorsedKey, E, emblemSig, embKey, tami_lp, tami_ap, tami_rp)
-ensures token(tami_pp) && tami_pp == old(get_e_CollectAuthorityEndorsements_placeDst(tami_p, rid, oi, rootKey, endorsedKey, E, emblemSig, embKey, tami_lp, tami_ap, tami_rp))
-func internBIO_e_CollectAuthorityEndorsements(tami_p Place, rid Term, oi Term, rootKey Term, endorsedKey Term, E Term, emblemSig Term, embKey Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
+requires token(tami_p) && e_CollectAuthorityEndorsements(tami_p, rid, oi, rootKey, endorsedKey, E, emblemSig, tami_lp, tami_ap, tami_rp)
+ensures token(tami_pp) && tami_pp == old(get_e_CollectAuthorityEndorsements_placeDst(tami_p, rid, oi, rootKey, endorsedKey, E, emblemSig, tami_lp, tami_ap, tami_rp))
+func internBIO_e_CollectAuthorityEndorsements(tami_p Place, rid Term, oi Term, rootKey Term, endorsedKey Term, E Term, emblemSig Term, tami_lp mset[Fact], tami_ap mset[Claim], tami_rp mset[Fact]) (tami_pp Place)
 
 
 // permission e_IsEndorsedEmblem

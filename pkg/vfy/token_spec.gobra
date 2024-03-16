@@ -7,11 +7,45 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/ident"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	. "lib"
+	"term"
+	"pub"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
+
+// TODO: (lmeinen) Rewrite to separate mem permissions and field constraints
+
+ghost
+requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _)
+pure func EmblemF(t *ADEMToken) bool {
+	return unfolding acc(ValidToken(t), _) in
+	jwt.IsValid(t.Token) &&
+		t.Token.Contains("ass") &&
+		t.Headers.ContentType() == string(consts.EmblemCty) && 
+		t.Headers.Algorithm() != jwa.NoSignature
+}
+
+ghost
+requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _)
+pure func EndorsementF(t *ADEMToken) bool {
+	return unfolding acc(ValidToken(t), _) in
+	jwt.IsValid(t.Token) &&
+		t.Headers.ContentType() == string(consts.EndorsementCty) &&
+		t.Token.Contains("end") &&
+		typeOf(t.Token.Values()["end"]) == type[bool]
+}
+
+
+ghost
+requires acc(Endorsement(t), _)
+func adsfkjad(t *ADEMToken) {
+	unfold acc(Endorsement(t), _)
+	assert EndorsementF(t)
+}
 
 pred ValidToken(t *ADEMToken) {
 	acc(t) &&
@@ -25,25 +59,24 @@ pred ValidToken(t *ADEMToken) {
 
 pred Endorsement(t *ADEMToken) {
 	acc(ValidToken(t), _) &&
-	acc(t, _) &&
-	t.Token != nil &&
+	acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
+	unfolding acc(ValidToken(t), _) in
+		t.Token != nil &&
 		jwt.IsValid(t.Token) &&
-		acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
-		unfolding acc(ValidToken(t), _) in 
-			t.Token.Contains("end") &&
-			typeOf(t.Token.Values()["end"]) == type[bool]
+		t.Headers.ContentType() == string(consts.EndorsementCty) &&
+		t.Token.Contains("end") &&
+		typeOf(t.Token.Values()["end"]) == type[bool]
 }
 
 pred Emblem(t *ADEMToken) {
 	acc(ValidToken(t), _) &&
-	acc(t, _) &&
-	t.Token != nil &&
+	acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
+	unfolding acc(ValidToken(t), _) in 
+		t.Token != nil &&
 		jwt.IsValid(t.Token) &&
-		acc(&jwt.Custom, _) && acc(jwt.Custom, _) &&
-		(unfolding acc(ValidToken(t), _) in 
-			t.Token.Contains("ass") &&
-			t.Headers.ContentType() == string(consts.EmblemCty) && 
-			t.Headers.Algorithm() != jwa.NoSignature)
+		t.Token.Contains("ass") &&
+		t.Headers.ContentType() == string(consts.EmblemCty) && 
+		t.Headers.Algorithm() != jwa.NoSignature
 }
 
 // predicate wrapper to ensure injectivity of t
@@ -71,13 +104,149 @@ decreases _
 pure func AbsKey(k jwk.Key) Bytes
 
 // TODO: Is there any way to get the signature in here? Do we even need it?
-// 	--> Add signature term to channel invariant
-// TODO: Ensure that all proper constraints are collected by the end of organizastional/endorsed verification calls
+// 	--> Add 'exists' signature term to channel invariant: we don't need more info than that
 
 ghost
 requires acc(ValidToken(t), _)
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-pure func Abs(t *ADEMToken) Bytes {
+pure func Abs(t *ADEMToken) Bytes
+
+ghost
+requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+requires unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EmblemCty) && t.Token.Contains("ass") && t.Headers.Algorithm() == jwa.NoSignature
+ensures acc(ValidToken(t), _)
+ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+ensures unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EmblemCty) && t.Token.Contains("ass") && t.Headers.Algorithm() == jwa.NoSignature &&
+	Abs(t) == tuple2B(emblemB(), stringB(t.Token.PureAI())) &&
+	oneTerm(stringB(t.Token.PureAI())) == ai &&
+	Abs(t) == gamma(term.pair(term.pubTerm(pub.const_emblem_pub()), ai))
+func UnsignedEmblemPattern(t *ADEMToken) (ai term.Term)
+
+ghost
+requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+requires unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EmblemCty) && t.Token.Contains("ass") && t.Headers.Algorithm() != jwa.NoSignature && t.Token.Issuer() == ""
+ensures acc(ValidToken(t), _)
+ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+ensures unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EmblemCty) && t.Token.Contains("ass") && t.Headers.Algorithm() != jwa.NoSignature && t.Token.Issuer() == "" &&
+	Abs(t) == tuple3B(stringB(t.VerificationKey.KeyID(none[perm])), tuple2B(emblemB(), stringB(t.Token.PureAI())), stringB("sig")) &&
+	oneTerm(stringB(t.VerificationKey.KeyID(none[perm]))) == key &&
+	oneTerm(stringB(t.Token.PureAI())) == ai &&
+	oneTerm(stringB("sig")) == sig &&
+	Abs(t) == gamma(tuple3(key, term.pair(term.pubTerm(pub.const_emblem_pub()), ai), sig))
+func AnonEmblemPattern(t *ADEMToken) (key, ai, sig term.Term)
+
+ghost
+requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+requires unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EmblemCty) && t.Token.Contains("ass") && t.Headers.Algorithm() != jwa.NoSignature && t.Token.Issuer() != "" && gamma(oi) == stringB(t.Token.Issuer()) && gamma(key) == stringB(t.VerificationKey.KeyID(none[perm]))
+ensures acc(ValidToken(t), _)
+ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+ensures unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EmblemCty) && t.Token.Contains("ass") && t.Headers.Algorithm() != jwa.NoSignature && t.Token.Issuer() != "" && gamma(oi) == stringB(t.Token.Issuer()) &&
+	Abs(t) == tuple4B(stringB(t.VerificationKey.KeyID(none[perm])), stringB(t.Token.Issuer()), tuple3B(emblemB(), stringB(t.Token.PureAI()), stringB(t.Token.Issuer())), stringB("sig")) &&
+	oneTerm(stringB(t.Token.PureAI())) == ai &&
+	oneTerm(stringB("sig")) == sig &&
+	Abs(t) == gamma(tuple4(key, oi, tuple3(term.pubTerm(pub.const_emblem_pub()), ai, oi), sig))
+func SignedEmblemPattern(t *ADEMToken, key, oi term.Term) (ai, sig term.Term)
+
+// ghost
+// requires acc(ValidToken(t), _)
+// requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+// requires unfolding acc(ValidToken(t), _) in
+// 	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+// 	t.Headers.ContentType() == string(consts.EndorsementCty) && t.Token.Contains("key") && t.Token.Issuer() == "" && gamma(endorsedKey) == stringB(t.Token.PureKeyID())
+// ensures acc(ValidToken(t), _)
+// ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+// ensures unfolding acc(ValidToken(t), _) in
+// 	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+// 	Abs(t) == tuple3B(AbsKey(t.VerificationKey), tuple2B(endorsementB(), stringB(t.Token.PureKeyID())), stringB("sig")) &&
+// 	oneTerm(AbsKey(t.VerificationKey)) == key &&
+// 	oneTerm(stringB("sig")) == sig &&
+// 	Abs(t) == gamma(tuple3(key, term.pair(term.pubTerm(pub.const_end_pub()), endorsedKey), sig))
+// func AnonEndPattern(t *ADEMToken, endorsedKey term.Term) (key, sig term.Term)
+
+ghost
+requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+requires unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EndorsementCty) && t.Token.Contains("key") && t.Token.Issuer() != "" && !t.Token.Contains("log") && gamma(oi) == stringB(t.Token.Issuer()) && t.Token.Issuer() == t.Token.Subject() && gamma(endorsedKey) == stringB(t.VerificationKey.KeyID(none[perm]))
+ensures acc(ValidToken(t), _)
+ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+ensures unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EndorsementCty) && t.Token.Contains("key") && t.Token.Issuer() != "" && !t.Token.Contains("log") && gamma(oi) == stringB(t.Token.Issuer()) && gamma(oi) == stringB(t.Token.Subject()) && gamma(endorsedKey) == stringB(t.Token.PureKeyID()) &&
+	Abs(t) == tuple4B(stringB(t.VerificationKey.KeyID(none[perm])), stringB(t.Token.Issuer()), tuple3B(endorsementB(), stringB(t.Token.Issuer()), stringB(t.Token.PureKeyID())), stringB("sig")) &&
+	oneTerm(stringB(t.Token.PureKeyID())) == newkey &&
+	oneTerm(stringB("sig")) == sig &&
+	Abs(t) == gamma(tuple4(endorsedKey, oi, tuple3(term.pubTerm(pub.const_end_pub()), oi, newkey), sig))
+func OrgEndPattern(t *ADEMToken, oi, endorsedKey term.Term) (newkey, sig term.Term)
+
+// TODO: (lmeinen) Use oneTerm to get explicit witness
+
+ghost
+requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+requires unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EndorsementCty) && t.Token.Contains("key") && t.Token.Issuer() != "" && t.Token.Contains("log") && t.Token.Subject() == t.Token.Issuer()
+ensures acc(ValidToken(t), _)
+ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+ensures unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EndorsementCty) && t.Token.Contains("key") && t.Token.Issuer() != "" && t.Token.Contains("log") && gamma(oi) == stringB(t.Token.Subject()) && gamma(endorsedkey) == stringB(t.Token.PureKeyID()) &&
+	Abs(t) == tuple4B(stringB(t.VerificationKey.KeyID(none[perm])), stringB(t.Token.Issuer()), tuple3B(rootEndB(), stringB(t.Token.Subject()), stringB(t.Token.PureKeyID())), stringB("sig")) &&
+	oneTerm(stringB(t.VerificationKey.KeyID(none[perm]))) == rootkey &&
+	oneTerm(stringB(t.Token.Issuer())) == oi &&
+	oneTerm(stringB(t.Token.PureKeyID())) == endorsedkey &&
+	oneTerm(stringB("sig")) == sig &&
+	Abs(t) == gamma(tuple4(rootkey, oi, tuple3(term.pubTerm(pub.const_root_end_pub()), oi, endorsedkey), sig))
+func RootEndPattern(t *ADEMToken) (rootkey, oi, endorsedkey, sig term.Term)
+
+ghost
+requires acc(ValidToken(t), _)
+pure func AuthEndConstraints(t *ADEMToken) bool {
+	return unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EndorsementCty) && t.Token.Contains("key") && t.Token.Issuer() != "" && t.Token.Contains("log") && t.Token.Subject() != t.Token.Issuer()
+}
+
+ghost
+requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+requires unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EndorsementCty) && t.Token.Contains("key") && t.Token.Issuer() != "" && t.Token.Contains("log") && t.Token.Subject() != t.Token.Issuer() && gamma(oi) == stringB(t.Token.Subject()) && gamma(endorsedKey) == stringB(t.Token.PureKeyID())
+ensures acc(ValidToken(t), _)
+ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+ensures unfolding acc(ValidToken(t), _) in
+	unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
+	t.Headers.ContentType() == string(consts.EndorsementCty) && t.Token.Contains("key") && t.Token.Issuer() != "" && t.Token.Contains("log") && gamma(oi) == stringB(t.Token.Subject()) && gamma(endorsedKey) == stringB(t.Token.PureKeyID()) &&
+	Abs(t) == tuple4B(stringB(t.VerificationKey.KeyID(none[perm])), stringB(t.Token.Issuer()), tuple3B(rootEndB(), stringB(t.Token.Subject()), stringB(t.Token.PureKeyID())), stringB("sig")) &&
+	oneTerm(stringB(t.VerificationKey.KeyID(none[perm]))) == key &&
+	oneTerm(stringB(t.Token.Issuer())) == auth &&
+	oneTerm(stringB("sig")) == sig &&
+	Abs(t) == gamma(tuple4(key, auth, tuple3(term.pubTerm(pub.const_root_end_pub()), oi, endorsedKey), sig))
+func AuthEndPattern(t *ADEMToken, oi, endorsedKey term.Term) (key, auth, sig term.Term)
+
+ghost
+trusted
+requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+pure func BackupAbs(t *ADEMToken) Bytes {
 	// (1) note the PureGet call, it is a consequence of Gobra's limitation that a pure function cannot have multiple return values - as a consequence AbsAI can't require any permissions, either
 	return unfolding acc(ValidToken(t), _) in
 		unfolding acc(jwt.FieldMem(t.Token.Values()), _) in
@@ -116,71 +285,44 @@ pure func Abs(t *ADEMToken) Bytes {
 ghost
 pure func GenericBytes(t *ADEMToken) Bytes
 
-ghost
-requires acc(ValidToken(t), _)
-requires unfolding acc(ValidToken(t), _) in 
-	t.Headers.ContentType() == string(consts.EmblemCty) && 
-	t.Token.Contains("ass") &&
-	t.Headers.Algorithm() == jwa.NoSignature
-requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-func unsignedEmblem(t *ADEMToken) {
-	b := Abs(t)
-	assert exists b1, b2 Bytes :: b == tuple2B(b1,b2)
-}
+// ghost
+// requires acc(ValidToken(t), _)
+// requires unfolding acc(ValidToken(t), _) in 
+// 	t.Headers.ContentType() == string(consts.EmblemCty) && 
+// 	t.Token.Contains("ass") &&
+// 	t.Headers.Algorithm() == jwa.NoSignature
+// requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+// func unsignedEmblem(t *ADEMToken) {
+// 	b := Abs(t)
+// 	UnsignedEmblemPattern(t)
+// 	assert exists b1, b2 Bytes :: b == tuple2B(b1,b2)
+// }
 
-ghost
-requires acc(ValidToken(t), _)
-requires unfolding acc(ValidToken(t), _) in 
-	t.Headers.ContentType() == string(consts.EmblemCty) && 
-	t.Token.Contains("ass") &&
-	t.Headers.Algorithm() == jwa.ES256 &&
-	t.Token.Issuer() == ""
-requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-func signedEmblem(t *ADEMToken) {
-	b := Abs(t)
-	assert exists b1, b2, b3 Bytes :: b == tuple3B(b1, b2, b3)
-}
+// ghost
+// requires acc(ValidToken(t), _)
+// requires unfolding acc(ValidToken(t), _) in 
+// 	t.Headers.ContentType() == string(consts.EmblemCty) && 
+// 	t.Token.Contains("ass") &&
+// 	t.Headers.Algorithm() == jwa.ES256 &&
+// 	t.Token.Issuer() == ""
+// requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+// func signedEmblem(t *ADEMToken) {
+// 	b := Abs(t)
+// 	AnonEmblemPattern(t)
+// 	assert exists b1, b2, b3 Bytes :: b == tuple3B(b1, b2, b3)
+// }
 
-ghost
-requires acc(ValidToken(t), _)
-requires unfolding acc(ValidToken(t), _) in 
-	t.Headers.ContentType() == string(consts.EmblemCty) && 
-	t.Token.Contains("ass") &&
-	t.Headers.Algorithm() == jwa.ES256 &&
-	t.Token.Issuer() == "https://emblem.flinker.com"
-requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-func organizationalEmblem(t *ADEMToken) {
-	b := Abs(t)
-	assert exists b1, b2, b3, b4 Bytes :: b == tuple4B(b1, b2, b3, b4)
-}
-
-ghost
-requires acc(ValidToken(t), _)
-requires unfolding acc(ValidToken(t), _) in 
-	t.Headers.ContentType() == string(consts.EndorsementCty) && 
-	t.Token.Contains("key") &&
-	t.Token.Contains("log") &&
-	t.Token.Issuer() == "https://emblem.flinker.com" &&
-	t.Token.Subject() == "https://emblem.flinker.com"
-requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-func rootEndorsement(t *ADEMToken) {
-	b := Abs(t)
-	assert exists b1, b2, b3, b4 Bytes :: b == tuple4B(b1, b2, b3, b4)
-}
-
-ghost
-requires acc(ValidToken(t1), _) && acc(ValidToken(t2), _)
-requires unfolding acc(ValidToken(t1), _) in t1.Token.Contains("ass") && t1.Headers.ContentType() == string(consts.EmblemCty) && t1.Headers.Algorithm() != jwa.NoSignature && t1.Token.Issuer() != ""
-requires unfolding acc(ValidToken(t2), _) in t2.Token.Contains("ass") && t2.Headers.ContentType() == string(consts.EmblemCty) && t2.Headers.Algorithm() != jwa.NoSignature && t2.Token.Issuer() != ""
-requires unfolding acc(ValidToken(t1), _) in unfolding acc(ValidToken(t2), _) in t1.Token.Issuer() != t2.Token.Issuer()
-requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-func blub(t1 *ADEMToken, t2 *ADEMToken) {
-	b := Abs(t1)
-	bb := Abs(t2)
-	assert exists b1,b2,b3,b4 Bytes :: b == tuple4B(b1,b2,b3,b4)
-	assert exists b1,b2,b3,b4 Bytes :: bb == tuple4B(b1,b2,b3,b4)
-	assert b == Abs(t1)
-	assert bb == Abs(t2)
-	// TODO: Do we need injectivity of the Bytes domain?
-	// assert b != bb
-}
+// ghost
+// requires acc(ValidToken(t), _)
+// requires unfolding acc(ValidToken(t), _) in 
+// 	t.Headers.ContentType() == string(consts.EmblemCty) && 
+// 	t.Token.Contains("ass") &&
+// 	t.Headers.Algorithm() == jwa.ES256 &&
+// 	t.Token.Issuer() == "https://emblem.flinker.com"
+// requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+// func organizationalEmblem(t *ADEMToken) {
+// 	b := Abs(t)
+// 	SignedEmblemPattern(t)
+// 	assert forall s1, s2 string :: s1 == s2 ==> stringB(s1) == stringB(s2)
+// 	assert exists b1, b2, b3, b4 Bytes :: b == tuple4B(b1, b2, b3, b4)
+// }

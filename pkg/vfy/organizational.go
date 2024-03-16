@@ -8,7 +8,7 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/consts"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	// @ "github.com/adem-wg/adem-proto/pkg/ident"
-	// @ "lib"
+	// @ . "lib"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	// @ "github.com/lestrrat-go/jwx/v2/jwa"
 	// @ "github.com/lestrrat-go/jwx/v2/jwt"
@@ -28,93 +28,120 @@ import (
 // @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
+// @ preserves acc(EndorsementList(endorsements), _)
+// @ preserves acc(Emblem(emblem), _) && unfolding acc(Emblem(emblem), _) in Abs(emblem) == gamma(embT)
+// @ preserves EndorsementTerms(endorsements, endTs)
+// @ requires HasTokenInSet(ridT, endTs ++ seq[term.Term] { embT }, set[int] {}, s)
+//
+//	requires forall i int :: { fact.ValidTokenIn_Verifier(ridT, endTs[i]) } 0 <= i && i < len(endTs) ==> endTs[i] # endTs <= fact.ValidTokenIn_Verifier(ridT, endTs[i]) # s
+//
+// @ requires fact.ValidTokenIn_Verifier(ridT, embT) in s
 // @ requires iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
-// @ requires acc(Emblem(emblem), _)
-// @ requires EndorsementList(endorsements)
-// @ ensures acc(Emblem(emblem), _)
-// @ ensures acc(EndorsementList(endorsements), _)
-// @ ensures acc(vfyResults)
-// @ ensures let resSeq := lib.toSeqResult(vfyResults) in
-// @ 	(consts.ORGANIZATIONAL in resSeq ==> consts.SIGNED in resSeq) &&
-// @ 	(!(consts.INVALID in resSeq) ==> consts.SIGNED in resSeq) &&
-// @ 	(consts.SIGNED in resSeq ==> (
-// @ 		t != nil && acc(ValidToken(t), _) &&
-// @ 		(fact.OutFact_Verifier(ridT, lib.SignedOut(aiT)) in s0) &&
-// @ 		iospec.P_Verifier(p0, ridT, s0) &&
-// @ 		place.token(p0))) &&
-// @ 	(consts.ORGANIZATIONAL in resSeq ==> (
-// @ 		unfolding acc(Emblem(emblem), _) in
-// @ 		unfolding acc(ValidToken(emblem), _) in
-// @ 		unfolding acc(ValidToken(t), _) in
-// @ 		let oiB := lib.stringB(emblem.Token.Issuer()) in
-// @ 		let rootKeyB := AbsKey(t.VerificationKey) in
-// @ 			emblem.Token.Issuer() != "" && oiB == lib.gamma(oiT) &&
-// @ 			rootKeyB == lib.gamma(rootKeyT) &&
-// @ 			(fact.St_Verifier_4(ridT, oiT, rootKeyT) in s0) &&
-// @ 			(fact.OutFact_Verifier(ridT, lib.OrganizationalOut(aiT, oiT)) in s0))) &&
-// @ 	(consts.SIGNED in resSeq && !(consts.ORGANIZATIONAL in resSeq) ==> fact.St_Verifier_0(ridT) in s0)
-func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost p place.Place, ghost ridT term.Term, ghost s mset[fact.Fact] @*/) (vfyResults []consts.VerificationResult, t *ADEMToken /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost aiT term.Term, ghost oiT term.Term, ghost rootKeyT term.Term @*/) {
-	// @ unfold EndorsementList(endorsements)
-	// @ ghost defer fold acc(EndorsementList(endorsements), _)
+//
+//	ensures forall i int :: { fact.ValidTokenIn_Verifier(ridT, endTs[i]) } 0 <= i && i < len(endTs) ==> endTs[i] # endTs <= fact.ValidTokenIn_Verifier(ridT, endTs[i]) # s0
+//	ensures acc(Emblem(emblem), _)
+//	ensures acc(vfyResults)
+//	ensures iospec.P_Verifier(p0, ridT, s0) && place.token(p0)
+//	ensures (s setminus mset[fact.Fact] { fact.ValidTokenIn_Verifier(ridT, embT), fact.St_Verifier_2(ridT) }) subset s0
+//	ensures t != nil ==> acc(Endorsement(t), _) &&
+//		AuthEndList(t, endorsements) &&
+//		unfolding acc(Endorsement(t), _) in
+//		unfolding acc(ValidToken(t), _) in
+//		stringB(t.VerificationKey.KeyID(none[perm])) == gamma(rootKeyT) &&
+//		unfolding acc(Emblem(emblem), _) in
+//		unfolding acc(ValidToken(emblem), _) in
+//		t.Token.Issuer() == emblem.Token.Issuer()
+//	ensures let resSeq := toSeqResult(vfyResults) in
+//		(!(consts.INVALID in resSeq) ==> t != nil) &&
+//		(consts.SIGNED in resSeq ==> (
+//			t != nil &&
+//			(fact.OutFact_Verifier(ridT, SignedOut(aiT)) in s0))) &&
+//		(consts.ORGANIZATIONAL in resSeq ==> (
+//			t != nil &&
+//			(fact.St_Verifier_4(ridT, oiT, rootKeyT) in s0) &&
+//			(fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) in s0) &&
+//			unfolding acc(Emblem(emblem), _) in
+//			unfolding acc(ValidToken(emblem), _) in
+//			emblem.Token.Issuer() != "" && stringB(emblem.Token.Issuer()) == gamma(oiT)))
+func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost embT term.Term, ghost endTs seq[term.Term], ghost p place.Place, ghost ridT term.Term, ghost s mset[fact.Fact] @*/) (
+	vfyResults []consts.VerificationResult, t *ADEMToken /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost aiT, oiT, rootKeyT term.Term @*/) {
+	// @ unfold acc(EndorsementList(endorsements), _)
 
-	// @ ghost aiT := lib.GenericTerm()
-	// @ ghost oiT := lib.GenericTerm()
-	// @ ghost rootKeyT := lib.GenericTerm()
+	// @ ghost aiT := GenericTerm()
+	// @ ghost oiT := GenericTerm()
+	// @ ghost rootKeyT := GenericTerm()
+
+	/*
+		I need:
+		- to be able to start at root and walk the token chain until emblem
+		- for each token I need to have the corresponding term
+		- for each token I need to know that the index in endorsements is unique OR that it is the emblem
+			--> Such that I then know that the ValidTokenIn facts in s are enough
+	*/
 
 	endorsedBy := make(map[string]*ADEMToken)
+	// @ ghost endorsedByIdx := dict[string]int {}
 
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
-	// @ invariant acc(Emblem(emblem), _)
-	// @ invariant acc(endorsements) &&
-	// @ 	forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> (
-	// @ 		(i < i0 ==> acc(EndListElem(i, endorsements[i]), _)) &&
-	// @ 		(i0 <= i ==> EndListElem(i, endorsements[i])))
-	// @ invariant acc(endorsedBy) &&
-	// @ 	forall k string :: { endorsedBy[k] } k in endorsedBy ==> let t, _ := endorsedBy[k] in acc(EndorsedByElem(k, t), _)
+	//  invariant forall i int :: { fact.ValidTokenIn_Verifier(ridT, endTs[i]) } 0 <= i && i < len(endTs) ==> endTs[i] # endTs <= fact.ValidTokenIn_Verifier(ridT, endTs[i]) # s
+	// @ invariant HasTokenInSet(ridT, endTs ++ seq[term.Term] { embT }, set[int] {}, s)
+	// @ invariant fact.ValidTokenIn_Verifier(ridT, embT) in s
+	// @ invariant acc(Emblem(emblem), _) && unfolding acc(Emblem(emblem), _) in Abs(emblem) == gamma(embT)
+	// @ invariant acc(endorsements, _) &&
+	// @ 	forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> acc(EndListElem(i, endorsements[i]), _)
+	// @ invariant acc(endorsedBy)
+	// @ invariant forall k string :: { endorsedByIdx[k] } k in domain(endorsedByIdx) ==> k in endorsedBy && 0 <= endorsedByIdx[k] && endorsedByIdx[k] < i0
+	// @ invariant forall k1, k2 string :: { endorsedByIdx[k1] } k1 != k2 && k1 in domain(endorsedByIdx) && k2 in domain(endorsedByIdx) ==> endorsedByIdx[k1] != endorsedByIdx[k2]
+	// @ invariant forall k string :: { endorsedBy[k] } k in domain(endorsedBy) ==> (
+	// @ 		k in domain(endorsedByIdx) &&
+	// @ 		let t, _ := endorsedBy[k] in
+	// @ 		acc(EndorsedByElem(k, t), _) &&
+	// @ 		t == endorsements[endorsedByIdx[k]])
 	for _, endorsement := range endorsements /*@ with i0 @*/ {
-		// @ unfold EndListElem(i0, endorsements[i0])
-		// @ unfold Endorsement(endorsement)
+		// @ unfold acc(EndListElem(i0, endorsements[i0]), _)
+		// @ unfold acc(Endorsement(endorsement), _)
 		// @ unfold acc(ValidToken(endorsement), _)
+		// @ unfold acc(Emblem(emblem), _)
+		// @ unfold acc(ValidToken(emblem), _)
 		kid, err := tokens.GetEndorsedKID(endorsement.Token)
 		end, _ := endorsement.Token.Get("end")
-		// @ fold Endorsement(endorsement)
 		if err != nil {
 			log.Printf("could not get endorsed kid: %s\n", err)
-			// @ fold EndListElem(i0, endorsements[i0])
 			continue
-		} else if /*@ unfolding acc(Emblem(emblem), _) in unfolding acc(ValidToken(emblem), _) in unfolding Endorsement(endorsement) in unfolding acc(ValidToken(endorsement), _) in @*/ emblem.Token.Issuer() != endorsement.Token.Issuer() {
-			// @ fold EndListElem(i0, endorsements[i0])
+		} else if emblem.Token.Issuer() != endorsement.Token.Issuer() {
 			continue
-		} else if /*@ unfolding acc(Emblem(emblem), _) in unfolding acc(ValidToken(emblem), _) in unfolding Endorsement(endorsement) in unfolding acc(ValidToken(endorsement), _) in @*/ emblem.Token.Issuer() != endorsement.Token.Subject() {
-			// @ fold EndListElem(i0, endorsements[i0])
+		} else if emblem.Token.Issuer() != endorsement.Token.Subject() {
 			continue
-		} else if /*@ unfolding acc(Emblem(emblem), _) in unfolding acc(ValidToken(emblem), _) in @*/ kid != emblem.VerificationKey.KeyID( /*@ none[perm] @*/ ) && !end.(bool) {
-			// @ fold EndListElem(i0, endorsements[i0])
+		} else if kid != emblem.VerificationKey.KeyID( /*@ none[perm] @*/ ) && !end.(bool) {
 			continue
 		} else if _, ok := endorsedBy[kid]; ok {
-			// @ fold EndListElem(i0, endorsements[i0])
 			log.Println("illegal branch in endorsements")
-			return []consts.VerificationResult{consts.INVALID}, nil /*@, lib.GenericPlace(), lib.GenericSet(), aiT, oiT, rootKeyT @*/
+			return []consts.VerificationResult{consts.INVALID}, nil /*@, p, s, aiT, oiT, rootKeyT @*/
 		} else {
-			// @ fold acc(EndListElem(i0, endorsements[i0]), _)
-			// @ fold acc(EndorsedByElem(kid, endorsement), _)
 			endorsedBy[kid] = endorsement
+			// @ endorsedByIdx[kid] = i0
+			// @ fold acc(EndorsedByElem(kid, endorsement), _)
 		}
 	}
 
 	// @ ghost endorses := none[string]
+	//  ghost rootIdx int // starting point
+	// @ ghost endorsesIdx := dict[int]int {} // invert endorsedBy
 
 	var root *ADEMToken
 	trustedFound := false
 	last := emblem
 
-	// @ invariant acc(Emblem(emblem), _)
-	// @ invariant acc(trustedKeys.Mem(), 1/2) && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 	// @ invariant acc(tokens.PkgMem(), _)
+	// @ invariant acc(trustedKeys.Mem(), 1/2) && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
+	//  invariant forall i int :: { fact.ValidTokenIn_Verifier(ridT, endTs[i]) } 0 <= i && i < len(endTs) ==> endTs[i] # endTs <= fact.ValidTokenIn_Verifier(ridT, endTs[i]) # s
+	// @ invariant HasTokenInSet(ridT, endTs ++ seq[term.Term] { embT }, set[int] {}, s)
+	// @ invariant fact.ValidTokenIn_Verifier(ridT, embT) in s
+	// @ invariant acc(Emblem(emblem), _) && unfolding acc(Emblem(emblem), _) in Abs(emblem) == gamma(embT)
 	// @ invariant acc(endorsedBy) &&
 	// @ 	forall k string :: { endorsedBy[k] } k in endorsedBy && some(k) != endorses ==> let t, _ := endorsedBy[k] in acc(EndorsedByElem(k, t), _)
 	// @ invariant endorses == none[string] ?
@@ -140,35 +167,37 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 			// @ unfold acc(ValidToken(emblem), _)
 			// @ unfold acc(ValidToken(endorsing), _)
 			if err := tokens.VerifyConstraints(emblem.Token, endorsing.Token); err != nil {
-				// @ fold acc(Emblem(emblem), _)
+				//  fold acc(Emblem(emblem), _)
 				log.Printf("emblem does not comply with endorsement constraints: %s", err)
-				return []consts.VerificationResult{consts.INVALID}, nil /*@, lib.GenericPlace(), lib.GenericSet(), aiT, oiT, rootKeyT @*/
+				return []consts.VerificationResult{consts.INVALID}, nil /*@, GenericPlace(), GenericSet(), aiT, oiT, rootKeyT @*/
 			} else {
-				// @ fold acc(Emblem(emblem), _)
-				/*@
-				ghost {
-					if endorses == none[string] {
-						fold acc(Emblem(last), _)
-					} else {
-						fold acc(Endorsement(last), _)
+				//  fold acc(Emblem(emblem), _)
+				/*
+					ghost {
+						if endorses == none[string] {
+							fold acc(Emblem(last), _)
+						} else {
+							fold acc(Endorsement(last), _)
+							if some(kid) != endorses {
+								fold acc(EndorsedByElem(get(endorses), last), _)
+							}
+						}
+
 						if some(kid) != endorses {
-							fold acc(EndorsedByElem(get(endorses), last), _)
+							fold acc(Endorsement(endorsing), _)
 						}
 					}
-
-					if some(kid) != endorses {
-						fold acc(Endorsement(endorsing), _)
-					}
-				}
-				@*/
+				*/
 				last = endorsing
 				// @ endorses = some(kid)
 			}
 		} else {
-			// @ ghost { if endorses == none[string] { fold acc(Emblem(last), _) } else { fold acc(Endorsement(last), _) } }
+			//  ghost { if endorses == none[string] { fold acc(Emblem(last), _) } else { fold acc(Endorsement(last), _) } }
 			root = last
 		}
 	}
+
+	// @ assume false
 
 	/*@ assert
 		unfolding acc(Emblem(emblem), _) in
@@ -185,14 +214,74 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ unfold acc(ValidToken(root), _)
 	_, rootLogged := root.Token.Get("log")
 	if /*@ unfolding acc(Emblem(emblem), _) in unfolding acc(ValidToken(emblem), _) in @*/ emblem.Token.Issuer() != "" && !rootLogged {
-		return []consts.VerificationResult{consts.INVALID}, nil /*@, lib.GenericPlace(), lib.GenericSet(), aiT, oiT, rootKeyT @*/
+		return []consts.VerificationResult{consts.INVALID}, nil /*@, GenericPlace(), GenericSet(), aiT, oiT, rootKeyT @*/
 	} else if rootLogged {
-		// TODO: We don't actually know this
-		//  assert emblem.Token.Issuer() != ""
+		// TODO: (lmeinen) Apply state transitions for 2 -> 3 -> ... -> 3 -> 4
+		// we need: an ordering of endorsements, equivalences between their keys, oiT and aiT
+
+		// things I need here: terms for all tokens + constraints on everything in endorsedBy
+
+		/*@
+			ghost rootT := GenericTerm()
+			// Parse root pattern
+			ghost someRootKey, someOi, someEndorsedKey, someSig := RootEndPattern(root)
+
+			// Apply pattern requirement for root patterns
+			ghost rootKeyT, oiT, endorsedKeyT, sigT := RootEndorsementPatternRequirement(rootT, ridT, someRootKey, someOi, someEndorsedKey, someSig, s, p)
+
+			// Apply IsOrganizationalEmblem rule
+			unfold iospec.P_Verifier(p, ridT, s)
+			unfold iospec.phiR_Verifier_6(p, ridT, s)
+			l := mset[fact.Fact] { fact.St_Verifier_2(ridT), fact.ValidTokenIn_Verifier(ridT, rootT) }
+			a := mset[claim.Claim] { }
+			r := mset[fact.Fact] { fact.St_Verifier_3(ridT, oiT, rootKeyT, endorsedKeyT) }
+			p = iospec.internBIO_e_IsOrganizationalEmblem(p, ridT, rootKeyT, oiT, endorsedKeyT, sigT, l, a, r)
+			s = fact.U(l, r, s)
+
+			// ...
+
+			// Parse emblem pattern
+			ghost someAi, someSig := SignedEmblemPattern(emblem, endorsedKeyT, oiT)
+
+			// Apply pattern requirement for anon emblem patterns
+			ghost aiT, sigT := SignedEmblemPatternRequirement(embT, ridT, rootKeyT, oiT, endorsedKeyT, someAi, someSig, s, p)
+
+			// Apply CollectAuthorityEndorsements rule
+			unfold iospec.P_Verifier(p, ridT, s)
+			unfold iospec.phiR_Verifier_11(p, ridT, s)
+			l := mset[fact.Fact] { fact.St_Verifier_3(ridT, oiT, rootKeyT, endorsedKeyT), fact.ValidTokenIn_Verifier(ridT, embT) }
+			a := mset[claim.Claim] { claim.VerifiedEndorsed(ridT, oiT, aiT, endorsedKeyT), claim.VerifiedRootEndorsement(ridT, oiT, rootKeyT) }
+			r := mset[fact.Fact] { fact.St_Verifier_4(ridT, oiT, rootKeyT),
+		                           fact.OutFact_Verifier(ridT, SignedOut(aiT)),
+		                           fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) }
+			p = iospec.internBIO_e_CollectAuthorityEndorsements(p, ridT, oiT, rootKeyT, endorsedKeyT, aiT, sigT, l, a, r)
+			s = fact.U(l, r, s)
+		@*/
+
 		results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL)
 		if _, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(ValidToken(root), _) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ ) /*@, perm(1/2) @*/); ok {
 			results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL_TRUSTED)
 		}
+	} else {
+		// TODO: (lmeinen) apply state transition 2 -> 0
+		/*@
+			unfold acc(Emblem(emblem), _)
+
+			// Parse emblem pattern
+			ghost someKey, someAi, someSig := AnonEmblemPattern(emblem)
+
+			// Apply pattern requirement for anon emblem patterns
+			ghost keyT, aiT, sigT := AnonEmblemPatternRequirement(embT, ridT, someKey, someAi, someSig, s, p)
+
+			// Apply IsSignedEmblem rule
+			unfold iospec.P_Verifier(p, ridT, s)
+			unfold iospec.phiR_Verifier_5(p, ridT, s)
+			l := mset[fact.Fact] { fact.St_Verifier_2(ridT), fact.ValidTokenIn_Verifier(ridT, embT) }
+			a := mset[claim.Claim] { }
+			r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, SignedOut(aiT)) }
+			p = iospec.internBIO_e_IsSignedEmblem(p, ridT, keyT, aiT, sigT, l, a, r)
+			s = fact.U(l, r, s)
+		@*/
 	}
 
 	return results, root /*@, p, s, aiT, oiT, rootKeyT @*/
@@ -201,7 +290,10 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 /*@
 
 pred EndorsedByElem(_ string, t *ADEMToken) {
-	t != nil && Endorsement(t)
+	t != nil && Endorsement(t) &&
+	unfolding acc(Endorsement(t), _) in
+	unfolding acc(ValidToken(t), _) in
+	t.Token.Contains("key")
 }
 
 @*/

@@ -46,7 +46,9 @@ pred BoolMem(_ bool) { true }
 pred StringMem(_ string) { true }
 (string) implements JwtClaim { pred Mem := StringMem }
 
-pred IsValid(_ JwtToken) { true }
+ghost
+requires acc(t.Mem(), _)
+pure func IsValid(t JwtToken) bool 
 
 pred FieldMem(ghost fields dict[string]JwtClaim) {
 	forall k string :: { fields[k] } k in domain(fields) ==> fields[k].Mem()
@@ -130,6 +132,20 @@ type JwtToken interface {
 	pure
 	decreases _
 	PureGet(key string) (claim JwtClaim)
+
+	ghost
+	requires acc(Mem(), _)
+	requires Contains("key")
+	pure
+	decreases _
+	PureKeyID() (kid string)
+
+	ghost
+	requires acc(Mem(), _)
+	requires Contains("ass")
+	pure
+	decreases _
+	PureAI() (ai string)
 
 	// Get returns the value of the corresponding field in the token, such as
 	// `nbf`, `exp`, `iat`, and other user-defined fields. If the field does not
@@ -248,7 +264,9 @@ func ErrInvalidIssuer() (e ValidationError)
 //
 // See the various `WithXXX` functions for optional parameters
 // that can control the behavior of this method.
+requires acc(t.Mem(), _)
 requires forall i int :: 0 <= i && i < len(options) ==> acc(&options[i]) && options[i] != nil
+ensures acc(t.Mem(), _)
 ensures forall i int :: 0 <= i && i < len(options) ==> acc(&options[i]) && options[i] != nil && old(options)[i] === options[i]
 ensures e == nil  && len(options) == 0 ==> IsValid(t)
 ensures e == nil && forall i int :: 0 <= i && i < len(options) &&

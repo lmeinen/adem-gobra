@@ -70,7 +70,8 @@ pred KeyMem(key EmbeddedKey) {
 
 pred AssMem(ass []*ident.AI) {
 	acc(ass) &&
-	forall i int :: 0 <= i && i < len(ass) ==> ass[i].Mem()
+	(forall i, j int :: { ass[i], ass[j] } 0 <= i && i < j && j < len(ass) ==> ass[i] != ass[j]) &&
+	(forall i int :: { ass[i] } 0 <= i && i < len(ass) ==> ass[i].Mem())
 }
 
 ([]*ident.AI) implements jwt.JwtClaim {
@@ -115,4 +116,3 @@ pure func CustomFields(f jwt.Fields) bool {
 		typeOf(f["emb"]) == type[EmblemConstraints] &&
 		typeOf(f["ver"]) == type[string])
 }
-

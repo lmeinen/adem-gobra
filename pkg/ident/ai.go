@@ -172,7 +172,7 @@ func ParseAI(aiStr string) (r *AI, err error) {
 		} else if labels := strings.Split(addr, "."); len(labels) <= 0 {
 			// This should not be possible according to strings.Split docs
 			panic("illegal state")
-		} else if util.ContainsString(labels, "" /*@, perm(1/2) @*/) {
+		} else if util.ContainsString(labels, "") {
 			// No empty labels allowed
 			return nil, ErrIllegalAI
 		} else if strings.Contains(labels[0], "*") && len(labels[0]) > 1 {

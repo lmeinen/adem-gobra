@@ -24,7 +24,7 @@ var ErrAlgMissing = errors.New("input key misses algorithm")
 // @ preserves acc(PkgMem(), _) && acc(t.Mem(), _) && acc(jwt.FieldMem(t.Values()), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && CustomFields(jwt.Custom)
 // @ requires t != nil
-// @ ensures err == nil ==> kid != ""
+// @ ensures err == nil ==> kid != "" && t.Contains("key") && kid == t.PureKeyID()
 func GetEndorsedKID(t jwt.Token) (kid string, err error) {
 	jwKey, ok := t.Get("key")
 	if !ok {

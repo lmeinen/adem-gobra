@@ -936,7 +936,7 @@ ADEM
             |  (pair(endorsedKey, pair(oi, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSig))))
             |  EnvGroup EnvIn
         Ac: (Proto)_VerifiedEndorsed/4
-            |  (rid, oi, E, embKey)
+            |  (rid, oi, E, endorsedKey)
             |  ActionGroup
             (Proto)_VerifiedRootEndorsement/3
             |  (rid, oi, rootKey)
@@ -1962,7 +1962,7 @@ ADEM
                 |  (pair(endorsedKey, pair(oi, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSig))))
                 |  EnvGroup EnvIn
             Ac: (Proto)_VerifiedEndorsed/4
-                |  (rid, oi, E, embKey)
+                |  (rid, oi, E, endorsedKey)
                 |  ActionGroup
                 (Proto)_VerifiedRootEndorsement/3
                 |  (rid, oi, rootKey)
@@ -3063,7 +3063,7 @@ ADEM
                 |  (rid, pair(endorsedKey, pair(oi, pair(pair(pubTerm(const_emblem_pub()), pair(E, oi)), emblemSig))))
                 |  EnvGroup EnvIn
             Ac: (Proto)_VerifiedEndorsed/4
-                |  (rid, oi, E, embKey)
+                |  (rid, oi, E, endorsedKey)
                 |  ActionGroup
                 (Proto)_VerifiedRootEndorsement/3
                 |  (rid, oi, rootKey)

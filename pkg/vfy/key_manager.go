@@ -41,6 +41,7 @@ type keyManager struct {
 }
 
 // Creates a new key manager to verify [numThreads]-many tokens asynchronously.
+// @ trusted
 // @ requires numThreads > 0
 // @ ensures res.lock.LockP() &&
 // @ 	res.lock.LockInv() == LockInv!<res!>
@@ -81,6 +82,7 @@ func NewKeyManager(numThreads int) (res *keyManager) {
 
 // Wait until all verification threads obtained a promise for their verification
 // key.
+// @ trusted
 // @ requires km.init.WaitGroupP()
 // @ requires km.init.WaitMode()
 // @ ensures km.init.WaitGroupP()
@@ -89,6 +91,7 @@ func (km *keyManager) waitForInit() {
 }
 
 // Cancel any further verification.
+// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 func (km *keyManager) killListeners() {
 	km.lock.Lock()
@@ -118,6 +121,7 @@ func (km *keyManager) killListeners() {
 }
 
 // How many blocked threads are there that wait for a key promise to be resolved?
+// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ ensures 0 <= res
 func (km *keyManager) waiting() (res int) {
@@ -140,6 +144,7 @@ func (km *keyManager) waiting() (res int) {
 }
 
 // Store a verified key and notify listeners waiting for that key.
+// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(tokens.PkgMem(), _)
 // @ requires k != nil && k.Mem()
@@ -192,6 +197,7 @@ func (km *keyManager) put(k jwk.Key) bool {
 }
 
 // // Get a key based on its [kid]. Returns a promise that may already be resolved.
+// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ ensures p != nil && p.ConsumerToken()
 func (km *keyManager) getKey(kid string) (p util.Promise) {
@@ -216,6 +222,7 @@ func (km *keyManager) getKey(kid string) (p util.Promise) {
 	return c
 }
 
+// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(sig, _)
 // @ ensures p != nil && p.ConsumerToken()
@@ -233,6 +240,7 @@ func (km *keyManager) getVerificationKey(sig *jws.Signature) (p util.Promise) {
 // the root key commitment will be verified, and when this succeeds, the root
 // key will be used for verification. All other keys will register a listener
 // and wait for their verification key to be verified externally.
+// @ trusted
 // @ requires km.Mem() && ctx != nil && sink != nil && acc(sig, _) && acc(m, _)
 // @ requires lib.TokenVerifierInitState(p, rid, s, tokenT)
 // @ requires m.AbsMsg() == lib.gamma(tokenT)

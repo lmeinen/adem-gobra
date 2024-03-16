@@ -14,6 +14,8 @@ import (
 	"fact"
 	"place"
 	"iospec"
+	"pub"
+	"claim"
 	"term"
 )
 
@@ -71,6 +73,51 @@ pred PkgMems() {
 		tokens.CustomFields(jwt.Custom)
 }
 
+pred AuthEndList(root *ADEMToken, endorsements []*ADEMToken) {
+	acc(endorsements, _) &&
+	forall i int :: { AuthEndInvariant(root, endorsements[i], i) } 0 <= i && i < len(endorsements) ==> AuthEndInvariant(root, endorsements[i], i)
+}
+
+pred AuthEndInvariant(root *ADEMToken, endorsement *ADEMToken, _ int) {
+	acc(Endorsement(root), _) && acc(Endorsement(endorsement), _) && (
+		unfolding acc(Endorsement(endorsement), _) in
+		unfolding acc(ValidToken(endorsement), _) in
+		unfolding acc(Endorsement(root), _) in
+		unfolding acc(ValidToken(root), _) in
+		endorsement.Token.Contains("key") && root.VerificationKey.KeyID(none[perm]) == endorsement.Token.PureKeyID() ==> root.Token.Issuer() != endorsement.Token.Issuer())
+}
+
+ghost
+requires acc(Endorsement(root), _)
+requires acc(EndorsementList(endorsements), _)
+pure func AuthEndListF(root *ADEMToken, endorsements []*ADEMToken) bool {
+	return unfolding acc(EndorsementList(endorsements), _) in 
+	forall i int :: { AuthEndInvariant(root, endorsements[i], i) } 0 <= i && i < len(endorsements) ==> unfolding acc(EndListElem(i, endorsements[i]), _) in AuthEndInvariantF(root, endorsements[i])
+}
+
+ghost
+requires acc(Endorsement(root), _)
+requires acc(Endorsement(endorsement), _)
+pure func AuthEndInvariantF(root *ADEMToken, endorsement *ADEMToken) bool {
+		return unfolding acc(Endorsement(endorsement), _) in
+		unfolding acc(ValidToken(endorsement), _) in
+		unfolding acc(Endorsement(root), _) in
+		unfolding acc(ValidToken(root), _) in
+		endorsement.Token.Contains("key") && root.VerificationKey.KeyID(none[perm]) == endorsement.Token.PureKeyID() ==> root.Token.Issuer() != endorsement.Token.Issuer()
+}
+
+pred EndorsementTerms(endorsements []*ADEMToken, ghost ts seq[term.Term]) {
+	acc(EndorsementList(endorsements), _) &&
+	acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom) &&
+	unfolding acc(EndorsementList(endorsements), _) in
+	len(endorsements) == len(ts) &&
+	forall i int :: { gamma(ts[i]) } 0 <= i && i < len(ts) ==> (
+		let e := endorsements[i] in
+		unfolding acc(EndListElem(i, e), _) in
+		unfolding acc(Endorsement(e), _) in
+		Abs(e) == gamma(ts[i]))
+}
+
 ghost
 requires n > 0
 requires acc(wg.UnitDebt(PredTrue!<!>), n)
@@ -114,29 +161,6 @@ func collectDebt(fractionSeq seq[pred()], n int, results chan *TokenVerification
 		unfold sync.InjEval(fractionSeq[i], i)
 		unfold SendFraction!<results, n!>()
 	}
-}
-
-ghost
-trusted
-requires k != nil && k.Mem()
-ensures k === old(k) && acc(k.Mem(), _)
-func bar(k jwk.Key)
-
-ghost
-requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-requires ValidToken(t) && Abs(t) == gamma(tokenT)
-func foo(t *ADEMToken, tokenT term.Term) {
-	assert Abs(t) == gamma(tokenT)
-	unfold ValidToken(t) // ValidToken holds Mem permissions
-	if k, ok := t.Token.Get("key"); ok { // Get is non-pure but only requires wildcard permissions
-		unfold jwt.FieldMem(t.Token.Values())
-		unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
-		bar(k.(tokens.EmbeddedKey).Key)
-		fold acc(tokens.KeyMem(k.(tokens.EmbeddedKey)), _)
-		fold acc(jwt.FieldMem(t.Token.Values()), _)
-	}
-	fold acc(ValidToken(t), _)
-	// assert Abs(t) == gamma(tokenT) // fails
 }
 
 ghost
@@ -184,3 +208,31 @@ func permissionIn(ghost t term.Term, ghost p place.Place, ghost rid term.Term) (
 	return tt, pp
 }
 
+pred ConsoleOut(ghost t term.Term)
+
+ghost
+requires place.token(p) && iospec.e_OutFact(p, rid, t)
+ensures pp == old(iospec.get_e_OutFact_placeDst(p, rid, t)) && place.token(pp)
+ensures ConsoleOut(t)
+decreases _
+func seclevelOut(ghost p place.Place, ghost rid term.Term, ghost t term.Term) (ghost pp place.Place) {
+	exhale place.token(p)
+	pp := iospec.get_e_OutFact_placeDst(p, rid, t)
+	inhale place.token(pp)
+	inhale ConsoleOut(t)
+}
+
+ghost
+pure func HasTokenInSet(rid term.Term, endorsements seq[term.Term], used set[int], s mset[fact.Fact]) bool {
+	return forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) && !(i in used) ==> endorsements[i] # endorsements <= fact.ValidTokenIn_Verifier(rid, endorsements[i]) # s
+}
+
+ghost
+func fasdf() {
+	rid := GenericTerm()
+	emblem := GenericTerm()
+	endorsements := seq[term.Term] { GenericTerm() }
+	used := seq[int] {}
+	s := mset[fact.Fact] { fact.ValidTokenIn_Verifier(rid, endorsements[0]) }
+	assert HasTokenInSet(rid, endorsements, set[int] { }, s)
+}

@@ -6,6 +6,8 @@ import (
 	"context"
 	"github.com/lestrrat-go/iter/arrayiter"
 	"github.com/lestrrat-go/jwx/v2/jwa"
+	// @ "lib"
+	// @ "term"
 )
 
 // NewSet creates and empty `jwk.Set` object
@@ -36,7 +38,7 @@ type Set interface {
 	// @ ghost
 	// @ requires acc(Mem(), _)
 	// @ ensures forall i int :: { r[i] } 0 <= i && i < len(r) ==> typeOf(r[i]) == type[Key]
-	// @ ensures forall i, j int :: { r[i] } { r[j] } 0 <= i && i < j && j < len(r) ==> r[i] !== r[j]
+	// @ ensures forall i, j int :: { r[i], r[j] } 0 <= i && i < j && j < len(r) ==> r[i] !== r[j]
 	// @ decreases _
 	// @ pure Elems() (ghost r seq[Key])
 
@@ -61,14 +63,17 @@ type Set interface {
 	// The second return value is false if there are no keys matching the key id.
 	// @ requires 0 < p && acc(Mem(), p) && acc(KeySeq(Elems()), _)
 	// @ ensures acc(Mem(), p) && acc(KeySeq(Elems()), _)
-	// @ ensures b ==> (k in Elems() && unfolding acc(KeySeq(Elems()), _) in k.KeyID(none[perm]) == kid)
+	// @ ensures b ==> (
+	// @ 	k in Elems() &&
+	// @ 	unfolding acc(KeySeq(Elems()), _) in
+	// @ 	k.KeyID(none[perm]) == kid)
 	// @ decreases _
 	LookupKeyID(kid string /*@, ghost p perm @*/) (k Key, b bool)
 }
 
 /*@
 pred KeySeq(ghost keys seq[Key]) {
-	forall i int :: { keys[i] } 0 <= i && i < len(keys) ==> keys[i].Mem()
+	forall i int :: { keys[i].Mem() } 0 <= i && i < len(keys) ==> keys[i].Mem()
 }
 @*/
 
@@ -117,7 +122,7 @@ type Key interface {
 	// @ requires p == none[perm] ? acc(Mem(), _) : (get(p) > 0 && acc(Mem(), get(p)))
 	// @ decreases _
 	// @ pure
-	KeyID( /*@ ghost p option[perm] @*/ ) string
+	KeyID( /*@ ghost p option[perm] @*/ ) (kid string)
 }
 
 // ParseKey parses a single key JWK. Unlike `jwk.Parse` this method will
