@@ -43,26 +43,23 @@ func ApplyIsEndorsedEmblem(ghost p place.Place, s mset[fact.Fact], ridT, aiT, oi
 @*/
 
 // @ trusted
-// @ preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 // @ preserves acc(tokens.PkgMem(), _)
-// @ requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-// @ requires acc(Endorsement(root), _) &&
-// @ 	unfolding acc(Endorsement(root), _) in
-// @ 	unfolding acc(ValidToken(root), _) in
+// @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+// @ preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
+// @ preserves ValidToken(emblem) && EmblemF(emblem)
+// @ preserves TokenList(endorsements)
+// @ preserves len(endorsements) == len(endTs)
+// @ preserves unfolding TokenList(endorsements) in forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> unfolding TokenListElem(i, endorsements[i]) in EndorsementF(endorsements[i])
+// @ preserves unfolding TokenList(endorsements) in forall i int :: { endorsements[i] } { endTs[i] } 0 <= i && i < len(endTs) ==> unfolding TokenListElem(i, endorsements[i]) in Abs(endorsements[i]) == gamma(endTs[i])
+// @ preserves 0 <= rootIdx && rootIdx < len(endorsements) &&
+// @ 	ValidRoot(root, emblem, endorsements, rootIdx) &&
+// @ 	unfolding TokenList(endorsements) in
+// @ 	unfolding TokenListElem(rootIdx, root) in
+// @ 	unfolding ValidToken(root) in
 // @ 	stringB(root.VerificationKey.KeyID(none[perm])) == gamma(rootKeyT) &&
 // @ 	stringB(root.Token.Issuer()) == gamma(oiT)
-// @ requires acc(Emblem(emblem), _)
-// @ requires acc(EndorsementList(endorsements), _)
-// @ requires AuthEndList(root, endorsements)
-// @ requires EndorsementTerms(endorsements, endTs)
-//
-//	requires forall i int :: { fact.ValidTokenIn_Verifier(ridT, endTs[i]) } 0 <= i && i < len(endTs) ==> endTs[i] # endTs <= fact.ValidTokenIn_Verifier(ridT, endTs[i]) # s
-//
-// @ requires forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) && AuthEndConstraints(endorsements[i]) ==> !(i in usedTs)
-// @ requires HasTokenInSet(ridT, endTs, usedTs, s)
+// @ requires InFacts(ridT, endTs, usedTs, s)
 // @ requires iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_4(ridT, oiT, rootKeyT) in s
-// @ ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-// @ ensures acc(Endorsement(root), _) && unfolding acc(Endorsement(root), _) in unfolding acc(ValidToken(root), _) in stringB(root.VerificationKey.KeyID(none[perm])) == gamma(rootKeyT)
 // @ ensures acc(endorsedResults)
 // @ ensures acc(endorsedBy)
 // @ ensures iospec.P_Verifier(p0, ridT, s0) && place.token(p0)
@@ -72,7 +69,7 @@ func ApplyIsEndorsedEmblem(ghost p place.Place, s mset[fact.Fact], ridT, aiT, oi
 // @ 	forall i int :: { endorsedBy[i] }{ authTs[i] } 0 <= i && i < len(endorsedBy) ==> (
 // @ 		stringB(endorsedBy[i]) == gamma(authTs[i]) &&
 // @ 		fact.OutFact_Verifier(ridT, EndorsedOut(authTs[i])) in s0)
-func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost p place.Place, ghost ridT term.Term, ghost s mset[fact.Fact], ghost aiT, oiT term.Term, ghost endTs seq[term.Term], ghost usedTs set[int], ghost rootKeyT term.Term @*/) (
+func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost rootIdx int, ghost p place.Place, ghost ridT term.Term, ghost s mset[fact.Fact], ghost aiT, oiT term.Term, ghost endTs seq[term.Term], ghost usedTs set[int], ghost rootKeyT term.Term @*/) (
 	endorsedResults []consts.VerificationResult, endorsedBy []string /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost authTs seq[term.Term] @*/) {
 
 	issuers := []string{}

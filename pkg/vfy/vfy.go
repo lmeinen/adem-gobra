@@ -152,7 +152,7 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 		result.err = err
 		return
 	}
-	// @ unfold TokenVerifierTermState(p, ridT, s, tokenT)
+	// @ unfold TokenVerifierootKeyTermState(p, ridT, s, tokenT)
 
 	// @ assert place.token(p) && iospec.P_TokenVerifier(p, ridT, s) &&
 	// @ 	fact.St_TokenVerifier_0(ridT) in s && fact.ValidTokenOut_TokenVerifier(ridT, tokenT) in s &&
@@ -434,13 +434,10 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		results.ClosureDebt(PredTrue!<!>, 1, 2) &&
 		VfyWg(vfyWaitGroup, threadCount, results, fractionSeq)
 	ensures TokenList(ts)
-	// ensures unfolding TokenList(ts) in
-	// 	len(ts) == len(tTs) &&
-	// 	forall i int :: { ts[i] } { tTs[i] } 0 <= i && i < len(tTs) ==> (unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(tTs[i])) && (fact.ValidTokenIn_Verifier(ridT, tTs[i]) in s)
-	ensures unfolding TokenList(ts) in
-		len(ts) == len(tTs) &&
-		(forall i int :: { ts[i] } { tTs[i] } 0 <= i && i < len(tTs) ==> unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(tTs[i])) &&
-		(forall i int :: { fact.ValidTokenIn_Verifier(ridT, tTs[i]) } 0 <= i && i < len(tTs) ==> tTs[i] # tTs[i:] <= fact.ValidTokenIn_Verifier(ridT, tTs[i]) # s)
+	ensures len(ts) == len(tTs) &&
+	 	unfolding TokenList(ts) in
+	 	forall i int :: { ts[i] } { tTs[i] } 0 <= i && i < len(tTs) ==> unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(tTs[i])
+	 		// (forall i int :: { fact.ValidTokenIn_Verifier(ridT, tTs[i]) } 0 <= i && i < len(tTs) ==> tTs[i] # tTs <= fact.ValidTokenIn_Verifier(ridT, tTs[i]) # s)
 	outline (
 	@*/
 
@@ -454,7 +451,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	(d) there are at most as many tokens as there were rawTokens
 	*/
 	ts := []*ADEMToken{}
-	//  fold TokenList(ts)
+	// @ fold TokenList(ts)
 
 	// @ ghost tTs := seq[term.Term]{}
 
@@ -481,19 +478,11 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ invariant acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-	// @ invariant acc(ts)
-	// @ invariant forall i int :: { ts[i] } 0 <= i && i < len(ts) ==>  acc(ValidToken(ts[i]), _)
-	//  invariant TokenList(ts)
-	//  invariant unfolding TokenList(ts) in
-	//  	len(ts) == len(tTs) &&
-	//  	forall i int :: { fact.ValidTokenIn_Verifier(ridT, tTs[i]) } 0 <= i && i < len(tTs) ==> (
-	//  		(unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(tTs[i])) &&
-	//  		tTs[i] # tTs[i:] <= fact.ValidTokenIn_Verifier(ridT, tTs[i]) # s)
+	// @ invariant TokenList(ts)
 	// @ invariant len(ts) == len(tTs) &&
-	// @ 	forall i int :: { fact.ValidTokenIn_Verifier(ridT, tTs[i]) } 0 <= i && i < len(tTs) ==> (
-	// @ 		Abs(ts[i]) == gamma(tTs[i]) &&
-	// @ 		tTs[i] # tTs[i:] <= fact.ValidTokenIn_Verifier(ridT, tTs[i]) # s)
-	//  	forall i int :: { ts[i] } { tTs[i] } 0 <= i && i < len(tTs) ==> (unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(tTs[i])) && (fact.ValidTokenIn_Verifier(ridT, tTs[i]) in s)
+	// @ 	unfolding TokenList(ts) in
+	// @ 	forall i int :: { ts[i] } { tTs[i] } 0 <= i && i < len(tTs) ==> unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(tTs[i])
+	//  	(forall i int :: { fact.ValidTokenIn_Verifier(ridT, tTs[i]) } 0 <= i && i < len(tTs) ==> tTs[i] # tTs[i:] <= fact.ValidTokenIn_Verifier(ridT, tTs[i]) # s)
 	// @ invariant len(ts) <= n - threadCount
 	for {
 		// [waiting] is the number of unresolved promises in the key manager, i.e.,
@@ -550,11 +539,10 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 						// @ unfold jwt.FieldMem(result.token.Token.Values())
 						// @ unfold tokens.KeyMem(k.(tokens.EmbeddedKey))
 						km.put(k.(tokens.EmbeddedKey).Key)
-						// @ fold acc(tokens.KeyMem(k.(tokens.EmbeddedKey)), _)
-						// @ fold acc(jwt.FieldMem(result.token.Token.Values()), _)
+						// @ fold acc(tokens.KeyMem(k.(tokens.EmbeddedKey)), 1/2)
+						// @ fold acc(jwt.FieldMem(result.token.Token.Values()), 1/2)
 					}
-					// @ fold acc(ValidToken(result.token), _)
-					// @ assume Abs(result.token) == gamma(tokenT)
+					// @ fold ValidToken(result.token)
 					// @ assert Abs(ts[len(ts) - 1]) == gamma(tTs[len(tTs) - 1])
 					// @ fold TokenListElem(len(ts) - 1, result.token)
 					// @ fold TokenList(ts)
@@ -567,13 +555,14 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	// @ )
 
-	// @ assume false
+	// @ assume InFacts(ridT, tTs, set[int] {}, s)
 
 	// (lmeinen) 2 - validate the JWT tokens AND that the required fields are present and valid
 	var emblem *ADEMToken
 	var protected []*ident.AI
 	endorsements := []*ADEMToken{}
-	// @ fold EndorsementList(endorsements)
+	//  fold EndorsementList(endorsements)
+	// @ fold TokenList(endorsements)
 
 	// @ ghost embT := GenericTerm()
 	// @ ghost endTs := seq[term.Term]{}
@@ -583,20 +572,24 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ invariant iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-	// @ invariant acc(ts, _) &&
+	// @ invariant acc(ts) &&
 	// @ 	forall i int :: { ts[i] } 0 <= i && i0 <= i && i < len(ts) ==> TokenListElem(i, ts[i])
 	// @ invariant len(ts) == len(tTs)
 	// @ invariant forall i int :: { ts[i] } { tTs[i] } 0 <= i && i0 <= i && i < len(tTs) ==> unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(tTs[i])
-	// @ invariant forall i int :: { fact.ValidTokenIn_Verifier(ridT, tTs[i]) } 0 <= i && i < len(tTs) ==> tTs[i] # tTs[i:] <= fact.ValidTokenIn_Verifier(ridT, tTs[i]) # s
-	// @ invariant emblem != nil ==> Emblem(emblem) && (unfolding Emblem(emblem) in Abs(emblem) == gamma(embT)) && (fact.ValidTokenIn_Verifier(ridT, embT) in s)
-	// @ invariant EndorsementList(endorsements)
-	// @ invariant unfolding EndorsementList(endorsements) in len(endorsements) == len(endTs)
-	// @ invariant unfolding EndorsementList(endorsements) in forall i int :: { endorsements[i] } { endTs[i] } 0 <= i && i < len(endTs) ==> unfolding EndListElem(i, endorsements[i]) in unfolding Endorsement(endorsements[i]) in Abs(endorsements[i]) == gamma(endTs[i])
-	// @ invariant unfolding EndorsementList(endorsements) in forall i int :: { fact.ValidTokenIn_Verifier(ridT, endTs[i]) } 0 <= i && i < len(endTs) ==> endTs[i] # endTs[i:] <= fact.ValidTokenIn_Verifier(ridT, endTs[i]) # s
-	// @ invariant acc(protected, _) && forall i int :: { protected[i].Mem() } 0 <= i && i < len(protected) ==> acc(protected[i].Mem(), _)
+	// @ invariant InFacts(ridT, tTs, set[int] {}, s)
+	// @ invariant emblem != nil ==> (
+	// @ 	ValidToken(emblem) &&
+	// @ 	EmblemF(emblem) &&
+	// @ 	Abs(emblem) == gamma(embT) &&
+	// @ 	(ValidToken(emblem) --* (acc(ValidToken(emblem), 1/2) && acc(protected, 1/4))))
+	// @ invariant TokenList(endorsements)
+	// @ invariant emblem == nil ? InFacts(ridT, endTs, set[int] {}, s) : InFacts(ridT, endTs ++ seq[term.Term] { embT }, set[int] {}, s)
+	// @ invariant len(endorsements) == len(endTs)
+	// @ invariant unfolding TokenList(endorsements) in forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> unfolding TokenListElem(i, endorsements[i]) in EndorsementF(endorsements[i])
+	// @ invariant unfolding TokenList(endorsements) in forall i int :: { endorsements[i] } { endTs[i] } 0 <= i && i < len(endTs) ==> unfolding TokenListElem(i, endorsements[i]) in Abs(endorsements[i]) == gamma(endTs[i])
 	for _, t := range ts /*@ with i0 @*/ {
 		// @ unfold TokenListElem(i0, t)
-		// @ unfold acc(ValidToken(t), _)
+		// @ unfold ValidToken(t)
 		if t.Headers.ContentType() == string(consts.EmblemCty) {
 			// @ fold acc(tokens.EmblemValidator.Mem(), _)
 			if emblem != nil {
@@ -611,15 +604,24 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 				// @ embT = tTs[i0]
 			}
 
+			// @ unfold tokens.EmblemValidator.Constraints(emblem.Token)
 			ass, _ := emblem.Token.Get("ass")
 			protected = ass.([]*ident.AI)
-			// @ unfold acc(jwt.FieldMem(emblem.Token.Values()), _)
-			// @ assert acc(tokens.AssMem(protected), _)
-			// @ unfold acc(tokens.AssMem(protected), _)
+			/*@
+			package ValidToken(emblem) --* (acc(ValidToken(emblem), 1/2) && acc(protected, 1/4)) {
+				unfold ValidToken(emblem)
+				unfold acc(jwt.FieldMem(emblem.Token.Values()), 1/2)
+				unfold acc(tokens.AssMem(protected), 1/2)
+				fold acc(tokens.AssMem(protected), 1/4)
+				fold acc(jwt.FieldMem(emblem.Token.Values()), 1/4)
+				fold acc(ValidToken(emblem), 1/2)
+			}
+			@*/
 
 			if emblem.Headers.Algorithm() == jwa.NoSignature {
 				// TODO: Apply IsUnsignedEmblem rule
 				// --> constraints on emblem term: <'emblem', $E>
+				// @ assert acc(protected, _)
 				// @ assert emblem.Headers.ContentType() == string(consts.EmblemCty) && emblem.Headers.Algorithm() == jwa.NoSignature
 				return VerificationResults{
 					results:   []consts.VerificationResult{consts.UNSIGNED},
@@ -627,9 +629,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 				} /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 			}
 
-			// @ unfold tokens.EmblemValidator.Constraints(emblem.Token)
-			// @ fold acc(ValidToken(emblem), _)
-			// @ fold Emblem(emblem)
+			// @ fold ValidToken(emblem)
 		} else if t.Headers.ContentType() == string(consts.EndorsementCty) {
 			// @ fold acc(tokens.EndorsementValidator.Mem(), _)
 			o := jwt.WithValidator(tokens.EndorsementValidator)
@@ -638,12 +638,11 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 				log.Printf("Invalid endorsement: %s", err)
 			} else {
 				// @ unfold tokens.EndorsementValidator.Constraints(t.Token)
-				// @ unfold EndorsementList(endorsements)
+				// @ unfold TokenList(endorsements)
 				endorsements = append( /*@ perm(1/2), @*/ endorsements, t)
-				// @ fold acc(ValidToken(t), _)
-				// @ fold Endorsement(t)
-				// @ fold EndListElem(i0, t)
-				// @ fold EndorsementList(endorsements)
+				// @ fold ValidToken(t)
+				// @ fold TokenListElem(i0, t)
+				// @ fold TokenList(endorsements)
 				// @ endTs = endTs ++ seq[term.Term] { tTs[i0] }
 			}
 		} else {
@@ -656,14 +655,8 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 	}
 
-	// @ assert emblem != nil
-	// @ assert Emblem(emblem)
-	// @ assert EndorsementList(endorsements)
-
-	// @ fold EndorsementTerms(endorsements, endTs)
-
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
-	vfyResults, root /*@, p, s, aiT, oiT, rT @*/ := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, embT, endTs, p, ridT, s @*/)
+	vfyResults, root /*@, p, s, orgTs, aiT, oiT, rootKeyT, rootIdx @*/ := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, embT, endTs, p, ridT, s @*/)
 	if util.ContainsVerificationResult(vfyResults, consts.INVALID) {
 		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 	}
@@ -673,7 +666,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ ghost endorsedByTs := GenericSeq()
 
 	if util.ContainsVerificationResult(vfyResults, consts.ORGANIZATIONAL) {
-		endorsedResults, endorsedBy /*@, p, s, endorsedByTs @*/ = verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, p, ridT, s, aiT, oiT, endTs, rT @*/)
+		endorsedResults, endorsedBy /*@, p, s, endorsedByTs @*/ = verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, rootIdx, p, ridT, s, aiT, oiT, endTs, orgTs, rootKeyT @*/)
 	}
 
 	if util.ContainsVerificationResult(endorsedResults, consts.INVALID) {
@@ -688,10 +681,16 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	// TODO: (lmeinen) State transitions for out facts
 
+	// @ apply ValidToken(emblem) --* (acc(ValidToken(emblem), 1/2) && acc(protected, 1/4))
+
+	// @ unfold TokenList(endorsements)
+	// @ unfold TokenListElem(rootIdx, root)
+	// @ unfold ValidToken(root)
+
 	// (lmeinen) 4 - return results
 	return VerificationResults{
-		results: append( /*@ perm(1/2), @*/ vfyResults, endorsedResults...),
-		issuer:/*@ unfolding acc(Endorsement(root), _) in unfolding acc(ValidToken(root), _) in @*/ root.Token.Issuer(),
+		results:    append( /*@ perm(1/2), @*/ vfyResults, endorsedResults...),
+		issuer:     root.Token.Issuer(),
 		endorsedBy: endorsedBy,
 		protected:  protected,
 	} /*@, p, s, aiT, oiT, rootKeyT, ridT, endorsedByTs @*/

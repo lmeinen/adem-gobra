@@ -53,8 +53,8 @@ pred ValidToken(t *ADEMToken) {
 		acc(t.VerificationKey.Mem(), _) &&
 	t.Headers != nil &&
 	t.Token != nil && 
-		t.Token.Mem() && 
-		jwt.FieldMem(t.Token.Values())
+		acc(t.Token.Mem(), _) && 
+		acc(jwt.FieldMem(t.Token.Values()), 1/2)
 }
 
 pred Endorsement(t *ADEMToken) {
@@ -81,7 +81,7 @@ pred Emblem(t *ADEMToken) {
 
 // predicate wrapper to ensure injectivity of t
 pred TokenListElem(_ int, t *ADEMToken) {
-	t != nil && acc(ValidToken(t), _)
+	t != nil && ValidToken(t)
 }
 
 pred EndListElem(_ int, t *ADEMToken) {

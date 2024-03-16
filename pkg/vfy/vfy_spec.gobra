@@ -27,7 +27,9 @@ pred ResultPerm(result *TokenVerificationResult) {
 	acc(result) &&
 			(result.err == nil ==> (
 				result.token != nil &&
-				ValidToken(result.token))) &&
+				ValidToken(result.token) &&
+				let fields := (unfolding ValidToken(result.token) in result.token.Token.Values()) in
+				jwt.FieldMem(fields))) &&
 			(result.err != nil ==> result.token == nil)
 }
 
@@ -76,6 +78,33 @@ pred PkgMems() {
 pred AuthEndList(root *ADEMToken, endorsements []*ADEMToken) {
 	acc(endorsements, _) &&
 	forall i int :: { AuthEndInvariant(root, endorsements[i], i) } 0 <= i && i < len(endorsements) ==> AuthEndInvariant(root, endorsements[i], i)
+}
+
+ghost
+requires ValidToken(emblem)
+requires TokenList(endorsements)
+requires 0 <= rootIdx && rootIdx < len(endorsements)
+pure func ValidRoot(root *ADEMToken, emblem *ADEMToken, endorsements []*ADEMToken, rootIdx int) bool {
+	return unfolding TokenList(endorsements) in 
+		endorsements[rootIdx] == root &&
+		unfolding TokenListElem(rootIdx, root) in
+		(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) && i != rootIdx ==> (
+			unfolding TokenListElem(i, endorsements[i]) in
+			IssuerInvariant(root, endorsements[i]))) &&
+		unfolding ValidToken(root) in
+		unfolding ValidToken(emblem) in
+		(root.Token.Issuer() == emblem.Token.Issuer())
+}
+
+ghost
+requires ValidToken(root)
+requires ValidToken(endorsement)
+pure func IssuerInvariant(root *ADEMToken, endorsement *ADEMToken) bool {
+	return unfolding ValidToken(root) in
+		unfolding ValidToken(endorsement) in
+		endorsement.Token.Contains("key") && 
+		root.VerificationKey.KeyID(none[perm]) == endorsement.Token.PureKeyID() ==> (
+			root.Token.Issuer() != endorsement.Token.Issuer())
 }
 
 pred AuthEndInvariant(root *ADEMToken, endorsement *ADEMToken, _ int) {
@@ -223,8 +252,8 @@ func seclevelOut(ghost p place.Place, ghost rid term.Term, ghost t term.Term) (g
 }
 
 ghost
-pure func HasTokenInSet(rid term.Term, endorsements seq[term.Term], used set[int], s mset[fact.Fact]) bool {
-	return forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) && !(i in used) ==> endorsements[i] # endorsements <= fact.ValidTokenIn_Verifier(rid, endorsements[i]) # s
+pure func InFacts(rid term.Term, tokens seq[term.Term], used set[int], s mset[fact.Fact]) bool {
+	return forall i int :: { fact.ValidTokenIn_Verifier(rid, tokens[i]) } 0 <= i && i < len(tokens) && !(i in used) ==> tokens[i] # tokens <= fact.ValidTokenIn_Verifier(rid, tokens[i]) # s
 }
 
 ghost
@@ -234,5 +263,5 @@ func fasdf() {
 	endorsements := seq[term.Term] { GenericTerm() }
 	used := seq[int] {}
 	s := mset[fact.Fact] { fact.ValidTokenIn_Verifier(rid, endorsements[0]) }
-	assert HasTokenInSet(rid, endorsements, set[int] { }, s)
+	assert InFacts(rid, endorsements, set[int] { }, s)
 }
