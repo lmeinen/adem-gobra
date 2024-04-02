@@ -26,6 +26,7 @@ import (
 var ErrNoKeyFound = errors.New("no key found")
 var ErrRootKeyUnbound = errors.New("root key not properly committed")
 var ErrAlgsDiffer = errors.New("jws alg and verification key alg are different")
+var ErrLogsEmpty = errors.New("logs field cannot be empty")
 
 // A struct that implements the [jwt.KeyProvider] interface.
 type keyManager struct {
@@ -265,7 +266,12 @@ func (km *keyManager) FetchKeys(ctx context.Context, sink jws.KeySink, sig *jws.
 		// @ unfold tokens.LogMem(logs.([]*tokens.LogConfig))
 		casted := logs.([]*tokens.LogConfig)
 		err = verifyLog(t, headerKey, casted /*@, p, rid @*/)
-		if err == nil && len(casted) > 0 {
+
+		if len(casted) == 0 {
+			err = ErrLogsEmpty
+		}
+
+		if err == nil {
 			km.put(headerKey)
 		}
 	}
