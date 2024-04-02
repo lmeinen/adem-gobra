@@ -42,3 +42,6 @@ ghost
 requires acc(rawToken, _)
 decreases _
 pure func AbsBytes(rawToken []byte) (res Bytes)
+
+ghost
+pure func GenericInt() int

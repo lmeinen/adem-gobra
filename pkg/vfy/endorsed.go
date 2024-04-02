@@ -20,169 +20,195 @@ import (
 	//@ "fresh"
 )
 
-/*@
-ghost
-requires iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_4(ridT, oiT, rootKeyT) in s
-requires t == tuple4(key, auth, tuple3(term.pubTerm(pub.const_root_end_pub()), oiT, rootKeyT), sig)
-requires auth != oiT
-requires fact.ValidTokenIn_Verifier(ridT, t) in s
-ensures iospec.P_Verifier(p0, ridT, s0) && place.token(p0) && fact.St_Verifier_4(ridT, oiT, rootKeyT) in s0
-ensures s0 == ((s setminus mset[fact.Fact] { fact.ValidTokenIn_Verifier(ridT, t) }) union mset[fact.Fact] { fact.OutFact_Verifier(ridT, EndorsedOut(auth)) })
-func ApplyIsEndorsedEmblem(ghost p place.Place, s mset[fact.Fact], ridT, aiT, oiT, rootKeyT, key, auth, sig, t term.Term) (ghost p0 place.Place, s0 mset[fact.Fact]) {
-	unfold iospec.P_Verifier(p, ridT, s)
-	unfold iospec.phiR_Verifier_12(p, ridT, s)
-	l := mset[fact.Fact] { fact.St_Verifier_4(ridT, oiT, rootKeyT), fact.ValidTokenIn_Verifier(ridT, t) }
-	a := mset[claim.Claim] { claim.Neq(auth, oiT), claim.VerifiedAuthorityEndorsement(ridT, auth, key, oiT, rootKeyT) }
-	r := mset[fact.Fact] { fact.St_Verifier_4(ridT, oiT, rootKeyT), fact.OutFact_Verifier(ridT, EndorsedOut(auth)) }
-	assert fact.M(l, s)
-	assert auth != oiT
-	p = iospec.internBIO_e_IsEndorsedEmblem(p, ridT, oiT, rootKeyT, key, auth, sig, l, a, r)
-	s = fact.U(l, r, s)
-	return p, s
-}
-@*/
-
-// @ trusted
 // @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
-// @ preserves ValidToken(emblem) && EmblemF(emblem)
+// @ preserves ValidToken(emblem) && Emblem(emblem)
 // @ preserves TokenList(endorsements)
 // @ preserves len(endorsements) == len(endTs)
-// @ preserves unfolding TokenList(endorsements) in forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> unfolding TokenListElem(i, endorsements[i]) in EndorsementF(endorsements[i])
-// @ preserves unfolding TokenList(endorsements) in forall i int :: { endorsements[i] } { endTs[i] } 0 <= i && i < len(endTs) ==> unfolding TokenListElem(i, endorsements[i]) in Abs(endorsements[i]) == gamma(endTs[i])
-// @ preserves 0 <= rootIdx && rootIdx < len(endorsements) &&
-// @ 	ValidRoot(root, emblem, endorsements, rootIdx) &&
-// @ 	unfolding TokenList(endorsements) in
+// @ preserves unfolding TokenList(endorsements) in
+// @ 	forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> (
+// @ 		unfolding TokenListElem(i, endorsements[i]) in
+// @ 		Endorsement(endorsements[i]) &&
+// @ 		Abs(endorsements[i]) == gamma(endTs[i]))
+// @ preserves unfolding TokenList(endorsements) in
+// @ 	0 <= rootIdx && rootIdx < len(endorsements) &&
+// @ 	endorsements[rootIdx] == root &&
 // @ 	unfolding TokenListElem(rootIdx, root) in
 // @ 	unfolding ValidToken(root) in
+// @ 	root.Token.Contains("key") &&
+// @ 	root.Token.PureKeyID() != root.VerificationKey.KeyID(none[perm]) &&
 // @ 	stringB(root.VerificationKey.KeyID(none[perm])) == gamma(rootKeyT) &&
-// @ 	stringB(root.Token.Issuer()) == gamma(oiT)
-// @ requires InFacts(ridT, endTs, usedTs, s)
+// @ 	stringB(root.Token.Issuer()) == gamma(oiT) &&
+// @ 	unfolding ValidToken(emblem) in
+// @ 	(root.Token.Issuer() == emblem.Token.Issuer())
+// @ preserves unfolding TokenList(endorsements) in
+// @ 	forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) && i != rootIdx ==> (
+// @ 		unfolding TokenListElem(i, endorsements[i]) in
+// @ 		unfolding TokenListElem(rootIdx, root) in
+// @ 		endorsements[i].Endorses(root) ==> (
+// @ 			unfolding ValidToken(endorsements[i]) in
+// @ 			unfolding ValidToken(root) in
+// @ 			root.Token.Issuer() != endorsements[i].Token.Issuer() ||
+// @ 			!endorsements[i].Token.PureGet("end").(bool)))
 // @ requires iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_4(ridT, oiT, rootKeyT) in s
+// @ requires fact.OutFact_Verifier(ridT, SignedOut(aiT)) in s
+// @ requires fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) in s
 // @ ensures acc(endorsedResults)
 // @ ensures acc(endorsedBy)
 // @ ensures iospec.P_Verifier(p0, ridT, s0) && place.token(p0)
-// @ ensures fact.OutFact_Verifier(ridT, SignedOut(aiT)) in s ==> fact.OutFact_Verifier(ridT, SignedOut(aiT)) in s0
-// @ ensures fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) in s ==> fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) in s0
+// @ ensures fact.OutFact_Verifier(ridT, SignedOut(aiT)) in s0
+// @ ensures fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) in s0
 // @ ensures len(endorsedBy) == len(authTs) &&
-// @ 	forall i int :: { endorsedBy[i] }{ authTs[i] } 0 <= i && i < len(endorsedBy) ==> (
+// @ 	forall i int :: { fact.OutFact_Verifier(ridT, EndorsedOut(authTs[i])) } 0 <= i && i < len(endorsedBy) ==> (
 // @ 		stringB(endorsedBy[i]) == gamma(authTs[i]) &&
 // @ 		fact.OutFact_Verifier(ridT, EndorsedOut(authTs[i])) in s0)
-func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost rootIdx int, ghost p place.Place, ghost ridT term.Term, ghost s mset[fact.Fact], ghost aiT, oiT term.Term, ghost endTs seq[term.Term], ghost usedTs set[int], ghost rootKeyT term.Term @*/) (
+func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost rootIdx int, ghost p place.Place, ghost ridT term.Term, ghost s mset[fact.Fact], ghost aiT, oiT term.Term, ghost endTs seq[term.Term], ghost rootKeyT term.Term @*/) (
 	endorsedResults []consts.VerificationResult, endorsedBy []string /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost authTs seq[term.Term] @*/) {
 
 	issuers := []string{}
 	trustedFound := false
 	existsEndorsement := false
 
-	// @ ghost authTs := seq[term.Term] {}
-	// @ ghost s0 := s
+	// @ unfold TokenList(endorsements)
+	// @ ghost defer fold TokenList(endorsements)
 
-	// @ unfold AuthEndList(root, endorsements)
+	// @ ghost authTs := seq[term.Term] {}
 
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
-	// @ invariant iospec.P_Verifier(p, ridT, s0) && place.token(p) && fact.St_Verifier_4(ridT, oiT, rootKeyT) in s0
-	// @ invariant fact.OutFact_Verifier(ridT, SignedOut(aiT)) in s ==> fact.OutFact_Verifier(ridT, SignedOut(aiT)) in s0
-	// @ invariant fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) in s ==> fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) in s0
-	// @ invariant acc(Emblem(emblem), _)
-	// @ invariant acc(Endorsement(root), _)
+	// @ invariant iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_4(ridT, oiT, rootKeyT) in s
+	// @ invariant fact.OutFact_Verifier(ridT, SignedOut(aiT)) in s
+	// @ invariant fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) in s
+	// @ invariant ValidToken(emblem) && Emblem(emblem)
+	// @ invariant acc(endorsements)
+	// @ invariant forall i int :: { TokenListElem(i, endorsements[i]) } 0 <= i && i < len(endorsements) ==> TokenListElem(i, endorsements[i])
+	// @ invariant forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> (
+	// @ 	unfolding TokenListElem(i, endorsements[i]) in
+	// @ 	Endorsement(endorsements[i]) &&
+	// @ 	Abs(endorsements[i]) == gamma(endTs[i]))
+	// @ invariant 0 <= rootIdx && rootIdx < len(endorsements) &&
+	// @ 	endorsements[rootIdx] == root &&
+	// @ 	unfolding TokenListElem(rootIdx, root) in
+	// @ 	unfolding ValidToken(root) in
+	// @ 	root.Token.Contains("key") &&
+	// @ 	root.Token.PureKeyID() != root.VerificationKey.KeyID(none[perm]) &&
+	// @ 	stringB(root.VerificationKey.KeyID(none[perm])) == gamma(rootKeyT) &&
+	// @ 	stringB(root.Token.Issuer()) == gamma(oiT) &&
+	// @ 	unfolding ValidToken(emblem) in
+	// @ 	(root.Token.Issuer() == emblem.Token.Issuer())
+	// @ invariant forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) && i != rootIdx ==> (
+	// @ 	unfolding TokenListElem(i, endorsements[i]) in
+	// @ 	unfolding TokenListElem(rootIdx, root) in
+	// @ 	endorsements[i].Endorses(root) ==> (
+	// @ 		unfolding ValidToken(endorsements[i]) in
+	// @ 		unfolding ValidToken(root) in
+	// @ 		root.Token.Issuer() != endorsements[i].Token.Issuer() ||
+	// @ 		!endorsements[i].Token.PureGet("end").(bool)))
 	// @ invariant issuers != nil && acc(issuers)
-	// @ invariant unfolding acc(Endorsement(root), _) in
-	// @ 		unfolding acc(ValidToken(root), _) in
-	// @ 		stringB(root.VerificationKey.KeyID(none[perm])) == gamma(rootKeyT) &&
-	// @ 		stringB(root.Token.Issuer()) == gamma(oiT)
-	// @ invariant acc(endorsements, _)
-	// @ invariant forall i int :: { AuthEndInvariant(root, endorsements[i], i) } 0 <= i && i < len(endorsements) ==> AuthEndInvariant(root, endorsements[i], i)
-	// @ invariant acc(EndorsementList(endorsements), _)
-	// @ invariant EndorsementTerms(endorsements, endTs)
-	// @ invariant forall i int :: { fact.ValidTokenIn_Verifier(ridT, endTs[i]) } 0 <= i && i0 <= i && i < len(endTs) ==> endTs[i] # endTs[i0:] <= fact.ValidTokenIn_Verifier(ridT, endTs[i]) # s0
 	// @ invariant len(issuers) == len(authTs) &&
 	// @ 	forall i int :: { issuers[i] }{ authTs[i] } 0 <= i && i < len(issuers) ==> (
 	// @ 		stringB(issuers[i]) == gamma(authTs[i]) &&
-	// @ 		fact.OutFact_Verifier(ridT, EndorsedOut(authTs[i])) in s0)
+	// @ 		fact.OutFact_Verifier(ridT, EndorsedOut(authTs[i])) in s)
 	for _, endorsement := range endorsements /*@ with i0 @*/ {
-		// @ unfold acc(EndorsementList(endorsements), _)
-		// @ unfold acc(EndListElem(i0, endorsement), _)
-		// @ unfold acc(Endorsement(endorsement), _)
-		// @ unfold acc(ValidToken(endorsement), _)
-		// @ unfold acc(jwt.FieldMem(endorsement.Token.Values()), _)
-		// @ unfold acc(Emblem(emblem), _)
-		// @ unfold acc(ValidToken(emblem), _)
-		// @ unfold acc(Endorsement(root), _)
-		// @ unfold acc(ValidToken(root), _)
+		// @ unfold acc(TokenListElem(i0, endorsements[i0]), 1/2)
+		// @ unfold acc(ValidToken(endorsement), 1/2)
+
+		// @ unfold acc(TokenListElem(rootIdx, root), 1/2)
+		// @ unfold acc(ValidToken(root), 1/2)
+
+		// @ unfold acc(ValidToken(emblem), 1/2)
+
 		if endorsedKID, err := tokens.GetEndorsedKID(endorsement.Token); err != nil {
 			log.Printf("could not not get endorsed kid: %s", err)
+			// @ fold acc(ValidToken(emblem), 1/2)
+			// @ fold acc(ValidToken(root), 1/2)
+			// @ fold acc(TokenListElem(rootIdx, root), 1/2)
+			// @ fold acc(ValidToken(endorsements[i0]), 1/2)
+			// @ fold acc(TokenListElem(i0, endorsements[i0]), 1/2)
 			continue
 		} else if root.Token.Issuer() != endorsement.Token.Subject() {
+			// @ fold acc(ValidToken(emblem), 1/2)
+			// @ fold acc(ValidToken(root), 1/2)
+			// @ fold acc(TokenListElem(rootIdx, root), 1/2)
+			// @ fold acc(ValidToken(endorsements[i0]), 1/2)
+			// @ fold acc(TokenListElem(i0, endorsements[i0]), 1/2)
 			continue
 		} else if endorsement.Token.Issuer() == "" {
+			// @ fold acc(ValidToken(emblem), 1/2)
+			// @ fold acc(ValidToken(root), 1/2)
+			// @ fold acc(TokenListElem(rootIdx, root), 1/2)
+			// @ fold acc(ValidToken(endorsements[i0]), 1/2)
+			// @ fold acc(TokenListElem(i0, endorsements[i0]), 1/2)
 			continue
 		} else if end, _ := endorsement.Token.Get("end"); !end.(bool) {
+			// @ fold acc(ValidToken(emblem), 1/2)
+			// @ fold acc(ValidToken(root), 1/2)
+			// @ fold acc(TokenListElem(rootIdx, root), 1/2)
+			// @ fold acc(ValidToken(endorsements[i0]), 1/2)
+			// @ fold acc(TokenListElem(i0, endorsements[i0]), 1/2)
 			continue
 		} else if _, logged := endorsement.Token.Get("log"); !logged {
+			// @ fold acc(ValidToken(emblem), 1/2)
+			// @ fold acc(ValidToken(root), 1/2)
+			// @ fold acc(TokenListElem(rootIdx, root), 1/2)
+			// @ fold acc(ValidToken(endorsements[i0]), 1/2)
+			// @ fold acc(TokenListElem(i0, endorsements[i0]), 1/2)
 			continue
 		} else if root.VerificationKey.KeyID( /*@ none[perm] @*/ ) != endorsedKID {
+			// @ fold acc(ValidToken(emblem), 1/2)
+			// @ fold acc(ValidToken(root), 1/2)
+			// @ fold acc(TokenListElem(rootIdx, root), 1/2)
+			// @ fold acc(ValidToken(endorsements[i0]), 1/2)
+			// @ fold acc(TokenListElem(i0, endorsements[i0]), 1/2)
 			continue
 		} else if err := tokens.VerifyConstraints(emblem.Token, endorsement.Token); err != nil {
 			log.Printf("emblem does not comply with endorsement constraints: %s", err)
 			x := []consts.VerificationResult{consts.INVALID}
-			return x, nil /*@, p, s0, seq[term.Term] { } @*/
+			// @ fold acc(ValidToken(emblem), 1/2)
+			// @ fold acc(ValidToken(root), 1/2)
+			// @ fold acc(TokenListElem(rootIdx, root), 1/2)
+			// @ fold acc(ValidToken(endorsements[i0]), 1/2)
+			// @ fold acc(TokenListElem(i0, endorsements[i0]), 1/2)
+			return x, nil /*@, p, s, seq[term.Term] { } @*/
 		} else {
 			/*@
-			unfold AuthEndInvariant(root, endorsement, i0)
-			unfold EndorsementTerms(endorsements, endTs)
+			assert endorsement != root
+			fold acc(ValidToken(emblem), 1/2)
+			fold acc(ValidToken(root), 1/2)
+			fold acc(TokenListElem(rootIdx, root), 1/2)
+			unfold acc(TokenListElem(i0, endorsements[i0]), 1/2)
+			fold acc(ValidToken(endorsement), 1/2)
 
-			ghost eT := endTs[i0]
-			assert eT == endTs[i0]
-			assert eT in endTs[i0:]
-			assert endTs[i0] # endTs[i0:] >= 1
-			assert fact.ValidTokenIn_Verifier(ridT, eT) in s0
+			assume fact.ValidTokenIn_Verifier(ridT, endTs[i0]) in s
 
-			ghost someKeyT, someAuthT, someSigT := AuthEndPattern(endorsement, oiT, rootKeyT)
-
-			// Apply pattern requirement for root endorsement patterns
-			ghost keyT, authT, sigT := AuthorityEndorsementPatternRequirement(eT, ridT, someKeyT, someAuthT, someSigT, oiT, rootKeyT, s0, p)
-			// assert eT == tuple4(keyT, authT, tuple3(term.pubTerm(pub.const_root_end_pub()), oiT, rootKeyT), sigT)
-
-			s1 := s0
-
-			// Obtain Out permissions
-			p, s1 = ApplyIsEndorsedEmblem(p, s1, ridT, aiT, oiT, rootKeyT, keyT, authT, sigT, eT)
-
-			// Ensure unused In permissions persist
-			assert forall i int :: { endTs[i] } 0 <= i && i0 <= i && i < len(endTs) ==> endTs[i] # endTs[i:] <= fact.ValidTokenIn_Verifier(ridT, endTs[i]) # s0
-			assert s1 == ((s0 setminus mset[fact.Fact] { fact.ValidTokenIn_Verifier(ridT, eT) }) union mset[fact.Fact] { fact.OutFact_Verifier(ridT, EndorsedOut(authT)) })
-			assert eT == endTs[i0:][0]
-			s0 = s1
-
-			// the below assert stmt fails for unknown reasons: there must be some limitation in the axiomatization of multisets
-			// assert forall i int :: { fact.ValidTokenIn_Verifier(ridT, endTs[i]) } 0 <= i && i0 < i && i < len(endTs) ==> endTs[i] # endTs[i:] <= fact.ValidTokenIn_Verifier(ridT, endTs[i]) # s0
-			assume forall i int :: { fact.ValidTokenIn_Verifier(ridT, endTs[i]) } 0 <= i && i0 < i && i < len(endTs) ==> endTs[i] # endTs[i:] <= fact.ValidTokenIn_Verifier(ridT, endTs[i]) # s0
+			ghost var authT term.Term
+			p, s, authT = ApplyIsEndorsedEmblem(endorsement, p, s, ridT, oiT, rootKeyT, endTs[i0])
 
 			authTs = authTs ++ seq[term.Term] { authT }
-			fold AuthEndInvariant(root, endorsement, i0)
-			fold EndorsementTerms(endorsements, endTs)
 			@*/
 
 			existsEndorsement = true
+			// @ unfold acc(ValidToken(endorsement), 1/2)
 			issuers = append( /*@ perm(1/2), @*/ issuers, endorsement.Token.Issuer())
 			_, ok := trustedKeys.LookupKeyID(endorsement.VerificationKey.KeyID( /*@ none[perm] @*/ ) /*@, perm(1/2) @*/)
+			// @ fold acc(ValidToken(endorsement), 1/2)
 			trustedFound = trustedFound || ok
+
+			// @ fold TokenListElem(i0, endorsements[i0])
 		}
 	}
 
 	/*@
 		// Finish verification
-		unfold iospec.P_Verifier(p, ridT, s0)
-		unfold iospec.phiR_Verifier_13(p, ridT, s0)
+		unfold iospec.P_Verifier(p, ridT, s)
+		unfold iospec.phiR_Verifier_13(p, ridT, s)
 		l := mset[fact.Fact] { fact.St_Verifier_4(ridT, oiT, rootKeyT) }
 		a := mset[claim.Claim] { }
 		r := mset[fact.Fact] { fact.St_Verifier_0(ridT) }
 		p = iospec.internBIO_e_FinishVerification(p, ridT, oiT, rootKeyT, l, a, r)
-		s0 = fact.U(l, r, s0)
+		s = fact.U(l, r, s)
 	@*/
 
 	if existsEndorsement {
@@ -190,8 +216,8 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 		if trustedFound {
 			results = append( /*@ perm(1/2), @*/ results, consts.ENDORSED_TRUSTED)
 		}
-		return results, issuers /*@, p, s0, authTs @*/
+		return results, issuers /*@, p, s, authTs @*/
 	} else {
-		return nil, nil /*@, p, s0, seq[term.Term] { } @*/
+		return nil, nil /*@, p, s, seq[term.Term] {} @*/
 	}
 }

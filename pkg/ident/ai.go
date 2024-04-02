@@ -32,7 +32,8 @@ type AI struct {
 	port       *uint16
 }
 
-// @ preserves acc(labels, _)
+// @ preserves acc(labels, 1/8)
+// @ preserves forall i int :: 0 <= i && i < len(labels) ==> len(labels[i]) > 0
 func joinDomain(labels []string) string {
 	if len(labels) == 1 && labels[0] == "*" {
 		return ""
@@ -45,13 +46,13 @@ func joinDomain(labels []string) string {
 	}
 }
 
-// @ preserves acc(ai.Mem(), _)
-// @ preserves acc(than.Mem(), _)
+// @ preserves acc(ai.Mem(), 1/8)
+// @ preserves acc(than.Mem(), 1/8)
 func (ai *AI) MoreGeneral(than *AI) bool {
-	// @ unfold acc(ai.Mem(), _)
-	// @ ghost defer fold acc(ai.Mem(), _)
-	// @ unfold acc(than.Mem(), _)
-	// @ ghost defer fold acc(than.Mem(), _)
+	// @ unfold acc(ai.Mem(), 1/8)
+	// @ ghost defer fold acc(ai.Mem(), 1/8)
+	// @ unfold acc(than.Mem(), 1/8)
+	// @ ghost defer fold acc(than.Mem(), 1/8)
 
 	if ai.port != nil && (ai.port != than.port || *ai.port != *than.port) {
 		return false
@@ -77,8 +78,8 @@ func (ai *AI) MoreGeneral(than *AI) bool {
 		if than.ipAddr != nil {
 			return ai.ipPrefix.Contains(than.ipAddr)
 		} else if than.ipPrefix != nil {
-			// @ unfold acc(than.ipPrefix.Mem(), _)
-			// @ ghost defer fold acc(than.ipPrefix.Mem(), _)
+			// @ unfold acc(than.ipPrefix.Mem(), 1/8)
+			// @ ghost defer fold acc(than.ipPrefix.Mem(), 1/8)
 			// TODO: Can something weird happen if than.IPPrefix.IP is actual shorter
 			// than ai.IPPrefix but has matching leading bytes?
 			return ai.ipPrefix.Contains(than.ipPrefix.IP)

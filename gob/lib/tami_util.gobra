@@ -42,6 +42,8 @@ ghost func GenericSet() (ghost mset[fact.Fact])
 
 ghost func GenericSeq() (ghost seq[term.Term])
 
+ghost func GenericIntSeq() (ghost seq[int])
+
 ghost func GenericTerm() term.Term
 
 ghost

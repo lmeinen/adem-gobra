@@ -24,15 +24,15 @@ func AnonEmblemPatternRequirement(t, rid, someKey, someAI, someSig term.Term, s 
 ghost
 requires place.token(p) && iospec.P_Verifier(p, rid, s) && fact.St_Verifier_3(rid, oi, rootkey, emblemkey) in s
 requires gamma(t) == gamma(tuple4(emblemkey, oi, tuple3(term.pubTerm(pub.const_emblem_pub()), someAI, oi), someSig))
-requires place.token(p) && iospec.P_Verifier(p, rid, s) && fact.St_Verifier_3(rid, oi, rootkey, emblemkey) in s
-requires t == tuple4(emblemkey, oi, tuple3(term.pubTerm(pub.const_emblem_pub()), ai, oi), sig)
+ensures place.token(p) && iospec.P_Verifier(p, rid, s) && fact.St_Verifier_3(rid, oi, rootkey, emblemkey) in s
+ensures t == tuple4(emblemkey, oi, tuple3(term.pubTerm(pub.const_emblem_pub()), ai, oi), sig)
 func SignedEmblemPatternRequirement(t, rid, rootkey, oi, emblemkey, someAI, someSig term.Term, s mset[fact.Fact], p place.Place) (ai, sig term.Term)
 
 ghost
 requires place.token(p) && iospec.P_Verifier(p, ridT, s) && fact.St_Verifier_2(ridT) in s
 requires gamma(t) == gamma(tuple4(someRootKey, someOi, tuple3(term.pubTerm(pub.const_root_end_pub()), someOi, someEndorsedKey), someSig))
-requires place.token(p) && iospec.P_Verifier(p, ridT, s) && fact.St_Verifier_2(ridT) in s
-requires t == tuple4(rootkey, oi, tuple3(term.pubTerm(pub.const_root_end_pub()), oi, endorsedkey), sig)
+ensures place.token(p) && iospec.P_Verifier(p, ridT, s) && fact.St_Verifier_2(ridT) in s
+ensures t == tuple4(rootkey, oi, tuple3(term.pubTerm(pub.const_root_end_pub()), oi, endorsedkey), sig)
 func RootEndorsementPatternRequirement(t, ridT, someRootKey, someOi, someEndorsedKey, someSig term.Term, s mset[fact.Fact], p place.Place) (rootkey, oi, endorsedkey, sig term.Term)
 
 ghost

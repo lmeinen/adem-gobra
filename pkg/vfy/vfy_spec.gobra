@@ -5,9 +5,11 @@ package vfy
 import (
 	"sync"
 
+	"github.com/adem-wg/adem-proto/pkg/consts"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
-	. "lib"
 	"github.com/adem-wg/adem-proto/pkg/roots"
+	. "lib"
+	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
@@ -29,7 +31,7 @@ pred ResultPerm(result *TokenVerificationResult) {
 				result.token != nil &&
 				ValidToken(result.token) &&
 				let fields := (unfolding ValidToken(result.token) in result.token.Token.Values()) in
-				jwt.FieldMem(fields))) &&
+				acc(jwt.FieldMem(fields), 1/2))) &&
 			(result.err != nil ==> result.token == nil)
 }
 
@@ -73,78 +75,6 @@ pred PkgMems() {
 	acc(&jwt.Custom, _) &&
 		acc(jwt.Custom, _) &&
 		tokens.CustomFields(jwt.Custom)
-}
-
-pred AuthEndList(root *ADEMToken, endorsements []*ADEMToken) {
-	acc(endorsements, _) &&
-	forall i int :: { AuthEndInvariant(root, endorsements[i], i) } 0 <= i && i < len(endorsements) ==> AuthEndInvariant(root, endorsements[i], i)
-}
-
-ghost
-requires ValidToken(emblem)
-requires TokenList(endorsements)
-requires 0 <= rootIdx && rootIdx < len(endorsements)
-pure func ValidRoot(root *ADEMToken, emblem *ADEMToken, endorsements []*ADEMToken, rootIdx int) bool {
-	return unfolding TokenList(endorsements) in 
-		endorsements[rootIdx] == root &&
-		unfolding TokenListElem(rootIdx, root) in
-		(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) && i != rootIdx ==> (
-			unfolding TokenListElem(i, endorsements[i]) in
-			IssuerInvariant(root, endorsements[i]))) &&
-		unfolding ValidToken(root) in
-		unfolding ValidToken(emblem) in
-		(root.Token.Issuer() == emblem.Token.Issuer())
-}
-
-ghost
-requires ValidToken(root)
-requires ValidToken(endorsement)
-pure func IssuerInvariant(root *ADEMToken, endorsement *ADEMToken) bool {
-	return unfolding ValidToken(root) in
-		unfolding ValidToken(endorsement) in
-		endorsement.Token.Contains("key") && 
-		root.VerificationKey.KeyID(none[perm]) == endorsement.Token.PureKeyID() ==> (
-			root.Token.Issuer() != endorsement.Token.Issuer())
-}
-
-pred AuthEndInvariant(root *ADEMToken, endorsement *ADEMToken, _ int) {
-	acc(Endorsement(root), _) && acc(Endorsement(endorsement), _) && (
-		unfolding acc(Endorsement(endorsement), _) in
-		unfolding acc(ValidToken(endorsement), _) in
-		unfolding acc(Endorsement(root), _) in
-		unfolding acc(ValidToken(root), _) in
-		endorsement.Token.Contains("key") && root.VerificationKey.KeyID(none[perm]) == endorsement.Token.PureKeyID() ==> root.Token.Issuer() != endorsement.Token.Issuer())
-}
-
-ghost
-requires acc(Endorsement(root), _)
-requires acc(EndorsementList(endorsements), _)
-pure func AuthEndListF(root *ADEMToken, endorsements []*ADEMToken) bool {
-	return unfolding acc(EndorsementList(endorsements), _) in 
-	forall i int :: { AuthEndInvariant(root, endorsements[i], i) } 0 <= i && i < len(endorsements) ==> unfolding acc(EndListElem(i, endorsements[i]), _) in AuthEndInvariantF(root, endorsements[i])
-}
-
-ghost
-requires acc(Endorsement(root), _)
-requires acc(Endorsement(endorsement), _)
-pure func AuthEndInvariantF(root *ADEMToken, endorsement *ADEMToken) bool {
-		return unfolding acc(Endorsement(endorsement), _) in
-		unfolding acc(ValidToken(endorsement), _) in
-		unfolding acc(Endorsement(root), _) in
-		unfolding acc(ValidToken(root), _) in
-		endorsement.Token.Contains("key") && root.VerificationKey.KeyID(none[perm]) == endorsement.Token.PureKeyID() ==> root.Token.Issuer() != endorsement.Token.Issuer()
-}
-
-pred EndorsementTerms(endorsements []*ADEMToken, ghost ts seq[term.Term]) {
-	acc(EndorsementList(endorsements), _) &&
-	acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom) &&
-	unfolding acc(EndorsementList(endorsements), _) in
-	len(endorsements) == len(ts) &&
-	forall i int :: { gamma(ts[i]) } 0 <= i && i < len(ts) ==> (
-		let e := endorsements[i] in
-		unfolding acc(EndListElem(i, e), _) in
-		unfolding acc(Endorsement(e), _) in
-		Abs(e) == gamma(ts[i]))
 }
 
 ghost
@@ -252,16 +182,165 @@ func seclevelOut(ghost p place.Place, ghost rid term.Term, ghost t term.Term) (g
 }
 
 ghost
-pure func InFacts(rid term.Term, tokens seq[term.Term], used set[int], s mset[fact.Fact]) bool {
-	return forall i int :: { fact.ValidTokenIn_Verifier(rid, tokens[i]) } 0 <= i && i < len(tokens) && !(i in used) ==> tokens[i] # tokens <= fact.ValidTokenIn_Verifier(rid, tokens[i]) # s
+preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+preserves ValidToken(emblem) && Emblem(emblem)
+preserves ValidToken(root) && Endorsement(root)
+preserves root != emblem
+preserves gamma(rootT) == Abs(root) && gamma(embT) == Abs(emblem)
+preserves unfolding ValidToken(emblem) in 
+	unfolding acc(jwt.FieldMem(emblem.Token.Values()), 1/8) in
+		emblem.Headers.ContentType() == string(consts.EmblemCty) && 
+		emblem.Token.Contains("ass") && 
+		emblem.Headers.Algorithm() != jwa.NoSignature && 
+		emblem.Token.Issuer() != "" &&
+	unfolding ValidToken(root) in 
+		root.Token.Contains("log") && 
+		root.Token.Contains("key") && 
+		root.Token.Issuer() == emblem.Token.Issuer() && 
+		root.Token.Subject() == root.Token.Issuer()
+requires iospec.P_Verifier(p, rid, s) && place.token(p) && fact.St_Verifier_2(rid) in s
+ensures iospec.P_Verifier(p0, rid, s0) && 
+	place.token(p0) && 
+	fact.St_Verifier_4(rid, oiT, rootKeyT) in s0 && 
+	fact.OutFact_Verifier(rid, SignedOut(aiT)) in s0 && 
+	fact.OutFact_Verifier(rid, OrganizationalOut(aiT, oiT)) in s0
+ensures unfolding ValidToken(root) in 
+	gamma(rootKeyT) == stringB(root.VerificationKey.KeyID(none[perm])) &&
+	gamma(oiT) == stringB(root.Token.Issuer())
+func GetOrganizationalOut(emblem, root *ADEMToken, p place.Place, s mset[fact.Fact], rid, rootT, embT term.Term) (p0 place.Place, s0 mset[fact.Fact], oiT, rootKeyT, aiT term.Term) {
+	// TODO: (lmeinen) Drop assumption
+	// Simplification: Assume root directly endorses emblem
+	assume root.Endorses(emblem)
+
+	assume fact.ValidTokenIn_Verifier(rid, rootT) in s
+
+	ghost var endorsedKeyT term.Term
+	p, s, oiT, rootKeyT, endorsedKeyT = ApplyIsOrganizationalEmblem(emblem, root, p, s, rid, rootT)
+
+	// Loop over internal endorsements
+	// orgIdx, p, s, endorsedKeyT = WalkEndorsementChain(emblem, endorsements, endorsementChain, set[int] {}, endTs, p, s, ridT, embT, rootKeyT, oiT, endorsedKeyT)
+
+	assume fact.ValidTokenIn_Verifier(rid, embT) in s
+
+	p, s, aiT = ApplyCollectAuthorityEndorsements(emblem, p, s, rid, embT, rootKeyT, oiT, endorsedKeyT)
+
+	return p, s, oiT, rootKeyT, aiT
 }
 
 ghost
-func fasdf() {
-	rid := GenericTerm()
-	emblem := GenericTerm()
-	endorsements := seq[term.Term] { GenericTerm() }
-	used := seq[int] {}
-	s := mset[fact.Fact] { fact.ValidTokenIn_Verifier(rid, endorsements[0]) }
-	assert InFacts(rid, endorsements, set[int] { }, s)
+preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+preserves acc(ValidToken(emblem), 1/2) && Emblem(emblem)
+preserves acc(ValidToken(root), 3/4) && Endorsement(root)
+preserves unfolding acc(ValidToken(emblem), 1/2) in 
+	unfolding acc(ValidToken(root), 3/4) in 
+	emblem.Token.Issuer() != "" && 
+	root.Token.Contains("log") && 
+	root.Token.Contains("key") && 
+	root.Token.Issuer() == emblem.Token.Issuer() && 
+	root.Token.Subject() == root.Token.Issuer()
+preserves gamma(rootT) == Abs(root)
+requires iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s && fact.ValidTokenIn_Verifier(ridT, rootT) in s
+ensures gamma(oiT) == unfolding acc(ValidToken(emblem), 1/2) in stringB(emblem.Token.Issuer())
+ensures gamma(rootKeyT) == unfolding acc(ValidToken(root), 3/4) in stringB(root.VerificationKey.KeyID(none[perm]))
+ensures gamma(endorsedKeyT) == unfolding acc(ValidToken(root), 3/4) in stringB(root.Token.PureKeyID())
+ensures iospec.P_Verifier(p0, ridT, s0) && place.token(p0) && s0 == s setminus 
+	mset[fact.Fact] { 
+		fact.St_Verifier_2(ridT), 
+		fact.ValidTokenIn_Verifier(ridT, rootT) } union 
+	mset[fact.Fact] { fact.St_Verifier_3(ridT, oiT, rootKeyT, endorsedKeyT) }
+func ApplyIsOrganizationalEmblem(emblem, root *ADEMToken, p place.Place, s mset[fact.Fact], ridT, rootT term.Term) (p0 place.Place, s0 mset[fact.Fact], oiT, rootKeyT, endorsedKeyT term.Term) {
+
+	// Parse root pattern
+	ghost someRootKey, someOi, someEndorsedKey, someSig := RootEndPattern(root)
+
+	// Apply pattern requirement for root patterns
+	ghost rootKeyT, oiT, endorsedKeyT, sigT := RootEndorsementPatternRequirement(rootT, ridT, someRootKey, someOi, someEndorsedKey, someSig, s, p)
+
+	// Apply IsOrganizationalEmblem rule
+	unfold iospec.P_Verifier(p, ridT, s)
+	unfold iospec.phiR_Verifier_6(p, ridT, s)
+	l := mset[fact.Fact] { fact.St_Verifier_2(ridT), fact.ValidTokenIn_Verifier(ridT, rootT) }
+	a := mset[claim.Claim] { }
+	r := mset[fact.Fact] { fact.St_Verifier_3(ridT, oiT, rootKeyT, endorsedKeyT) }
+	p = iospec.internBIO_e_IsOrganizationalEmblem(p, ridT, rootKeyT, oiT, endorsedKeyT, sigT, l, a, r)
+	s = fact.U(l, r, s)
+
+	return p, s, oiT, rootKeyT, endorsedKeyT
+}
+
+ghost
+preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+preserves acc(ValidToken(emblem), 3/4) && Emblem(emblem) && Abs(emblem) == gamma(embT)
+preserves unfolding acc(ValidToken(emblem), 1/4) in
+	unfolding acc(jwt.FieldMem(emblem.Token.Values()), 1/8) in
+	emblem.Headers.ContentType() == string(consts.EmblemCty) && emblem.Token.Contains("ass") && emblem.Headers.Algorithm() != jwa.NoSignature && emblem.Token.Issuer() != "" && 
+	gamma(oiT) == stringB(emblem.Token.Issuer()) && gamma(endorsedKeyT) == stringB(emblem.VerificationKey.KeyID(none[perm]))
+requires iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_3(ridT, oiT, rootKeyT, endorsedKeyT) in s && fact.ValidTokenIn_Verifier(ridT, embT) in s
+ensures iospec.P_Verifier(p0, ridT, s0) && place.token(p0) && s0 == s setminus 
+	mset[fact.Fact] { 
+		fact.St_Verifier_3(ridT, oiT, rootKeyT, endorsedKeyT), 
+		fact.ValidTokenIn_Verifier(ridT, embT) } union 
+	mset[fact.Fact]{ 
+		fact.St_Verifier_4(ridT, oiT, rootKeyT),
+		fact.OutFact_Verifier(ridT, SignedOut(aiT)),
+		fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) }
+func ApplyCollectAuthorityEndorsements(emblem *ADEMToken, p place.Place, s mset[fact.Fact], ridT, embT, rootKeyT, oiT, endorsedKeyT term.Term) (p0 place.Place, s0 mset[fact.Fact], aiT term.Term) {
+	// Parse emblem pattern
+	ghost someAi, someSig := SignedEmblemPattern(emblem, endorsedKeyT, oiT)
+
+	// Apply pattern requirement for anon emblem patterns
+	ghost aiT, sigT := SignedEmblemPatternRequirement(embT, ridT, rootKeyT, oiT, endorsedKeyT, someAi, someSig, s, p)
+
+	// Apply CollectAuthorityEndorsements rule
+	unfold iospec.P_Verifier(p, ridT, s)
+	unfold iospec.phiR_Verifier_11(p, ridT, s)
+	l := mset[fact.Fact] { fact.St_Verifier_3(ridT, oiT, rootKeyT, endorsedKeyT), fact.ValidTokenIn_Verifier(ridT, embT) }
+	a := mset[claim.Claim] { claim.VerifiedEndorsed(ridT, oiT, aiT, endorsedKeyT), claim.VerifiedRootEndorsement(ridT, oiT, rootKeyT) }
+	r := mset[fact.Fact] { fact.St_Verifier_4(ridT, oiT, rootKeyT),
+	                       fact.OutFact_Verifier(ridT, SignedOut(aiT)),
+	                       fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) }
+
+	p = iospec.internBIO_e_CollectAuthorityEndorsements(p, ridT, oiT, rootKeyT, endorsedKeyT, aiT, sigT, l, a, r)
+	s = fact.U(l, r, s)
+
+	return p, s, aiT
+}
+
+ghost
+preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+preserves acc(ValidToken(endorsement), 3/4) && Endorsement(endorsement) && Abs(endorsement) == gamma(t)
+preserves unfolding acc(ValidToken(endorsement), 1/4) in
+	unfolding acc(jwt.FieldMem(endorsement.Token.Values()), 1/8) in
+	endorsement.Headers.ContentType() == string(consts.EndorsementCty) && 
+	endorsement.Token.Contains("key") && 
+	endorsement.Token.Issuer() != "" && 
+	endorsement.Token.Contains("log") && 
+	endorsement.Token.Subject() != endorsement.Token.Issuer() && 
+	gamma(oi) == stringB(endorsement.Token.Subject()) && 
+	gamma(rootKey) == stringB(endorsement.Token.PureKeyID())
+requires iospec.P_Verifier(p, rid, s) && place.token(p) && fact.St_Verifier_4(rid, oi, rootKey) in s && fact.ValidTokenIn_Verifier(rid, t) in s
+ensures unfolding acc(ValidToken(endorsement), 1/2) in stringB(endorsement.Token.Issuer()) == gamma(auth)
+ensures iospec.P_Verifier(p0, rid, s0) && place.token(p0) && s0 == s setminus 
+	mset[fact.Fact] { 
+		fact.ValidTokenIn_Verifier(rid, t) } union 
+	mset[fact.Fact]{ 
+		fact.OutFact_Verifier(rid, EndorsedOut(auth)) }
+func ApplyIsEndorsedEmblem(endorsement *ADEMToken, p place.Place, s mset[fact.Fact], rid, oi, rootKey, t term.Term) (p0 place.Place, s0 mset[fact.Fact], auth term.Term) {
+	// Parse authority endorsement pattern
+	ghost someKey, someAuth, someSig := AuthEndPattern(endorsement, oi, rootKey)
+
+	// Apply pattern requirement for root endorsement patterns
+	ghost key, auth, sig := AuthorityEndorsementPatternRequirement(t, rid, someKey, someAuth, someSig, oi, rootKey, s, p)
+
+	// Apply IsEndorsedEmblem rule
+	unfold iospec.P_Verifier(p, rid, s)
+	unfold iospec.phiR_Verifier_12(p, rid, s)
+	l := mset[fact.Fact] { fact.St_Verifier_4(rid, oi, rootKey), fact.ValidTokenIn_Verifier(rid, t) }
+	a := mset[claim.Claim] { claim.Neq(auth, oi), claim.VerifiedAuthorityEndorsement(rid, auth, key, oi, rootKey) }
+	r := mset[fact.Fact] { fact.St_Verifier_4(rid, oi, rootKey), fact.OutFact_Verifier(rid, EndorsedOut(auth)) }
+
+	p = iospec.internBIO_e_IsEndorsedEmblem(p, rid, oi, rootKey, key, auth, sig, l, a, r)
+	s = fact.U(l, r, s)
+
+	return p, s, auth
 }

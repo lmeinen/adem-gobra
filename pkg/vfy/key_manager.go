@@ -41,7 +41,6 @@ type keyManager struct {
 }
 
 // Creates a new key manager to verify [numThreads]-many tokens asynchronously.
-// @ trusted
 // @ requires numThreads > 0
 // @ ensures res.lock.LockP() &&
 // @ 	res.lock.LockInv() == LockInv!<res!>
@@ -82,7 +81,6 @@ func NewKeyManager(numThreads int) (res *keyManager) {
 
 // Wait until all verification threads obtained a promise for their verification
 // key.
-// @ trusted
 // @ requires km.init.WaitGroupP()
 // @ requires km.init.WaitMode()
 // @ ensures km.init.WaitGroupP()
@@ -91,7 +89,6 @@ func (km *keyManager) waitForInit() {
 }
 
 // Cancel any further verification.
-// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 func (km *keyManager) killListeners() {
 	km.lock.Lock()
@@ -121,7 +118,6 @@ func (km *keyManager) killListeners() {
 }
 
 // How many blocked threads are there that wait for a key promise to be resolved?
-// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ ensures 0 <= res
 func (km *keyManager) waiting() (res int) {
@@ -144,7 +140,6 @@ func (km *keyManager) waiting() (res int) {
 }
 
 // Store a verified key and notify listeners waiting for that key.
-// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(tokens.PkgMem(), _)
 // @ requires k != nil && k.Mem()
@@ -172,32 +167,37 @@ func (km *keyManager) put(k jwk.Key) bool {
 	}
 
 	km.keys[kid] = k
-	// @ ghost defer fold KeyMem(k, kid)
-	// FIXME: (lmeinen) added ok flag here; add as bug commit
 	promises, ok := km.listeners[kid]
 	if !ok {
+		// @ fold MemBox(k, 1/2)
+		// @ fold KeyMem(k, kid)
+		// @ unfold MemBox(k, 1/2)
 		return false
 	}
 
 	// @ unfold ListInv(promises, kid)
 
-	// @ invariant acc(k.Mem(), _)
+	// @ invariant 0 <= i0 && i0 <= len(promises) ? acc(k.Mem(), perm(1 / 2) + perm(1 / 2) * perm((len(promises) + 1 - i0) / (len(promises) + 1))) : k.Mem()
 	// @ invariant acc(promises, 1/2)
 	// @ invariant forall i int :: 0 <= i && i0 <= i && i < len(promises) ==> PromiseInv(promises[i], kid, i)
 	for _, promise := range promises /*@ with i0 @*/ {
+		// @ fold MemBox(k, perm(1 / 2) + perm(1 / 2) * perm((len(promises) - i0) / (len(promises) + 1)))
 		// @ unfold PromiseInv(promise, kid, i0)
 		if promise != nil {
 			promise.Fulfill(k)
 		}
+		// @ unfold MemBox(k, perm(1 / 2) + perm(1 / 2) * perm((len(promises) - i0) / (len(promises) + 1)))
 	}
 
 	doDelete(km.listeners, kid)
 
+	// @ fold MemBox(k, 1/2)
+	// @ fold KeyMem(k, kid)
+	// @ unfold MemBox(k, 1/2)
 	return true
 }
 
 // // Get a key based on its [kid]. Returns a promise that may already be resolved.
-// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ ensures p != nil && p.ConsumerToken()
 func (km *keyManager) getKey(kid string) (p util.Promise) {
@@ -222,7 +222,6 @@ func (km *keyManager) getKey(kid string) (p util.Promise) {
 	return c
 }
 
-// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(sig, _)
 // @ ensures p != nil && p.ConsumerToken()
@@ -240,7 +239,6 @@ func (km *keyManager) getVerificationKey(sig *jws.Signature) (p util.Promise) {
 // the root key commitment will be verified, and when this succeeds, the root
 // key will be used for verification. All other keys will register a listener
 // and wait for their verification key to be verified externally.
-// @ trusted
 // @ requires km.Mem() && ctx != nil && sink != nil && acc(sig, _) && acc(m, _)
 // @ requires lib.TokenVerifierInitState(p, rid, s, tokenT)
 // @ requires m.AbsMsg() == lib.gamma(tokenT)
@@ -346,6 +344,10 @@ pred PromiseInv(p util.Promise, ghost k string, ghost i int) {
 
 pred KeyMem(k jwk.Key, kid string) {
 	k != nil && acc(k.Mem(), _)
+}
+
+pred MemBox(k jwk.Key, p perm) {
+	k != nil && p > 0 && acc(k.Mem(), p)
 }
 
 pred ListInv(l []util.Promise, k string) {

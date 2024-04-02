@@ -9,7 +9,7 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	// @ "github.com/adem-wg/adem-proto/pkg/tokens"
-	// @ "lib"
+	// @ . "lib"
 	// @ "term"
 )
 
@@ -19,13 +19,18 @@ type ADEMToken struct {
 	Token           jwt.Token
 }
 
-// @ trusted
 // @ preserves acc(km.lock.LockP(), _) && km.lock.LockInv() == LockInv!<km!>
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ requires acc(sig, _)
 // @ requires t != nil && t.Mem() && jwt.FieldMem(t.Values())
-// @ requires t.Abs() == lib.gamma(tokenT)
-// @ ensures err == nil ==> res != nil && ValidToken(res) && Abs(res) == lib.gamma(tokenT)
+// @ requires t.Abs() == gamma(tokenT)
+// @ requires unfolding jwt.FieldMem(t.Values()) in t.Contains("log") ==> t.Issuer() != ""
+// @ ensures err == nil ==>
+// @ 	res != nil &&
+// @ 	ValidToken(res) &&
+// @ 	Abs(res) == gamma(tokenT) &&
+// @ 	let fields := (unfolding ValidToken(res) in res.Token.Values()) in
+// @ 	acc(jwt.FieldMem(fields), 1/2)
 // @ ensures err != nil ==> res == nil
 func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.Token /*@, ghost tokenT term.Term @*/) (res *ADEMToken, err error) {
 	verifKey := km.getVerificationKey(sig).Get()
@@ -34,6 +39,6 @@ func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.Token /*@, ghost toke
 	}
 	token := &ADEMToken{verifKey, sig.ProtectedHeaders(), t}
 	// @ fold ValidToken(token)
-	// @ inhale Abs(token) == lib.gamma(tokenT)
+	// @ assume Abs(token) == gamma(tokenT)
 	return token, nil
 }
