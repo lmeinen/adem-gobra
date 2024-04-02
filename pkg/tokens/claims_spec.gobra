@@ -40,7 +40,7 @@ pred CommonConstraints(t jwt.JwtToken) {
 
 pred (EmblemValidatorS) Constraints(t jwt.JwtToken) {
 	CommonConstraints(t) &&
-	unfolding CommonConstraints(t) in t.Contains("ass")
+	unfolding CommonConstraints(t) in t.Contains("ass") && !t.Contains("log")
 }
 
 pred (EndorsementValidatorS) Constraints(t jwt.JwtToken) {
@@ -98,6 +98,7 @@ pred PkgMem() {
 	ErrIllegalConst != nil &&
 	ErrIllegalVersion != nil &&
 	ErrIllegalType != nil &&
+	ErrLogClaim != nil &&
 	ErrEndMissing != nil &&
 	ErrAssMissing != nil &&
 	ErrNoEndorsedKey != nil &&

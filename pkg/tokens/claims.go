@@ -39,6 +39,7 @@ func init() {
 	// @ 	ErrIllegalVersion != nil &&
 	// @ 	ErrIllegalType != nil &&
 	// @ 	ErrAssMissing != nil &&
+	// @ 	ErrLogClaim != nil &&
 	// @ 	ErrEndMissing != nil &&
 	// @ 	ErrNoEndorsedKey != nil &&
 	// @ 	ErrAlgMissing != nil
@@ -226,6 +227,7 @@ func (ek *EmbeddedKey) UnmarshalJSON(bs []byte) (err error) {
 var ErrIllegalVersion = jwt.NewValidationError(errors.New("illegal version"))
 var ErrIllegalType = jwt.NewValidationError(errors.New("illegal claim type"))
 var ErrAssMissing = jwt.NewValidationError(errors.New("emblems require ass claim"))
+var ErrLogClaim = jwt.NewValidationError(errors.New("emblems must not contain a log claim"))
 var ErrEndMissing = jwt.NewValidationError(errors.New("endorsements require end claim"))
 
 // FIXME: (lmeinen) This function was originally inlined: Gobra doesn't appear to fully support function types
@@ -245,6 +247,10 @@ func (v EmblemValidatorS) Validate(_ context.Context, t jwt.Token) (err jwt.Vali
 
 	if _, ok := t.Get("ass"); !ok {
 		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrAssMissing
+	}
+
+	if _, ok := t.Get("log"); ok {
+		return /*@ unfolding acc(PkgMem(), _) in @*/ ErrLogClaim
 	}
 
 	// @ fold v.Constraints(t)
