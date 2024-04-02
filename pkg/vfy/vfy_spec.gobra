@@ -167,20 +167,6 @@ func permissionIn(ghost t term.Term, ghost p place.Place, ghost rid term.Term) (
 	return tt, pp
 }
 
-pred ConsoleOut(ghost t term.Term)
-
-ghost
-requires place.token(p) && iospec.e_OutFact(p, rid, t)
-ensures pp == old(iospec.get_e_OutFact_placeDst(p, rid, t)) && place.token(pp)
-ensures ConsoleOut(t)
-decreases _
-func seclevelOut(ghost p place.Place, ghost rid term.Term, ghost t term.Term) (ghost pp place.Place) {
-	exhale place.token(p)
-	pp := iospec.get_e_OutFact_placeDst(p, rid, t)
-	inhale place.token(pp)
-	inhale ConsoleOut(t)
-}
-
 ghost
 preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 preserves ValidToken(emblem) && Emblem(emblem)

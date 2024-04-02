@@ -6,8 +6,10 @@ import (
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 
-	"term"
-	"fact"
+    . "lib"
+
+	. "fact"
+    . "iospec"
 )
 
 
@@ -77,21 +79,21 @@ func DeriveNewEndorsementPath(endorsementChain seq[int], lastIdx int, emblem *AD
 
 ghost
 ensures len(ts) == len(fs)
-ensures forall i int :: 0 <= i && i < len(fs) ==> fact.ValidTokenIn_Verifier(rid, ts[i]) == fs[i]
-pure func FactSeq(rid term.Term, ts seq[term.Term]) (fs seq[fact.Fact])
+ensures forall i int :: 0 <= i && i < len(fs) ==> ValidTokenIn_Verifier(rid, ts[i]) == fs[i]
+pure func FactSeq(rid Term, ts seq[Term]) (fs seq[Fact])
 
 ghost
-pure func InFacts(rid term.Term, tokens seq[term.Term], used seq[term.Term], s mset[fact.Fact]) bool {
-	return forall i int :: { tokens[i] } 0 <= i && i < len(tokens) ==> (fact.ValidTokenIn_Verifier(rid, tokens[i]) # FactSeq(rid, tokens)) - (fact.ValidTokenIn_Verifier(rid, tokens[i]) # FactSeq(rid, used)) <= fact.ValidTokenIn_Verifier(rid, tokens[i]) # s
+pure func InFacts(rid Term, tokens seq[Term], used seq[Term], s mset[Fact]) bool {
+	return forall i int :: { tokens[i] } 0 <= i && i < len(tokens) ==> (ValidTokenIn_Verifier(rid, tokens[i]) # FactSeq(rid, tokens)) - (ValidTokenIn_Verifier(rid, tokens[i]) # FactSeq(rid, used)) <= ValidTokenIn_Verifier(rid, tokens[i]) # s
 }
 
 ghost
 requires InFacts(rid, tokens, used, s)
 requires t # tokens == 2 && t # used == 0
-func InFactsExample(rid, t term.Term, s mset[fact.Fact], tokens, used seq[term.Term]) {
+func InFactsExample(rid, t Term, s mset[Fact], tokens, used seq[Term]) {
 	assert InFacts(rid, tokens, used, s)
-	s = s setminus mset[fact.Fact] {fact.ValidTokenIn_Verifier(rid, t)}
-	used = used ++ seq[term.Term] { t }
+	s = s setminus mset[Fact] {ValidTokenIn_Verifier(rid, t)}
+	used = used ++ seq[Term] { t }
 
 	// fails
 	assert InFacts(rid, tokens, used, s)
@@ -106,7 +108,7 @@ ghost
 requires 0 < len(endTs)
 requires 0 <= i0 && i0 < len(endTs)
 requires forall i int :: { endTs[i] } 0 <= i && i0 <= i && i < len(endTs) ==> endTs[i] # endTs[i0:] <= ValidTokenIn_Verifier(ridT, endTs[i]) # s0
-func foo(endTs seq[int], ridT int, s0 mset[Fact], i0 int, authT int) {
+func foo(endTs seq[Term], ridT Term, s0 mset[Fact], i0 int, authT Term) {
     eT := endTs[i0]
     s1 := ((s0 setminus mset[Fact] { ValidTokenIn_Verifier(ridT, eT) }) union mset[Fact] { OutFact_Verifier(ridT, EndorsedOut(authT)) })
 
@@ -134,10 +136,10 @@ func foo(endTs seq[int], ridT int, s0 mset[Fact], i0 int, authT int) {
         } else {
             if endTs[arbI] == endTs[i0] {
                 // the following assertion is necessary!
-                assert endTs[i0:] == seq[int]{ endTs[arbI] } ++ endTs[i0+1:]
+                assert endTs[i0:] == seq[Term]{ endTs[arbI] } ++ endTs[i0+1:]
             } else {
                 // the following assertion is necessary!
-                assert endTs[i0:] == seq[int]{ endTs[i0] } ++ endTs[i0+1:]
+                assert endTs[i0:] == seq[Term]{ endTs[i0] } ++ endTs[i0+1:]
             }
         }
 
