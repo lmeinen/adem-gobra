@@ -96,26 +96,26 @@ type TokenVerificationResult struct {
 // @ requires vfyWaitGroup.UnitDebt(SendFraction!<results, threadCount!>)
 // @ requires ValidationPerm(tokenT) && gamma(tokenT) == AbsBytes(rawToken)
 // @ requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup, ghost tokenT term.Term @*/) {
+func vfyToken(runId uint64, rawToken []byte, km *keyManager, results chan *TokenVerificationResult /*@, ghost loc *int, ghost threadCount int, ghost vfyWaitGroup *sync.WaitGroup, ghost tokenT term.Term @*/) {
 	// @ share threadCount, loc, results, vfyWaitGroup, tokenT
 	// @ ghost p@ := GenericPlace()
-	// @ ghost ridT@ := term.freshTerm(fresh.fr_integer64(rid))
+	// @ ghost rid@ := term.freshTerm(fresh.fr_integer64(runId))
 	// @ ghost s := mset[fact.Fact]{}
 
 	// TODO: (lmeinen) argument for why this is sound
-	// @ inhale iospec.P_TokenVerifier(p, ridT, s)
+	// @ inhale iospec.P_TokenVerifier(p, rid, s)
 
-	// @ unfold iospec.P_TokenVerifier(p, ridT, s)
-	// @ unfold iospec.phiRF_TokenVerifier_11(p, ridT, s)
-	// @ p = iospec.get_e_Setup_TokenVerifier_placeDst(p, ridT)
-	// @ s = mset[fact.Fact] { fact.Setup_TokenVerifier(ridT) }
+	// @ unfold iospec.P_TokenVerifier(p, rid, s)
+	// @ unfold iospec.phiRF_TokenVerifier_11(p, rid, s)
+	// @ p = iospec.get_e_Setup_TokenVerifier_placeDst(p, rid)
+	// @ s = mset[fact.Fact] { fact.Setup_TokenVerifier(rid) }
 
 	// @ inhale place.token(p)
 
 	// @ unfold acc(PkgMems(), 1 / threadCount)
 	result /*@@@*/ := TokenVerificationResult{}
 	defer
-	// @ requires acc(&threadCount) && acc(&loc) && acc(&results) && acc(&vfyWaitGroup) && acc(&p) && acc(&ridT) && acc(&tokenT)
+	// @ requires acc(&threadCount) && acc(&loc) && acc(&results) && acc(&vfyWaitGroup) && acc(&p) && acc(&rid) && acc(&tokenT)
 	// @ requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ requires threadCount > 0
 	// @ requires acc(&result) &&
@@ -124,7 +124,7 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 	// @ 				ValidToken(result.token) &&
 	// @ 				let fields := (unfolding ValidToken(result.token) in result.token.Token.Values()) in
 	// @ 				acc(jwt.FieldMem(fields), 1/2) &&
-	// @ 				iospec.e_ValidTokenOut(p, ridT, tokenT) &&
+	// @ 				iospec.e_ValidTokenOut(p, rid, tokenT) &&
 	// @ 				Abs(result.token) == gamma(tokenT))) &&
 	// @ 			(result.err != nil ==> result.token == nil)
 	// @ requires acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
@@ -133,29 +133,29 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 		// @ unfold acc(ResultsInv(loc, threadCount, results), 1 / threadCount)
 		// @ fold ResultPerm(&result)
 		// @ fold SendToken(loc, threadCount, &result)
-		resultsSend(results, &result /*@, loc, threadCount, p, ridT, tokenT @*/)
+		resultsSend(results, &result /*@, loc, threadCount, p, rid, tokenT @*/)
 		// @ fold SendFraction!<results, threadCount!>()
 		// @ vfyWaitGroup.PayDebt(SendFraction!<results, threadCount!>)
 		// @ vfyWaitGroup.Done()
 	}() /*@ as f @*/
 
-	// @ unfold iospec.P_TokenVerifier(p, ridT, s)
-	// @ unfold iospec.phiRF_TokenVerifier_7(p, ridT, s)
-	// @ tokenT, p = permissionIn(tokenT, p, ridT)
-	// @ s = s union mset[fact.Fact] { fact.PermitTokenVerificationIn_TokenVerifier(ridT, tokenT) }
+	// @ unfold iospec.P_TokenVerifier(p, rid, s)
+	// @ unfold iospec.phiRF_TokenVerifier_7(p, rid, s)
+	// @ tokenT, p = permissionIn(tokenT, p, rid)
+	// @ s = s union mset[fact.Fact] { fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) }
 
-	// @ fold TokenVerifierInitState(p, ridT, s, tokenT)
+	// @ fold TokenVerifierInitState(p, rid, s, tokenT)
 	// @ fold km.Mem()
 	options := []jwt.ParseOption{jwt.WithKeyProvider(km)}
-	jwtT /*@, p, s @*/, err := jwt.Parse(rawToken /*@, p, ridT, s, tokenT @*/, options...)
+	jwtT /*@, p, s @*/, err := jwt.Parse(rawToken /*@, p, rid, s, tokenT @*/, options...)
 	if err != nil {
 		result.err = err
 		return
 	}
-	// @ unfold TokenVerifierTermState(p, ridT, s, tokenT)
+	// @ unfold TokenVerifierTermState(p, rid, s, tokenT)
 
-	// @ assert place.token(p) && iospec.P_TokenVerifier(p, ridT, s) &&
-	// @ 	fact.St_TokenVerifier_0(ridT) in s && fact.ValidTokenOut_TokenVerifier(ridT, tokenT) in s &&
+	// @ assert place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
+	// @ 	fact.St_TokenVerifier_0(rid) in s && fact.ValidTokenOut_TokenVerifier(rid, tokenT) in s &&
 	// @ 	jwtT.Abs() == gamma(tokenT)
 
 	// This assumption is verified implicitely by the FetchKeys method in km
@@ -172,8 +172,8 @@ func vfyToken(rid uint64, rawToken []byte, km *keyManager, results chan *TokenVe
 		return
 	} else {
 		// TODO: (lmeinen) get rid of all the inhale stmts
-		// @ unfold iospec.P_TokenVerifier(p, ridT, s)
-		// @ unfold iospec.phiRG_TokenVerifier_6(p, ridT, s)
+		// @ unfold iospec.P_TokenVerifier(p, rid, s)
+		// @ unfold iospec.phiRG_TokenVerifier_6(p, rid, s)
 		result.token = ademT
 		// Note that we don't have access to the IOSpec past this point
 	}
@@ -210,7 +210,7 @@ func resultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghos
 
 // Verify a slice of ADEM tokens.
 // @ requires PkgMem() && ident.PkgMem() && roots.PkgMem() && tokens.PkgMem()
-// @ requires place.token(p) && iospec.P_Verifier(p, term.freshTerm(fresh.fr_integer64(rid)), mset[fact.Fact]{})
+// @ requires place.token(p) && iospec.P_Verifier(p, term.freshTerm(fresh.fr_integer64(runId)), mset[fact.Fact]{})
 // @ requires acc(&jwt.Custom, 1/2) && acc(jwt.Custom, 1/2) && tokens.CustomFields(jwt.Custom)
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
@@ -220,17 +220,17 @@ func resultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghos
 // @ 	acc(res.endorsedBy)
 //
 //	ensures forall j int :: { res.results[j] } 0 <= j && j < len(res.results) ==> (
-//		(res.results[j] == consts.SIGNED ==> fact.OutFact_Verifier(ridT, SignedOut(aiT)) in s0) &&
-//		(res.results[j] == consts.ORGANIZATIONAL ==> gamma(oiT) == stringB(res.issuer) && fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) in s0) &&
-//		(res.results[j] == consts.ENDORSED ==> len(res.endorsedBy) == len(authTs) && (forall i int :: { authTs[i] } 0 <= i && i < len(authTs) ==> stringB(res.endorsedBy[i]) == gamma(authTs[i]) && fact.OutFact_Verifier(ridT, EndorsedOut(authTs[i])) in s0)))
-func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost p place.Place @*/) (res VerificationResults /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost aiT term.Term, ghost oiT term.Term, ghost rootKeyT term.Term, ghost ridT term.Term, ghost authTs seq[term.Term] @*/) {
-	// @ ghost ridT := term.freshTerm(fresh.fr_integer64(rid))
+//		(res.results[j] == consts.SIGNED ==> fact.OutFact_Verifier(rid, SignedOut(ai)) in s0) &&
+//		(res.results[j] == consts.ORGANIZATIONAL ==> gamma(oi) == stringB(res.issuer) && fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s0) &&
+//		(res.results[j] == consts.ENDORSED ==> len(res.endorsedBy) == len(authTs) && (forall i int :: { authTs[i] } 0 <= i && i < len(authTs) ==> stringB(res.endorsedBy[i]) == gamma(authTs[i]) && fact.OutFact_Verifier(rid, EndorsedOut(authTs[i])) in s0)))
+func VerifyTokens(runId uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost p place.Place @*/) (res VerificationResults /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost ai term.Term, ghost oi term.Term, ghost rootKey term.Term, ghost rid term.Term, ghost authTs seq[term.Term] @*/) {
+	// @ ghost rid := term.freshTerm(fresh.fr_integer64(runId))
 	// @ ghost s := mset[fact.Fact]{}
 
-	// @ unfold iospec.P_Verifier(p, ridT, s)
-	// @ unfold iospec.phiRF_Verifier_18(p, ridT, s)
-	// @ p = iospec.get_e_Setup_Verifier_placeDst(p, ridT)
-	// @ s = mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+	// @ unfold iospec.P_Verifier(p, rid, s)
+	// @ unfold iospec.phiRF_Verifier_18(p, rid, s)
+	// @ p = iospec.get_e_Setup_Verifier_placeDst(p, rid)
+	// @ s = mset[fact.Fact] { fact.Setup_Verifier(rid) }
 
 	// TODO: Is there a better way to do this? Or is this just the assumption that library functions are allowed to make
 	// @ inhale place.token(p)
@@ -252,16 +252,16 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// INIT SECTION
 	/*@
 	preserves acc(tokens.PkgMem(), _)
-	preserves place.token(p) && iospec.P_Verifier(p, ridT, s)
+	preserves place.token(p) && iospec.P_Verifier(p, rid, s)
 	preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	requires PkgMem() && roots.PkgMem()
 	requires trustedKeys != nil && trustedKeys.Mem() && jwk.KeySeq(trustedKeys.Elems())
 	requires len(rawTokens) > 0
 	requires acc(rawTokens)
 	requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
-	requires s == mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+	requires s == mset[fact.Fact] { fact.Setup_Verifier(rid) }
 	ensures trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
-	ensures fact.St_Verifier_2(ridT) in s
+	ensures fact.St_Verifier_2(rid) in s
 	ensures threadCount == len(rawTokens) && threadCount > 0
 	ensures acc(km.lock.LockP(), _) &&
 		km.lock.LockInv() == LockInv!<km!>
@@ -271,7 +271,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		results.Token(PredTrue!<!>) &&
 		results.ClosureDebt(PredTrue!<!>, 1, 2) &&
 		VfyWg(vfyWaitGroup, threadCount, results, fractionSeq)
-	ensures fact.St_Verifier_2(ridT) in s
+	ensures fact.St_Verifier_2(rid) in s
 	outline (
 	@*/
 
@@ -313,12 +313,12 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ fold acc(jwk.KeySeq(trustedKeys.Elems()), _)
 
 	/*@
-	unfold iospec.P_Verifier(p, ridT, s)
-	unfold iospec.phiR_Verifier_0(p, ridT, s)
-	l := mset[fact.Fact] { fact.Setup_Verifier(ridT) }
+	unfold iospec.P_Verifier(p, rid, s)
+	unfold iospec.phiR_Verifier_0(p, rid, s)
+	l := mset[fact.Fact] { fact.Setup_Verifier(rid) }
 	a := mset[claim.Claim] { }
-	r := mset[fact.Fact] { fact.St_Verifier_1(ridT) }
-	p = iospec.internBIO_e_FinishSetup(p, ridT, l, a, r)
+	r := mset[fact.Fact] { fact.St_Verifier_1(rid) }
+	p = iospec.internBIO_e_FinishSetup(p, rid, l, a, r)
 	s = fact.U(l, r, s)
 	@*/
 
@@ -345,7 +345,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ fold PkgMems()
 
 	// Start verification threads
-	// @ invariant place.token(p) && fact.St_Verifier_1(ridT) in s && iospec.P_Verifier(p, ridT, s)
+	// @ invariant place.token(p) && fact.St_Verifier_1(rid) in s && iospec.P_Verifier(p, rid, s)
 	// @ invariant threadCount == len(rawTokens)
 	// @ invariant acc(PkgMems(), (threadCount - i0) / threadCount)
 	// @ invariant acc(rawTokens, _)
@@ -359,31 +359,31 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	for i, rawToken := range rawTokens /*@ with i0 @*/ {
 		// Produce In fact for token
 		/*@
-		unfold iospec.P_Verifier(p, ridT, s)
-		unfold iospec.phiRF_Verifier_16(p, ridT, s)
-		tokenT, pp := tokenIn(rawToken, perm(1/2), p, ridT)
+		unfold iospec.P_Verifier(p, rid, s)
+		unfold iospec.phiRF_Verifier_16(p, rid, s)
+		tokenT, pp := tokenIn(rawToken, perm(1/2), p, rid)
 		p = pp
-		s = s union mset[fact.Fact] { fact.InFact_Verifier(ridT, tokenT) }
+		s = s union mset[fact.Fact] { fact.InFact_Verifier(rid, tokenT) }
 		@*/
 
 		// Produce PermitTokenVerificationOut fact
 		/*@
-		unfold iospec.P_Verifier(p, ridT, s)
-		unfold iospec.phiR_Verifier_1(p, ridT, s)
-		l := mset[fact.Fact] { fact.St_Verifier_1(ridT), fact.InFact_Verifier(ridT, tokenT) }
+		unfold iospec.P_Verifier(p, rid, s)
+		unfold iospec.phiR_Verifier_1(p, rid, s)
+		l := mset[fact.Fact] { fact.St_Verifier_1(rid), fact.InFact_Verifier(rid, tokenT) }
 		a := mset[claim.Claim] { }
-		r := mset[fact.Fact] { fact.St_Verifier_1(ridT), fact.PermitTokenVerificationOut_Verifier(ridT, tokenT) }
-		p = iospec.internBIO_e_ReceiveToken(p, ridT, tokenT, l, a, r)
+		r := mset[fact.Fact] { fact.St_Verifier_1(rid), fact.PermitTokenVerificationOut_Verifier(rid, tokenT) }
+		p = iospec.internBIO_e_ReceiveToken(p, rid, tokenT, l, a, r)
 		s = fact.U(l, r, s)
 		@*/
 
 		// 'Persist' Out fact
 		/*@
-		unfold iospec.P_Verifier(p, ridT, s)
-		unfold iospec.phiRG_Verifier_14(p, ridT, s)
-		assert iospec.e_PermitTokenVerificationOut(p, ridT, tokenT)
-		p = permissionOut(p, ridT, tokenT)
-		s = s setminus mset[fact.Fact] { fact.PermitTokenVerificationOut_Verifier(ridT, tokenT) }
+		unfold iospec.P_Verifier(p, rid, s)
+		unfold iospec.phiRG_Verifier_14(p, rid, s)
+		assert iospec.e_PermitTokenVerificationOut(p, rid, tokenT)
+		p = permissionOut(p, rid, tokenT)
+		s = s setminus mset[fact.Fact] { fact.PermitTokenVerificationOut_Verifier(rid, tokenT) }
 		@*/
 
 		go vfyToken(uint64(i), rawToken, km, results /*@, loc, threadCount, vfyWaitGroup, tokenT @*/)
@@ -396,12 +396,12 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	km.waitForInit()
 
 	/*@
-	unfold iospec.P_Verifier(p, ridT, s)
-	unfold iospec.phiR_Verifier_2(p, ridT, s)
-	l := mset[fact.Fact] { fact.St_Verifier_1(ridT) }
+	unfold iospec.P_Verifier(p, rid, s)
+	unfold iospec.phiR_Verifier_2(p, rid, s)
+	l := mset[fact.Fact] { fact.St_Verifier_1(rid) }
 	a := mset[claim.Claim] { }
-	r := mset[fact.Fact] { fact.St_Verifier_2(ridT) }
-	p = iospec.internBIO_e_ReceiveTokenFinish(p, ridT, l, a, r)
+	r := mset[fact.Fact] { fact.St_Verifier_2(rid) }
+	p = iospec.internBIO_e_ReceiveTokenFinish(p, rid, l, a, r)
 	s = fact.U(l, r, s)
 	@*/
 
@@ -411,7 +411,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	/*@
 	preserves acc(tokens.PkgMem(), _)
-	preserves place.token(p) && iospec.P_Verifier(p, ridT, s) && fact.St_Verifier_2(ridT) in s
+	preserves place.token(p) && iospec.P_Verifier(p, rid, s) && fact.St_Verifier_2(rid) in s
 	preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 	requires threadCount > 0
@@ -424,10 +424,10 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		results.ClosureDebt(PredTrue!<!>, 1, 2) &&
 		VfyWg(vfyWaitGroup, threadCount, results, fractionSeq)
 	ensures TokenList(ts)
-	ensures len(ts) == len(tTs) &&
+	ensures len(ts) == len(terms) &&
 	 	unfolding TokenList(ts) in
-	 	forall i int :: { ts[i] } 0 <= i && i < len(tTs) ==> unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(tTs[i])
-	 		// (forall i int :: { fact.ValidTokenIn_Verifier(ridT, tTs[i]) } 0 <= i && i < len(tTs) ==> tTs[i] # tTs <= fact.ValidTokenIn_Verifier(ridT, tTs[i]) # s)
+	 	forall i int :: { ts[i] } 0 <= i && i < len(terms) ==> unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(terms[i])
+	 		// (forall i int :: { fact.ValidTokenIn_Verifier(rid, terms[i]) } 0 <= i && i < len(terms) ==> terms[i] # terms <= fact.ValidTokenIn_Verifier(rid, terms[i]) # s)
 	outline (
 	@*/
 
@@ -435,9 +435,9 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ fold TokenList(ts)
 
 	// @ ghost n := threadCount
-	// @ ghost tTs := seq[term.Term]{}
+	// @ ghost terms := seq[term.Term]{}
 
-	// @ invariant place.token(p) && fact.St_Verifier_2(ridT) in s && iospec.P_Verifier(p, ridT, s)
+	// @ invariant place.token(p) && fact.St_Verifier_2(rid) in s && iospec.P_Verifier(p, rid, s)
 	// @ invariant 0 < n && threadCount <= n
 	// @ invariant results.RecvChannel() &&
 	// @ 	results.RecvGivenPerm() == PredTrue!<!> &&
@@ -451,9 +451,9 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant TokenList(ts)
-	// @ invariant len(ts) == len(tTs) &&
+	// @ invariant len(ts) == len(terms) &&
 	// @ 	unfolding TokenList(ts) in
-	// @ 	forall i int :: { ts[i] } 0 <= i && i < len(tTs) ==> unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(tTs[i])
+	// @ 	forall i int :: { ts[i] } 0 <= i && i < len(terms) ==> unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(terms[i])
 	// @ invariant len(ts) <= n - threadCount
 	for {
 		// [waiting] is the number of unresolved promises in the key manager, i.e.,
@@ -467,10 +467,10 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 			km.killListeners()
 		} else {
 			// @ fold PredTrue!<!>()
-			// @ unfold iospec.P_Verifier(p, ridT, s)
-			// @ unfold iospec.phiRF_Verifier_17(p, ridT, s)
-			// @ s = s union mset[fact.Fact] { fact.ValidTokenIn_Verifier(ridT, iospec.get_e_ValidTokenIn_r1(p, ridT)) }
-			if result /*@, pp, tokenT @*/ := resultsRecv(results /*@, loc, n, p, ridT @*/); result == nil {
+			// @ unfold iospec.P_Verifier(p, rid, s)
+			// @ unfold iospec.phiRF_Verifier_17(p, rid, s)
+			// @ s = s union mset[fact.Fact] { fact.ValidTokenIn_Verifier(rid, iospec.get_e_ValidTokenIn_r1(p, rid)) }
+			if result /*@, pp, tokenT @*/ := resultsRecv(results /*@, loc, n, p, rid @*/); result == nil {
 				// @ p = pp
 
 				// All threads have terminated
@@ -500,11 +500,11 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 				if result.err != nil {
 					log.Printf("discarding invalid token: %s", result.err)
 				} else {
-					// @ assert len(tTs) == len(ts)
+					// @ assert len(terms) == len(ts)
 					// @ assert Abs(result.token) == gamma(tokenT)
 					// @ unfold TokenList(ts)
 					ts = append( /*@ perm(1/2), @*/ ts, result.token)
-					// @ tTs = tTs ++ seq[term.Term] { tokenT }
+					// @ terms = terms ++ seq[term.Term] { tokenT }
 					// @ unfold ValidToken(result.token)
 					if k, ok := result.token.Token.Get("key"); ok {
 						// @ unfold jwt.FieldMem(result.token.Token.Values())
@@ -518,7 +518,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 					// km.put modifies the passed key: trivially, the token no longer corresponds to tokenT
 					// @ assume Abs(result.token) == gamma(tokenT)
 
-					// @ assert Abs(ts[len(ts) - 1]) == gamma(tTs[len(tTs) - 1])
+					// @ assert Abs(ts[len(ts) - 1]) == gamma(terms[len(terms) - 1])
 					// @ fold TokenListElem(len(ts) - 1, result.token)
 					// @ fold TokenList(ts)
 				}
@@ -526,7 +526,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		}
 	}
 
-	// @ assert iospec.P_Verifier(p, ridT, s)
+	// @ assert iospec.P_Verifier(p, rid, s)
 
 	// @ )
 
@@ -541,13 +541,13 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 
 	// @ unfold TokenList(ts)
 
-	// @ invariant iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
+	// @ invariant iospec.P_Verifier(p, rid, s) && place.token(p) && fact.St_Verifier_2(rid) in s
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 	// @ invariant acc(ts) &&
 	// @ 	forall i int :: { ts[i] } 0 <= i && i0 <= i && i < len(ts) ==> TokenListElem(i, ts[i])
-	// @ invariant len(ts) == len(tTs)
-	// @ invariant forall i int :: { ts[i] } { tTs[i] } 0 <= i && i0 <= i && i < len(tTs) ==> unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(tTs[i])
+	// @ invariant len(ts) == len(terms)
+	// @ invariant forall i int :: { ts[i] } { terms[i] } 0 <= i && i0 <= i && i < len(terms) ==> unfolding TokenListElem(i, ts[i]) in Abs(ts[i]) == gamma(terms[i])
 	// @ invariant emblem != nil ==> (
 	// @ 	ValidToken(emblem) &&
 	// @ 	Emblem(emblem) &&
@@ -571,7 +571,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 				return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 			} else {
 				emblem = t
-				// @ embT = tTs[i0]
+				// @ embT = terms[i0]
 			}
 
 			// @ unfold tokens.EmblemValidator.Constraints(emblem.Token)
@@ -613,7 +613,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 				// @ fold ValidToken(t)
 				// @ fold TokenListElem(i0, t)
 				// @ fold TokenList(endorsements)
-				// @ endTs = endTs ++ seq[term.Term] { tTs[i0] }
+				// @ endTs = endTs ++ seq[term.Term] { terms[i0] }
 			}
 		} else {
 			log.Printf("Token has wrong type: %s", t.Headers.ContentType())
@@ -626,7 +626,7 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	}
 
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
-	vfyResults, root /*@, p, s, aiT, oiT, rootKeyT, rootIdx @*/ := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, embT, endTs, p, ridT, s @*/)
+	vfyResults, root /*@, p, s, ai, oi, rootKey, rootIdx @*/ := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, embT, endTs, p, rid, s @*/)
 	if util.ContainsVerificationResult(vfyResults, consts.INVALID) {
 		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 	}
@@ -636,16 +636,16 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 	// @ ghost endorsedByTs := GenericSeq()
 
 	if util.ContainsVerificationResult(vfyResults, consts.ORGANIZATIONAL) {
-		endorsedResults, endorsedBy /*@, p, s, endorsedByTs @*/ = verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, rootIdx, p, ridT, s, aiT, oiT, endTs, rootKeyT @*/)
+		endorsedResults, endorsedBy /*@, p, s, endorsedByTs @*/ = verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, rootIdx, p, rid, s, ai, oi, endTs, rootKey @*/)
 	}
 
 	if util.ContainsVerificationResult(endorsedResults, consts.INVALID) {
 		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
 	}
 
-	// @ assert forall j int :: { vfyResults[j] } 0 <= j && j < len(vfyResults) && vfyResults[j] == consts.SIGNED ==> fact.OutFact_Verifier(ridT, SignedOut(aiT)) in s
-	// @ assert forall j int :: { vfyResults[j] } 0 <= j && j < len(vfyResults) && vfyResults[j] == consts.ORGANIZATIONAL ==> fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) in s
-	// @ assert forall j int :: { endorsedResults[j] } 0 <= j && j < len(endorsedResults) && endorsedResults[j] == consts.ENDORSED ==> (forall i int :: { endorsedByTs[i] } 0 <= i && i < len(endorsedByTs) ==> fact.OutFact_Verifier(ridT, EndorsedOut(endorsedByTs[i])) in s && stringB(endorsedBy[i]) == gamma(endorsedByTs[i]))
+	// @ assert forall j int :: { vfyResults[j] } 0 <= j && j < len(vfyResults) && vfyResults[j] == consts.SIGNED ==> fact.OutFact_Verifier(rid, SignedOut(ai)) in s
+	// @ assert forall j int :: { vfyResults[j] } 0 <= j && j < len(vfyResults) && vfyResults[j] == consts.ORGANIZATIONAL ==> fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s
+	// @ assert forall j int :: { endorsedResults[j] } 0 <= j && j < len(endorsedResults) && endorsedResults[j] == consts.ENDORSED ==> (forall i int :: { endorsedByTs[i] } 0 <= i && i < len(endorsedByTs) ==> fact.OutFact_Verifier(rid, EndorsedOut(endorsedByTs[i])) in s && stringB(endorsedBy[i]) == gamma(endorsedByTs[i]))
 
 	// TODO: (lmeinen) State transitions for out facts
 
@@ -663,5 +663,5 @@ func VerifyTokens(rid uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost
 		issuer:     iss,
 		endorsedBy: endorsedBy,
 		protected:  protected,
-	} /*@, p, s, aiT, oiT, rootKeyT, ridT, endorsedByTs @*/
+	} /*@, p, s, ai, oi, rootKey, rid, endorsedByTs @*/
 }

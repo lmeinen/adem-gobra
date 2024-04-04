@@ -26,14 +26,14 @@ import (
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ preserves ValidToken(emblem) && Emblem(emblem) && Abs(emblem) == gamma(embT)
 // @ preserves TokenList(endorsements)
-// @ preserves len(endorsements) == len(endTs)
+// @ preserves len(endorsements) == len(terms)
 // @ preserves unfolding TokenList(endorsements) in
 // @ 	forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> (
 // @ 		unfolding TokenListElem(i, endorsements[i]) in
 // @ 		Endorsement(endorsements[i]) &&
-// @ 		Abs(endorsements[i]) == gamma(endTs[i]))
-// @ requires iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
-// @ ensures iospec.P_Verifier(p0, ridT, s0) && place.token(p0)
+// @ 		Abs(endorsements[i]) == gamma(terms[i]))
+// @ requires iospec.P_Verifier(p, rid, s) && place.token(p) && fact.St_Verifier_2(rid) in s
+// @ ensures iospec.P_Verifier(p0, rid, s0) && place.token(p0)
 // @ ensures acc(vfyResults)
 // @ ensures t != nil && t != emblem ==> unfolding TokenList(endorsements) in
 // @ 	0 <= rootIdx && rootIdx < len(endorsements) && t == endorsements[rootIdx]
@@ -41,14 +41,14 @@ import (
 // @	(!(consts.INVALID in resSeq) ==> t != nil) &&
 // @	(consts.SIGNED in resSeq ==> (
 // @		t != nil &&
-// @		(fact.OutFact_Verifier(ridT, SignedOut(aiT)) in s0))) &&
+// @		(fact.OutFact_Verifier(rid, SignedOut(ai)) in s0))) &&
 // @	(consts.ORGANIZATIONAL in resSeq ==> (
 // @ 		consts.SIGNED in resSeq &&
 // @		t != nil && t != emblem &&
-// @		(fact.St_Verifier_4(ridT, oiT, rootKeyT) in s0) &&
-// @		(fact.OutFact_Verifier(ridT, OrganizationalOut(aiT, oiT)) in s0) &&
+// @		(fact.St_Verifier_4(rid, oi, rootKey) in s0) &&
+// @		(fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s0) &&
 // @		unfolding ValidToken(emblem) in
-// @		emblem.Token.Issuer() != "" && stringB(emblem.Token.Issuer()) == gamma(oiT) &&
+// @		emblem.Token.Issuer() != "" && stringB(emblem.Token.Issuer()) == gamma(oi) &&
 // @ 		unfolding TokenList(endorsements) in
 // @ 		(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) && i != rootIdx ==> (
 // @ 			unfolding TokenListElem(i, endorsements[i]) in
@@ -63,14 +63,14 @@ import (
 // @ 		t.Token.Contains("key") &&
 // @ 		t.Token.PureKeyID() != t.VerificationKey.KeyID(none[perm]) &&
 // @ 		t.Token.Issuer() == emblem.Token.Issuer() &&
-// @ 		stringB(t.VerificationKey.KeyID(none[perm])) == gamma(rootKeyT) &&
-// @ 		stringB(t.Token.Issuer()) == gamma(oiT)))
-func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost embT term.Term, ghost endTs seq[term.Term], ghost p place.Place, ghost ridT term.Term, ghost s mset[fact.Fact] @*/) (
-	vfyResults []consts.VerificationResult, t *ADEMToken /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost aiT, oiT, rootKeyT term.Term, ghost rootIdx int @*/) {
+// @ 		stringB(t.VerificationKey.KeyID(none[perm])) == gamma(rootKey) &&
+// @ 		stringB(t.Token.Issuer()) == gamma(oi)))
+func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost embT term.Term, ghost terms seq[term.Term], ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact] @*/) (
+	vfyResults []consts.VerificationResult, t *ADEMToken /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost ai, oi, rootKey term.Term, ghost rootIdx int @*/) {
 
-	// @ ghost aiT := GenericTerm()
-	// @ ghost oiT := GenericTerm()
-	// @ ghost rootKeyT := GenericTerm()
+	// @ ghost ai := GenericTerm()
+	// @ ghost oi := GenericTerm()
+	// @ ghost rootKey := GenericTerm()
 
 	endorsedBy := make(map[string]*ADEMToken)
 	// @ ghost endorsedByIdx := dict[string]int {}
@@ -80,15 +80,15 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-	// @ invariant iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
+	// @ invariant iospec.P_Verifier(p, rid, s) && place.token(p) && fact.St_Verifier_2(rid) in s
 	// @ invariant ValidToken(emblem) && Emblem(emblem) && Abs(emblem) == gamma(embT)
 	// @ invariant acc(endorsements)
-	// @ invariant len(endorsements) == len(endTs)
+	// @ invariant len(endorsements) == len(terms)
 	// @ invariant forall i int :: { TokenListElem(i, endorsements[i]) } 0 <= i && i < len(endorsements) ==> TokenListElem(i, endorsements[i])
 	// @ invariant forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> (
 	// @ 		unfolding TokenListElem(i, endorsements[i]) in
 	// @ 		Endorsement(endorsements[i]) &&
-	// @ 		Abs(endorsements[i]) == gamma(endTs[i]))
+	// @ 		Abs(endorsements[i]) == gamma(terms[i]))
 	// @ invariant acc(endorsedBy)
 	// @ invariant forall k string :: { endorsedByIdx[k] } k in domain(endorsedByIdx) ==> 0 <= endorsedByIdx[k] && endorsedByIdx[k] < len(endorsements)
 	// @ invariant forall k string :: { endorsedBy[k] } k in domain(endorsedBy) ==> (
@@ -129,7 +129,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 			log.Println("illegal branch in endorsements")
 			// @ fold acc(ValidToken(endorsement), 1/2)
 			// @ fold TokenListElem(i0, endorsements[i0])
-			return []consts.VerificationResult{consts.INVALID}, nil /*@, p, s, aiT, oiT, rootKeyT, GenericInt() @*/
+			return []consts.VerificationResult{consts.INVALID}, nil /*@, p, s, ai, oi, rootKey, GenericInt() @*/
 		} else {
 			endorsedBy[kid] = endorsement
 			// @ endorsedByIdx[kid] = i0
@@ -146,15 +146,15 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ invariant acc(tokens.PkgMem(), _)
 	// @ invariant acc(trustedKeys.Mem(), 1/2) && acc(jwk.KeySeq(trustedKeys.Elems()), _)
 	// @ invariant acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-	// @ invariant iospec.P_Verifier(p, ridT, s) && place.token(p) && fact.St_Verifier_2(ridT) in s
+	// @ invariant iospec.P_Verifier(p, rid, s) && place.token(p) && fact.St_Verifier_2(rid) in s
 	// @ invariant ValidToken(emblem) && Emblem(emblem) && Abs(emblem) == gamma(embT)
 	// @ invariant acc(endorsements)
-	// @ invariant len(endorsements) == len(endTs)
+	// @ invariant len(endorsements) == len(terms)
 	// @ invariant forall i int :: { TokenListElem(i, endorsements[i]) } 0 <= i && i < len(endorsements) ==> TokenListElem(i, endorsements[i])
 	// @ invariant forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> (
 	// @ 		unfolding TokenListElem(i, endorsements[i]) in
 	// @ 		Endorsement(endorsements[i]) &&
-	// @ 		Abs(endorsements[i]) == gamma(endTs[i]))
+	// @ 		Abs(endorsements[i]) == gamma(terms[i]))
 	// @ invariant acc(endorsedBy, 1/2)
 	// @ invariant forall k string :: { endorsements[endorsedByIdx[k]] } k in domain(endorsedByIdx) ==> 0 <= endorsedByIdx[k] && endorsedByIdx[k] < len(endorsements)
 	// @ invariant forall k string :: { endorsedBy[k] } k in endorsedBy ==> (
@@ -197,7 +197,7 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 				// @ fold acc(ValidToken(emblem), 1/2)
 				// @ ghost { if last != emblem { fold acc(TokenListElem(rootIdx, last), 1/2) } }
 				log.Printf("emblem does not comply with endorsement constraints: %s", err)
-				return []consts.VerificationResult{consts.INVALID}, nil /*@, p, s, aiT, oiT, rootKeyT, GenericInt() @*/
+				return []consts.VerificationResult{consts.INVALID}, nil /*@, p, s, ai, oi, rootKey, GenericInt() @*/
 			} else {
 				// @ fold acc(ValidToken(endorsing), 1/2)
 				// @ assert endorsing.Endorses(last)
@@ -224,11 +224,11 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ fold acc(ValidToken(root), 1/2)
 	// @ ghost { if root != emblem { fold TokenListElem(rootIdx, root) } }
 	if /*@ unfolding ValidToken(emblem) in @*/ emblem.Token.Issuer() != "" && !rootLogged {
-		return []consts.VerificationResult{consts.INVALID}, nil /*@, p, s, aiT, oiT, rootKeyT, rootIdx @*/
+		return []consts.VerificationResult{consts.INVALID}, nil /*@, p, s, ai, oi, rootKey, rootIdx @*/
 	} else if rootLogged {
 		// @ unfold TokenListElem(rootIdx, root)
 
-		// @ p, s, oiT, rootKeyT, aiT = GetOrganizationalOut(emblem, root, p, s, ridT, endTs[rootIdx], embT)
+		// @ p, s, oi, rootKey, ai = GetOrganizationalOut(emblem, root, p, s, rid, terms[rootIdx], embT)
 
 		// TODO: (lmeinen) Explicitely verify the below assumptions
 		// (both require more involved specification of the endorsedBy map, which led to problems with non-termination)
@@ -269,20 +269,20 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 			ghost var sigT term.Term
 
 			// Apply pattern requirement for anon emblem patterns
-			keyT, aiT, sigT = AnonEmblemPatternRequirement(embT, ridT, someKey, someAi, someSig, s, p)
+			keyT, ai, sigT = AnonEmblemPatternRequirement(embT, rid, someKey, someAi, someSig, s, p)
 
-			assume fact.ValidTokenIn_Verifier(ridT, embT) in s
+			assume fact.ValidTokenIn_Verifier(rid, embT) in s
 
 			// Apply IsSignedEmblem rule
-			unfold iospec.P_Verifier(p, ridT, s)
-			unfold iospec.phiR_Verifier_5(p, ridT, s)
-			l := mset[fact.Fact] { fact.St_Verifier_2(ridT), fact.ValidTokenIn_Verifier(ridT, embT) }
+			unfold iospec.P_Verifier(p, rid, s)
+			unfold iospec.phiR_Verifier_5(p, rid, s)
+			l := mset[fact.Fact] { fact.St_Verifier_2(rid), fact.ValidTokenIn_Verifier(rid, embT) }
 			a := mset[claim.Claim] { }
-			r := mset[fact.Fact] { fact.St_Verifier_0(ridT), fact.OutFact_Verifier(ridT, SignedOut(aiT)) }
-			p = iospec.internBIO_e_IsSignedEmblem(p, ridT, keyT, aiT, sigT, l, a, r)
+			r := mset[fact.Fact] { fact.St_Verifier_0(rid), fact.OutFact_Verifier(rid, SignedOut(ai)) }
+			p = iospec.internBIO_e_IsSignedEmblem(p, rid, keyT, ai, sigT, l, a, r)
 			s = fact.U(l, r, s)
 		@*/
 	}
 
-	return results, root /*@, p, s, aiT, oiT, rootKeyT, rootIdx @*/
+	return results, root /*@, p, s, ai, oi, rootKey, rootIdx @*/
 }
