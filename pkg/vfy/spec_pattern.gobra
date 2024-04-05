@@ -37,7 +37,7 @@ ensures unfolding acc(ValidToken(t), 1/4) in
 	Abs(t) == tuple2B(emblemB(), stringB(t.Token.PureAI())) &&
 	oneTerm(stringB(t.Token.PureAI())) == ai &&
 	Abs(t) == gamma(term.pair(term.pubTerm(pub.const_emblem_pub()), ai))
-func UnsignedEmblemPattern(t *ADEMToken) (ai term.Term)
+func UnsignedEmblemPattern(t *ADEMToken) (ai Term)
 
 ghost
 requires acc(ValidToken(t), 1/2)
@@ -55,7 +55,7 @@ ensures unfolding acc(ValidToken(t), 1/4) in
 	oneTerm(stringB(t.Token.PureAI())) == ai &&
 	oneTerm(stringB("sig")) == sig &&
 	Abs(t) == gamma(tuple3(key, term.pair(term.pubTerm(pub.const_emblem_pub()), ai), sig))
-func AnonEmblemPattern(t *ADEMToken) (key, ai, sig term.Term)
+func AnonEmblemPattern(t *ADEMToken) (key, ai, sig Term)
 
 ghost
 requires acc(ValidToken(t), 1/2)
@@ -72,7 +72,7 @@ ensures unfolding acc(ValidToken(t), 1/4) in
 	oneTerm(stringB(t.Token.PureAI())) == ai &&
 	oneTerm(stringB("sig")) == sig &&
 	Abs(t) == gamma(tuple4(key, oi, tuple3(term.pubTerm(pub.const_emblem_pub()), ai, oi), sig))
-func SignedEmblemPattern(t *ADEMToken, key, oi term.Term) (ai, sig term.Term)
+func SignedEmblemPattern(t *ADEMToken, key, oi Term) (ai, sig Term)
 
 ghost
 requires acc(ValidToken(t), 1/2)
@@ -89,7 +89,7 @@ ensures unfolding acc(ValidToken(t), 1/4) in
 	oneTerm(stringB(t.Token.PureKeyID())) == newkey &&
 	oneTerm(stringB("sig")) == sig &&
 	Abs(t) == gamma(tuple4(endorsedKey, oi, tuple3(term.pubTerm(pub.const_end_pub()), oi, newkey), sig))
-func OrgEndPattern(t *ADEMToken, oi, endorsedKey term.Term) (newkey, sig term.Term)
+func OrgEndPattern(t *ADEMToken, oi, endorsedKey Term) (newkey, sig Term)
 
 ghost
 requires acc(ValidToken(t), 1/2)
@@ -108,7 +108,7 @@ ensures unfolding acc(ValidToken(t), 1/4) in
 	oneTerm(stringB(t.Token.PureKeyID())) == endorsedkey &&
 	oneTerm(stringB("sig")) == sig &&
 	Abs(t) == gamma(tuple4(rootkey, oi, tuple3(term.pubTerm(pub.const_root_end_pub()), oi, endorsedkey), sig))
-func RootEndPattern(t *ADEMToken) (rootkey, oi, endorsedkey, sig term.Term)
+func RootEndPattern(t *ADEMToken) (rootkey, oi, endorsedkey, sig Term)
 
 ghost
 requires acc(ValidToken(t), 1/2)
@@ -126,7 +126,7 @@ ensures unfolding acc(ValidToken(t), 1/4) in
 	oneTerm(stringB(t.Token.Issuer())) == auth &&
 	oneTerm(stringB("sig")) == sig &&
 	Abs(t) == gamma(tuple4(key, auth, tuple3(term.pubTerm(pub.const_root_end_pub()), oi, endorsedKey), sig))
-func AuthEndPattern(t *ADEMToken, oi, endorsedKey term.Term) (key, auth, sig term.Term)
+func AuthEndPattern(t *ADEMToken, oi, endorsedKey Term) (key, auth, sig Term)
 
 // ++++++ Backup for reference ++++++
 
