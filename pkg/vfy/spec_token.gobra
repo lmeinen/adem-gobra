@@ -1,0 +1,98 @@
+// +gobra
+// ##(--onlyFilesWithHeader)
+package vfy
+
+import (
+	"github.com/adem-wg/adem-proto/pkg/consts"
+	"github.com/adem-wg/adem-proto/pkg/ident"
+	"github.com/adem-wg/adem-proto/pkg/tokens"
+	. "lib"
+	"term"
+	"pub"
+
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
+)
+
+pred ValidToken(t *ADEMToken) {
+	acc(t) &&
+	t.VerificationKey != nil &&
+		acc(t.VerificationKey.Mem(), _) &&
+	t.Headers != nil &&
+	t.Token != nil && 
+		acc(t.Token.Mem(), _) && 
+		acc(jwt.FieldMem(t.Token.Values()), 1/2) &&
+	unfolding acc(jwt.FieldMem(t.Token.Values()), 1/2) in
+		t.Token.Contains("log") ==> t.Token.Issuer() != ""
+}
+
+// predicate wrapper to ensure injectivity of t
+pred TokenListElem(_ int, t *ADEMToken) {
+	t != nil && ValidToken(t)
+}
+
+pred TokenList(ts []*ADEMToken) {
+	acc(ts) &&
+	forall i int :: { TokenListElem(i, ts[i]) } 0 <= i && i < len(ts) ==> TokenListElem(i, ts[i])
+}
+
+ghost
+requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _)
+decreases _
+pure func Emblem(t *ADEMToken) bool {
+	return unfolding acc(ValidToken(t), _) in
+	jwt.IsValid(t.Token) &&
+		t.Token.Contains("ass") &&
+		!t.Token.Contains("log") &&
+		t.Headers.ContentType() == string(consts.EmblemCty) && 
+		t.Headers.Algorithm() != jwa.NoSignature
+}
+
+ghost
+requires acc(ValidToken(t), _)
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+pure func Endorsement(t *ADEMToken) bool {
+	return unfolding acc(ValidToken(t), _) in
+	jwt.IsValid(t.Token) &&
+		t.Headers.ContentType() == string(consts.EndorsementCty) &&
+		t.Token.Contains("end") &&
+		typeOf(t.Token.Values()["end"]) == type[bool]
+}
+
+ghost
+requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+requires ValidToken(emblem)
+requires TokenList(endorsements)
+requires unfolding TokenList(endorsements) in forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> unfolding TokenListElem(i, endorsements[i]) in Endorsement(endorsements[i])
+pure func Root(root *ADEMToken, emblem *ADEMToken, endorsements []*ADEMToken, rootIdx int) bool {
+	return 0 <= rootIdx && rootIdx < len(endorsements) &&
+		unfolding TokenList(endorsements) in
+		endorsements[rootIdx] == root &&
+		unfolding TokenListElem(rootIdx, root) in
+		(forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) && i != rootIdx ==> (
+			unfolding TokenListElem(i, endorsements[i]) in
+			endorsements[i].Endorses(root) ==> (
+				unfolding ValidToken(endorsements[i]) in
+				unfolding ValidToken(root) in
+				root.Token.Issuer() != endorsements[i].Token.Issuer() || 
+				!endorsements[i].Token.PureGet("end").(bool)))) &&
+		unfolding ValidToken(root) in
+		root.Token.Contains("key") &&
+		root.Token.PureKeyID() != root.VerificationKey.KeyID(none[perm]) &&
+		unfolding ValidToken(emblem) in
+		(root.Token.Issuer() == emblem.Token.Issuer())
+}
+
+ghost
+requires acc(ValidToken(endorser), 1/4)
+requires acc(ValidToken(endorsed), 1/4)
+decreases _
+pure func (endorser *ADEMToken) Endorses(endorsed *ADEMToken) bool {
+	return unfolding acc(ValidToken(endorser), 1/4) in
+		endorser.Token.Contains("key") &&
+		unfolding acc(ValidToken(endorsed), 1/4) in
+		endorser.Token.Subject() == endorsed.Token.Issuer() && 
+		endorser.Token.PureKeyID() == endorsed.VerificationKey.KeyID(none[perm])
+}

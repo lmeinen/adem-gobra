@@ -1,0 +1,69 @@
+// -gobra
+// ##(--onlyFilesWithHeader)
+package vfy
+
+import (
+    . "lib"
+
+	. "fact"
+    . "iospec"
+)
+
+ghost
+pure func InFacts(rid Term, ts seq[Term], used seq[Term], s mset[Fact]) bool {
+	return forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> (ts[i] # ts) - (ts[i] # used) <= ValidTokenIn_Verifier(rid, ts[i]) # s
+}
+
+ghost
+pure func InFactsP(rid Term, ts seq[Term], s mset[Fact]) bool {
+	return forall i int :: { ts[i] } 0 <= i && i < len(ts) ==> ts[i] # ts <= ValidTokenIn_Verifier(rid, ts[i]) # s
+}
+
+ghost
+requires forall i int :: i in idxs ==> 0 <= i && i < len(ts)
+ensures len(idxs) == len(tts)
+ensures exists unique dict[int]int :: domain(unique) == idxs &&
+    (forall i int :: i in domain(unique) ==> 0 <= unique[i] && unique[i] < len(tts) && ts[i] == tts[unique[i]]) &&
+    (forall i, j int :: i in domain(unique) && j in domain(unique) && i != j ==> unique[i] != unique[j])
+pure func IdxSetToSeq(ts seq[Term], idxs set[int]) (tts seq[Term])
+
+ghost
+requires forall i int :: i in used ==> 0 <= i && i < len(ts)
+requires 0 <= idx && idx < len(ts) && !(idx in used)
+requires InFacts(rid, ts, IdxSetToSeq(ts, used), s)
+func InFactsExample(rid Term, idx int, s mset[Fact], ts seq[Term], used set[int]) {
+    t := ts[idx]
+    usedTerms := IdxSetToSeq(ts, used)
+    assert t in ts
+    assert t # ts > t # usedTerms
+    assert ValidTokenIn_Verifier(rid, t) in s
+    DeriveInFactInjectivity(rid)
+	s = s setminus mset[Fact] {ValidTokenIn_Verifier(rid, t)}
+    used = used union set[int] { idx }
+
+	// passes!
+	assert InFacts(rid, ts, IdxSetToSeq(ts, used), s)
+}
+
+ghost
+requires 0 <= idx && idx < len(ts)
+func Example(idx int, ts seq[int]) {
+    tsP := ts[:idx] ++ ts[idx + 1:]
+    assert forall i int :: { ts[i] # ts } 0 <= i && i < len(ts) && ts[i] != ts[idx] ==> ts[i] # ts == ts[i] # tsP
+}
+
+ghost
+func GenericInt() int
+
+ghost
+ensures forall t0, t1 Term :: t0 != t1 ==> ValidTokenIn_Verifier(rid, t0) != ValidTokenIn_Verifier(rid, t1)
+func DeriveInFactInjectivity(rid Term) bool {
+    t0 := GenericTerm()
+    t1 := GenericTerm()
+
+    assert t0 in seq[Term] {rid, t0}
+    assert t1 in seq[Term] {rid, t1}
+    assert t0 != t1 ==> ValidTokenIn_Verifier(rid, t0) != ValidTokenIn_Verifier(rid, t1)
+
+    assume forall t0, t1 Term :: t0 != t1 ==> ValidTokenIn_Verifier(rid, t0) != ValidTokenIn_Verifier(rid, t1)
+}
