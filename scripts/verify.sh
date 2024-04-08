@@ -5,7 +5,7 @@ function gobra_cleanup() {
 }
 
 function gobra() {
-    GOBRA="${GOBRABIN:-/gobra/gobra.jar}"
+    BIN="${GOBRA:-/gobra/gobra.jar}"
     ADEM=$(dirname $(
             cd $(dirname "$0")
             pwd
@@ -13,7 +13,7 @@ function gobra() {
     
     if [[ "$*" == *"--help"* || "$*" == *"-h"* ]]
     then
-        java -jar -Xss128m $GOBRA \
+        java -jar -Xss128m $BIN \
         --help
         return
     fi
@@ -24,7 +24,7 @@ function gobra() {
     
     bash $ADEM/scripts/gobra-pre.sh
     
-    java -jar -Xss512m $GOBRA \
+    java -jar -Xss512m $BIN \
     --gobraDirectory $ADEM/out \
     --cacheFile $ADEM/.cache \
     --include $ADEM $ADEM/gob $ADEM/tamigloo \
@@ -37,5 +37,6 @@ function gobra() {
     --projectRoot $ADEM/pkg \
     --recursive \
     "${@:1}"
-    
 }
+
+gobra "$@"

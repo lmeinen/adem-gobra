@@ -11,6 +11,7 @@ import (
 	// @ "fact"
 	// @ "term"
 	// @ "place"
+	// @ "iospec"
 )
 
 // The `sink` argument passed to the KeyProvider is a temporary storage
@@ -30,9 +31,9 @@ type KeyProvider interface {
 	// @ pred Mem()
 
 	// @ requires Mem() && c != nil && sink != nil && acc(sig, _) && acc(m, _)
-	// @ requires lib.TokenVerifierInitState(p, rid, s, tokenT)
+	// @ requires place.token(p) && iospec.P_TokenVerifier(p, rid, s) && s == mset[fact.Fact] { fact.Setup_TokenVerifier(rid), fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) }
 	// @ requires m.AbsMsg() == lib.gamma(tokenT)
-	// @ ensures e == nil ==> lib.TokenVerifierInitState(p1, rid, s1, tokenT)
+	// @ ensures e == nil ==> place.token(p1) && iospec.P_TokenVerifier(p1, rid, s1) && s1 == mset[fact.Fact] { fact.Setup_TokenVerifier(rid), fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) }
 	FetchKeys(c context.Context, sink KeySink, sig *Signature, m *Message /*@, ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost tokenT term.Term @*/) (e error /*@, ghost p1 place.Place, ghost s1 mset[fact.Fact] @*/)
 }
 

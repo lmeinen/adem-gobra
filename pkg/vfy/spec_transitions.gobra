@@ -106,6 +106,47 @@ func ApplyIsOrganizationalEmblem(emblem, root *ADEMToken, p place.Place, s mset[
 
 ghost
 preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
+preserves acc(ValidToken(emblem), 1/2) && Emblem(emblem)
+preserves acc(ValidToken(endorsement), 3/4) && Endorsement(endorsement)
+preserves unfolding acc(ValidToken(emblem), 1/2) in
+	unfolding acc(ValidToken(endorsement), 3/4) in
+	emblem.Token.Issuer() != "" &&
+	!endorsement.Token.Contains("log") &&
+	endorsement.Token.Contains("key") &&
+	endorsement.Token.Issuer() == emblem.Token.Issuer() &&
+	endorsement.Token.Subject() == endorsement.Token.Issuer()
+preserves gamma(t) == Abs(endorsement)
+preserves gamma(oi) == unfolding acc(ValidToken(emblem), 1/2) in stringB(emblem.Token.Issuer())
+preserves gamma(key) == unfolding acc(ValidToken(endorsement), 3/4) in stringB(endorsement.VerificationKey.KeyID(none[perm]))
+requires iospec.P_Verifier(p, rid, s) && place.token(p) && fact.St_Verifier_3(rid, oi, rootKey, key) in s && fact.ValidTokenIn_Verifier(rid, t) in s
+ensures gamma(endorsedKey) == unfolding acc(ValidToken(endorsement), 3/4) in stringB(endorsement.Token.PureKeyID())
+ensures iospec.P_Verifier(p0, rid, s0) && place.token(p0) && s0 == s setminus
+	mset[fact.Fact] {
+		fact.St_Verifier_3(rid, oi, rootKey, key),
+		fact.ValidTokenIn_Verifier(rid, t) } union
+	mset[fact.Fact] { fact.St_Verifier_3(rid, oi, rootKey, endorsedKey) }
+func ApplyCollectInternalEndorsements(emblem, endorsement *ADEMToken, p place.Place, s mset[fact.Fact], rid, rootKey, key, oi, t Term) (p0 place.Place, s0 mset[fact.Fact], endorsedKey Term) {
+
+	// Parse internal endorsement pattern
+	someEndorsedKey, someSig := OrgEndPattern(endorsement, oi, key)
+
+	// Apply pattern requirement for internal endorsement patterns
+	endorsedKey, sig := InternalEndorsementPatternRequirement(t, rid, oi, rootKey, key, someEndorsedKey, someSig, s, p)
+
+	// Apply IsOrganizationalEmblem rule
+	unfold iospec.P_Verifier(p, rid, s)
+	unfold iospec.phiR_Verifier_10(p, rid, s)
+	l := mset[fact.Fact] { fact.St_Verifier_3(rid, oi, rootKey, key), fact.ValidTokenIn_Verifier(rid, t) }
+	a := mset[claim.Claim] { }
+	r := mset[fact.Fact] { fact.St_Verifier_3(rid, oi, rootKey, endorsedKey) }
+	p = iospec.internBIO_e_CollectInternalEndorsements(p, rid, oi, rootKey, key, endorsedKey, sig, l, a, r)
+	s = fact.U(l, r, s)
+
+	return p, s, endorsedKey
+}
+
+ghost
+preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 preserves acc(ValidToken(emblem), 3/4) && Emblem(emblem) && Abs(emblem) == gamma(embT)
 preserves unfolding acc(ValidToken(emblem), 1/4) in
 	unfolding acc(jwt.FieldMem(emblem.Token.Values()), 1/8) in
