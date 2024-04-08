@@ -44,4 +44,7 @@ decreases _
 pure func AbsBytes(rawToken []byte) (res Bytes)
 
 ghost
-pure func GenericInt() int
+requires forall i int :: 0 <= i && i < len(idxs) ==> 0 <= idxs[i] && idxs[i] < len(ts)
+ensures len(idxs) == len(tts)
+ensures forall i int :: 0 <= i && i < len(tts) ==> tts[i] == ts[idxs[i]]
+pure func FilterTermsByIdx(ts seq[Term], idxs seq[int]) (tts seq[Term])

@@ -22,52 +22,37 @@ pure func PathTrigger(_ int) bool { return true }
 
 ghost
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-requires acc(ValidToken(emblem), 1/2) && Emblem(emblem)
-requires acc(endorsements, 1/2)
-requires forall i int :: { TokenListElem(i, endorsements[i]) } 0 <= i && i < len(endorsements) ==> acc(TokenListElem(i, endorsements[i]), 1/2)
-requires forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> emblem != endorsements[i]
-decreases len(path)
-pure func EndorsementPath(path seq[int], emblem *ADEMToken, endorsements []*ADEMToken) bool {
-	return forall i int :: { PathTrigger(i) } 0 <= i && i < len(path) ==> (
-		let idx0 := path[i] in
-	 			0 <= idx0 && idx0 < len(endorsements) &&
-				let t0 := endorsements[idx0] in
-				i < len(path) - 1 ?
-					let idx1 := path[i + 1] in
-	 				0 <= idx1 && idx1 < len(endorsements) &&
-					let t1 := endorsements[idx1] in (
-	 					unfolding acc(TokenListElem(idx0, t0), 1/4) in
-	 					unfolding acc(TokenListElem(idx1, t1), 1/4) in
-	 					t0.Endorses(t1)) :
-	 			unfolding acc(TokenListElem(idx0, t0), 1/4) in
-				t0.Endorses(emblem))
+requires forall i int :: { path[i] } 0 <= i && i < len(path) ==> acc(ValidToken(path[i]), _)
+pure func EndorsementPath(path seq[*ADEMToken]) bool {
+	return forall i int :: { path[i] } 0 <= i && i < len(path) - 1 ==> path[i].Endorses(path[i + 1])
 }
 
 ghost
-trusted
 requires acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-requires acc(ValidToken(emblem), 1/2) && Emblem(emblem)
-requires acc(endorsements, 1/2)
-requires forall i int :: { TokenListElem(i, endorsements[i]) } 0 <= i && i < len(endorsements) ==> acc(TokenListElem(i, endorsements[i]), 1/2)
-requires forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> emblem != endorsements[i]
-requires EndorsementPath(endorsementChain, emblem, endorsements)
-requires 0 <= lastIdx && lastIdx < len(endorsements) &&
-	unfolding acc(TokenListElem(lastIdx, endorsements[lastIdx]), 1/4) in  
-	len(endorsementChain) == 0 ? 
-		endorsements[lastIdx].Endorses(emblem) : 
-	PathTrigger(0) &&
-	unfolding acc(TokenListElem(endorsementChain[0], endorsements[endorsementChain[0]]), 1/4) in
-	endorsements[lastIdx].Endorses(endorsements[endorsementChain[0]])
+requires acc(ValidToken(endorsement), _)
+requires forall i int :: { path[i] } 0 <= i && i < len(path) ==> acc(ValidToken(path[i]), _) && endorsement != path[i] && (i < len(path) - 1 ==> path[i].Endorses(path[i + 1]))
+requires len(path) > 0
+requires endorsement.Endorses(path[0])
 ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-ensures acc(ValidToken(emblem), 1/2) && Emblem(emblem)
-ensures acc(endorsements, 1/2)
-ensures forall i int :: { TokenListElem(i, endorsements[i]) } 0 <= i && i < len(endorsements) ==> acc(TokenListElem(i, endorsements[i]), 1/2)
-ensures forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> emblem != endorsements[i]
-ensures newEndorsementChain == seq[int] { lastIdx } ++ endorsementChain
-ensures EndorsementPath(newEndorsementChain, emblem, endorsements)
-func DeriveNewEndorsementPath(endorsementChain seq[int], lastIdx int, emblem *ADEMToken, endorsements []*ADEMToken) (newEndorsementChain seq[int]) {
-	newEndorsementChain := seq[int] { lastIdx } ++ endorsementChain
-	assert newEndorsementChain[1:] == endorsementChain
-	assert EndorsementPath(newEndorsementChain[1:], emblem, endorsements)
-	return newEndorsementChain
+ensures forall i int :: { newp[i] } 0 <= i && i < len(newp) ==> acc(ValidToken(newp[i]), _) && (i < len(newp) - 1 ==> newp[i].Endorses(newp[i + 1]))
+ensures newp == seq[*ADEMToken] { endorsement } ++ path
+func DeriveNewEndorsementPath(path seq[*ADEMToken], endorsement *ADEMToken) (newp seq[*ADEMToken]) {
+	newp = seq[*ADEMToken] { endorsement } ++ path
+	assert newp[1:] == path
+
+	assert newp[0].Endorses(newp[1])
+	assert newp[0] in newp
+
+	idx := GenericInt()
+	if idx == 0 {
+		assert newp[idx] == endorsement
+		assert newp[idx].Endorses(newp[idx + 1])
+	} else if 0 < idx && idx < len(newp) - 1 {
+		assert newp[idx] in path
+		assert newp[idx] == path[idx - 1]
+		assert path[idx - 1].Endorses(path[idx])
+		assert newp[idx].Endorses(newp[idx + 1])
+	}
+
+	return newp
 }
