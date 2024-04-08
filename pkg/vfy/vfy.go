@@ -142,9 +142,8 @@ func vfyToken(runId uint64, rawToken []byte, km *keyManager, results chan *Token
 	// @ unfold iospec.P_TokenVerifier(p, rid, s)
 	// @ unfold iospec.phiRF_TokenVerifier_7(p, rid, s)
 	// @ tokenT, p = permissionIn(tokenT, p, rid)
-	// @ s = s union mset[fact.Fact] { fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) }
+	// @ s = mset[fact.Fact] { fact.Setup_TokenVerifier(rid), fact.PermitTokenVerificationIn_TokenVerifier(rid, tokenT) }
 
-	// @ fold TokenVerifierInitState(p, rid, s, tokenT)
 	// @ fold km.Mem()
 	options := []jwt.ParseOption{jwt.WithKeyProvider(km)}
 	jwtT /*@, p, s @*/, err := jwt.Parse(rawToken /*@, p, rid, s, tokenT @*/, options...)
@@ -152,10 +151,9 @@ func vfyToken(runId uint64, rawToken []byte, km *keyManager, results chan *Token
 		result.err = err
 		return
 	}
-	// @ unfold TokenVerifierTermState(p, rid, s, tokenT)
 
 	// @ assert place.token(p) && iospec.P_TokenVerifier(p, rid, s) &&
-	// @ 	fact.St_TokenVerifier_0(rid) in s && fact.ValidTokenOut_TokenVerifier(rid, tokenT) in s &&
+	// @ 	s == mset[fact.Fact] { fact.St_TokenVerifier_0(rid), fact.ValidTokenOut_TokenVerifier(rid, tokenT) } &&
 	// @ 	jwtT.Abs() == gamma(tokenT)
 
 	// This assumption is verified implicitely by the FetchKeys method in km
@@ -171,7 +169,6 @@ func vfyToken(runId uint64, rawToken []byte, km *keyManager, results chan *Token
 		result.err = err
 		return
 	} else {
-		// TODO: (lmeinen) get rid of all the inhale stmts
 		// @ unfold iospec.P_TokenVerifier(p, rid, s)
 		// @ unfold iospec.phiRG_TokenVerifier_6(p, rid, s)
 		result.token = ademT

@@ -44,6 +44,8 @@ ghost func GenericSeq() (ghost seq[term.Term])
 
 ghost func GenericIntSeq() (ghost seq[int])
 
+ghost func GenericInt() int
+
 ghost func GenericTerm() term.Term
 
 ghost
