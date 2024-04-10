@@ -8,7 +8,7 @@ from typing import List
 logging.basicConfig()
 logging.getLogger().setLevel(logging.DEBUG)
 
-NUM_RUNS = 1
+NUM_RUNS = 10
 SCRIPT = "verify.sh"
 PACKAGES = ["consts", "util", "ident", "roots", "tokens", "vfy"]
 
