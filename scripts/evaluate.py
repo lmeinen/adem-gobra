@@ -57,9 +57,10 @@ def setup(bin: str, timeout: int, ps: List[str]) -> List[str]:
 
 
 def bench_for_arg(arg: str) -> int:
+    logging.debug(f"running benchmark for arg '{arg}'")
     data = []
+    tries = 0
     for i in range(NUM_RUNS):
-        logging.debug(f"running for arg '{arg}' ({i + 1}/{NUM_RUNS})")
         start = time.time()
         try:
             subprocess.run(
@@ -72,8 +73,15 @@ def bench_for_arg(arg: str) -> int:
             logging.error(
                 f"Gobra threw an exception with stdout:\n\n{e.stdout.decode('utf-8')}"
             )
-            raise e
+            tries += 1
+            if tries == 3:
+                raise e
+            else:
+                logging.warning(f"trying again... ({tries}/3)")
+                i -= 1
+                continue
         end = time.time()
+        logging.debug(f"run {i}/{NUM_RUNS} took {end - start}s")
         data.append(end - start)
     return sum(data) / len(data)
 
