@@ -131,7 +131,10 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ invariant forall k string :: { endorsedBy[k] } k in endorsedBy ==> (
 	// @ 	k in domain(endorsedByIdx) &&
 	// @ 	let t, _ := endorsedBy[k] in
-	// @ 	t == endorsements[endorsedByIdx[k]])
+	// @ 	t == endorsements[endorsedByIdx[k]] &&
+	// @ 	unfolding TokenListElem(endorsedByIdx[k], t) in
+	// @ 	unfolding ValidToken(t) in
+	// @ 		t.Token.Contains("key"))
 	// @ invariant last != emblem ==>
 	// @ 		0 <= rootIdx && rootIdx < len(endorsements) &&
 	// @ 		last == endorsements[rootIdx]
@@ -158,7 +161,6 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 				return []consts.VerificationResult{consts.INVALID}, nil /*@, p, s, ai, oi, rootKey, GenericInt() @*/
 			} else {
 				// @ fold acc(ValidToken(endorsing), 1/2)
-				//  assert endorsing.Endorses(last)
 				// @ fold acc(TokenListElem(endorsedByIdx[kid], endorsing), 1/2)
 				// @ fold acc(ValidToken(emblem), 1/2)
 				// @ ghost { if last != emblem { fold acc(TokenListElem(rootIdx, last), 1/2) } }
