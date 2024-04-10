@@ -1,49 +1,89 @@
-from typing import List, Tuple
-from plot import performance_plot
+import argparse
+import logging
+import os
+import time
 import subprocess
+from typing import List
 
-BINARY_NAME = "mmm.o"
-C_FILE = "mmm.c"
+logging.basicConfig()
+logging.getLogger().setLevel(logging.DEBUG)
+
+NUM_RUNS = 10
+SCRIPT = "verify.sh"
+PACKAGES = ["consts", "util", "ident", "roots", "tokens", "vfy"]
+
+parser = argparse.ArgumentParser(
+    prog="ADEMGobble",
+    description="Runs benchmarks to evaluate verification times for all packages in the ADEM codebase. If the verification fails, an error is reported.",
+    epilog="Some arguments are communicated to the verification script as environment variables. Check the script for specifics.",
+)
+
+parser.add_argument(
+    "-g",
+    "--gobra",
+    type=str,
+    default="$HOME/repos/gobra/target/scala-2.13/gobra.jar",
+    help="Path to a pre-compiled Gobra jar. See https://github.com/viperproject/gobra?tab=readme-ov-file#installation for details.",
+)
+parser.add_argument(
+    "-t",
+    "--timeout",
+    default="600",
+    type=int,
+    help="Number of seconds before the verification should time out.",
+)
+parser.add_argument(
+    "-p",
+    "--packages",
+    nargs="*",
+    default=PACKAGES,
+    help="Packages to verify. If all packages are verified, another round of measurements will be taken for total verification time.",
+    choices=PACKAGES,
+)
 
 
-def flops(n: int) -> int:
-    return 2 * n**3
+def setup(bin: str, timeout: int, ps: List[str]) -> List[str]:
+    if os.path.isfile(bin):
+        os.environ["BIN"] = bin
+    if timeout > 0:
+        os.environ["TIMEOUT"] = f"{timeout}s"
+    ls = []
+    for p in ps:
+        ls.append(f"--includePackages {p}")
+    if len(ls) == len(PACKAGES):
+        # run all packages at once
+        ls.append(f"")
+    return ls
 
 
-def run() -> List[Tuple[int, float]]:
+def bench_for_arg(arg: str) -> int:
     data = []
-    for n in range(100, 1600, 100):
-        print("running for n = {}...".format(n))
-        cycles = float(
-            subprocess.check_output(
-                "./{} {}".format(BINARY_NAME, n), shell=True
-            ).decode()
-        )
-        print("took {} cycles --> {} flops/cycle".format(cycles, flops(n) / cycles))
-        data.append((n, flops(n) / cycles))
-    return data
+    for i in range(NUM_RUNS):
+        logging.debug(f"running for arg '{arg}' ({i + 1}/{NUM_RUNS})")
+        start = time.time()
+        try:
+            subprocess.run(
+                f"bash {os.path.dirname(__file__)}/{SCRIPT} {arg}",
+                capture_output=True,
+                shell=True,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            logging.error(
+                f"Gobra threw an exception with stdout:\n\n{e.stdout.decode('utf-8')}"
+            )
+            raise e
+        end = time.time()
+        data.append(end - start)
+    return sum(data) / len(data)
 
 
-def build(*flags):
-    cmd = "gcc "
-    for f in flags:
-        cmd = cmd + f + " "
-    cmd = cmd + "-o {} {}".format(BINARY_NAME, C_FILE)
-    print("building '{}'...".format(cmd))
-    subprocess.call(cmd, shell=True)
+def bench(args: List[str]):
+    for arg in args:
+        avgtime = round(bench_for_arg(arg), 1)
+        logging.info(f"{arg}: {avgtime}s")
 
 
-def build_and_run(*flags):
-    build(*flags)
-    data = run()
-    return " ".join(flags), data
-
-
-values = {}
-flags, data = build_and_run("-O0")
-values[flags] = data
-flags, data = build_and_run("-O3", "-fno-tree-vectorize")
-values[flags] = data
-flags, data = build_and_run("-O3", "-ffast-math", "-march=native")
-values[flags] = data
-performance_plot(values=values, title="mmm optimization flags", file_name="mmm_opt.png")
+args = parser.parse_args()
+verify_args = setup(args.gobra, args.timeout, args.packages)
+bench(verify_args)

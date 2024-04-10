@@ -17,6 +17,8 @@ import os
 from os import path
 import re
 
+PACKAGES = ["consts", "util", "ident", "roots", "tokens", "vfy"]
+
 
 def has_header(fname):
     with open(fname, "r") as fhandle:
@@ -42,6 +44,10 @@ def handle_go_file(fname):
             else:
                 if re.match(r"\s*// ?@.*", line):
                     loa += 1
+                elif re.match(r"/\*@.*@\*/", line):
+                    # inline ghost code is counted as both
+                    loa += 1
+                    loc += 1
                 elif re.match(r"\s*/\*@", line):
                     gobra_mode = True
                 elif (len(line.strip()) > 0) and not (re.match(r"\s*//.*", line)):
@@ -81,9 +87,10 @@ for dirname, dirs, files in os.walk("../", topdown=True):
                 new_loa = handle_gobra_file(f)
             local_loc += new_loc
             local_loa += new_loa
-    if local_loc > 0 or local_loa > 0:
-        print(f"{dirname} LOC: {local_loc}")
-        print(f"{dirname} LOA: {local_loa}")
+    elems = dirname.split("/")
+    if elems[-2] == "pkg" and elems[-1] in PACKAGES:
+        print(f"{elems[-1]} LOC: {local_loc}")
+        print(f"{elems[-1]} LOA: {local_loa}")
     loc += local_loc
     loa += local_loa
 

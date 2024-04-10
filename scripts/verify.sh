@@ -5,7 +5,7 @@ function gobra_cleanup() {
 }
 
 function gobra() {
-    BIN="${GOBRA:-/gobra/gobra.jar}"
+    BIN="${GOBRA:-$HOME/repos/gobra/target/scala-2.13/gobra.jar}"
     ADEM=$(dirname $(
             cd $(dirname "$0")
             pwd
@@ -18,7 +18,11 @@ function gobra() {
         return
     fi
     
-    GMAX="${GMAX:-180s}"
+    echo "$BIN"
+    echo "$TIMOUT"
+    
+    # time out after 10 minutes: not even the vfy package should take that long
+    TIMEOUT="${TIMEOUT:-600s}"
     
     trap gobra_cleanup EXIT
     
@@ -31,9 +35,8 @@ function gobra() {
     --module github.com/adem-wg/adem-proto/ \
     --noStreamErrors \
     --parallelizeBranches \
-    --z3Exe /usr/bin/z3 \
     --onlyFilesWithHeader \
-    --packageTimeout $GMAX \
+    --packageTimeout $TIMEOUT \
     --projectRoot $ADEM/pkg \
     --recursive \
     "${@:1}"
