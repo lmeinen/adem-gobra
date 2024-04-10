@@ -67,7 +67,9 @@ def handle_gobra_file(fname):
 loc = 0  # lines of code
 loa = 0  # lines of annotation
 
-for dirname, dirs, files in os.walk("../", topdown=True):
+scriptdir = os.path.dirname(__file__)
+
+for dirname, dirs, files in os.walk(path.join(scriptdir, ".."), topdown=True):
     # exclude dotted directories
     dirs[:] = [d for d in dirs if (not path.split(d)[-1].startswith("."))]
     tocheck = [
@@ -89,8 +91,7 @@ for dirname, dirs, files in os.walk("../", topdown=True):
             local_loa += new_loa
     elems = dirname.split("/")
     if elems[-2] == "pkg" and elems[-1] in PACKAGES:
-        print(f"{elems[-1]} LOC: {local_loc}")
-        print(f"{elems[-1]} LOA: {local_loa}")
+        print(f"{elems[-1]}: {local_loc} LOC / {local_loa} LOA")
     loc += local_loc
     loa += local_loa
 
