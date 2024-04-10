@@ -6,7 +6,7 @@ import subprocess
 from typing import List
 
 logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger().setLevel(logging.INFO)
 
 NUM_RUNS = 10
 SCRIPT = "verify.sh"
