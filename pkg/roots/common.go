@@ -9,11 +9,6 @@ import (
 
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	// @ "fact"
-	// @ "fresh"
-	// @ "iospec"
-	// @ "place"
-	// @ "term"
 )
 
 var ErrNoLogConfig = errors.New("no log claim")

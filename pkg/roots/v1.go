@@ -24,11 +24,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/transparency-dev/merkle/proof"
 	"github.com/transparency-dev/merkle/rfc6962"
-	// @ "fact"
-	// @ "fresh"
-	// @ "iospec"
-	// @ "place"
-	// @ "term"
 )
 
 var ErrIssNoHostName = errors.New("issuer has no hostname")

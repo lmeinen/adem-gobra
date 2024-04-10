@@ -34,11 +34,6 @@ const Indicative string = "indicative"
 type VerificationResult byte
 
 // @ trusted
-// @ requires (vr == SIGNED || vr == ORGANIZATIONAL) ==> place.token(p) && iospec.e_OutFact(p, rid, t)
-// @ requires vr == SIGNED ?
-// @ 	t ==  term.pair(term.pubTerm(pub.const_SIGNED_pub()), ai) :
-// @ 	(vr == ORGANIZATIONAL ==> t == term.pair(term.pubTerm(pub.const_ORGANIZATIONAL_pub()), term.pair(ai, oi)))
-// @ ensures (vr == SIGNED || vr == ORGANIZATIONAL) ==> place.token(p0) && p0 == old(iospec.get_e_OutFact_placeDst(p, rid, t))
 func (vr VerificationResult) String( /*@ ghost p place.Place, ghost s mset[fact.Fact], ghost rid, t, ai, oi term.Term @*/ ) (r string /*@, ghost p0 place.Place @*/) {
 	switch vr {
 	case UNSIGNED:

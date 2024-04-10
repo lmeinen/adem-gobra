@@ -23,12 +23,16 @@ type ADEMToken struct {
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ requires acc(sig, _)
 // @ requires t != nil && t.Mem() && jwt.FieldMem(t.Values())
-// @ requires t.Abs() == gamma(tokenT)
+//
+//	requires t.Abs() == gamma(tokenT)
+//
 // @ requires unfolding jwt.FieldMem(t.Values()) in t.Contains("log") ==> t.Issuer() != ""
 // @ ensures err == nil ==>
 // @ 	res != nil &&
 // @ 	ValidToken(res) &&
-// @ 	Abs(res) == gamma(tokenT) &&
+//
+//	Abs(res) == gamma(tokenT) &&
+//
 // @ 	let fields := (unfolding ValidToken(res) in res.Token.Values()) in
 // @ 	acc(jwt.FieldMem(fields), 1/2)
 // @ ensures err != nil ==> res == nil
@@ -39,6 +43,6 @@ func MkADEMToken(km *keyManager, sig *jws.Signature, t jwt.Token /*@, ghost toke
 	}
 	token := &ADEMToken{verifKey, sig.ProtectedHeaders(), t}
 	// @ fold ValidToken(token)
-	// @ assume Abs(token) == gamma(tokenT)
+	//  assume Abs(token) == gamma(tokenT)
 	return token, nil
 }

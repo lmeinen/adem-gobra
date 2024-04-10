@@ -24,11 +24,21 @@ import (
 // Register JWT fields of emblems for easier parsing.
 func init() {
 
+	// we add a trusted annotation here due to Gobra's limitation in map domain comparisons:
+	// 	it fails to deduce that "log" in domain(jwt.Custom) after the second call to RegisterCustomField
+	/*@
+	trusted
+	requires acc(&jwt.Custom) && acc(jwt.Custom) && jwt.Custom.IsEmpty()
+	ensures acc(&jwt.Custom, 1/2) && acc(jwt.Custom, 1/2) && CustomFields(jwt.Custom)
+	decreases _
+	outline(
+	@*/
 	jwt.RegisterCustomField("log", []*LogConfig{} /*@, jwt.Custom.Copy(1/2) @*/)
 	jwt.RegisterCustomField("key", EmbeddedKey{} /*@, jwt.Custom.Copy(1/2) @*/)
 	jwt.RegisterCustomField("ass", []*ident.AI{} /*@, jwt.Custom.Copy(1/2) @*/)
 	jwt.RegisterCustomField("emb", EmblemConstraints{} /*@, jwt.Custom.Copy(1/2) @*/)
 	jwt.RegisterCustomField("ver", "" /*@, jwt.Custom.Copy(1/2) @*/)
+	// @ )
 
 	// TODO: (lmeinen) Gobra doesn't handle init order properly yet - really these assumptions should already hold
 	// @ assume ErrAssetConstraint != nil &&
