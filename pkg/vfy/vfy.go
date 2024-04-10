@@ -152,7 +152,6 @@ func (res VerificationResults) Output( /*@ ghost p place.Place, ghost s mset[fac
 			// @ invariant len(res.endorsedBy) == len(authTs) &&
 			// @ 	(forall i int :: { gamma(authTs[i]) } 0 <= i && i < len(authTs) ==> stringB(res.endorsedBy[i]) == gamma(authTs[i]))
 			for _, iss := range res.endorsedBy /*@ with j0 @*/ {
-				// TODO
 				// Similar to in facts, we assume the presence of a required Out fact due to restrictions in mset multiplicity
 				// @ assume fact.OutFact_Verifier(rid, EndorsedOut(authTs[j0])) in s
 				// @ s = GetOutPerm(p, s, rid, EndorsedOut(authTs[j0]))
