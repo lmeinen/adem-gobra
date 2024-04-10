@@ -44,5 +44,6 @@ func main() {
 	// @ ghost t := place.Place.place(0)
 	// @ inhale place.token(t)
 	// @ inhale iospec.P_Verifier(t, term.freshTerm(fresh.fr_integer64(rid)), mset[fact.Fact]{})
-	vfy.VerifyTokens(rid, [][]byte{}, jwk.NewSet() /*@, t @*/)
+	res /*@, p0, s0, ridT, ai, oi, authTs @*/ := vfy.VerifyTokens(rid, [][]byte{}, jwk.NewSet() /*@, t @*/)
+	res.Output( /*@ p0, s0, ridT, ai, oi, authTs @*/ )
 }

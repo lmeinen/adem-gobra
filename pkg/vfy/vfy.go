@@ -46,9 +46,126 @@ type VerificationResults struct {
 }
 
 // @ ensures acc(res.results) && acc(res.protected) && acc(res.endorsedBy)
-// @ ensures forall i int :: 0 <= i && i < len(res.protected) ==> acc(res.protected[i].Mem(), _)
+// @ ensures len(res.results) == 1 && res.results[0] == consts.INVALID
+// @ ensures len(res.protected) == 0
+// @ ensures len(res.endorsedBy) == 0
 func ResultInvalid() (res VerificationResults) {
 	return VerificationResults{results: []consts.VerificationResult{consts.INVALID}}
+}
+
+// @ trusted
+// @ requires acc(protected, _) &&
+// @ 	forall i int :: 0 <= i && i < len(protected) ==> acc(protected[i].Mem(), _)
+// @ requires place.token(p) && iospec.e_OutFact(p, rid, SignedOut(ai)) && gamma(ai) == ident.AbsAI(protected)
+// @ ensures acc(protected, _) &&
+// @ 	forall i int :: 0 <= i && i < len(protected) ==> acc(protected[i].Mem(), _)
+// @ ensures err == nil ==> place.token(p0) && p0 == old(iospec.get_e_OutFact_placeDst(p, rid, SignedOut(ai)))
+func DoOutputSigned(protected []*ident.AI /*@, ghost p place.Place, ghost rid term.Term, ghost ai term.Term @*/) (err error /*@, ghost p0 place.Place @*/) {
+	assets := make([]string, 0, len(protected))
+	if len(protected) > 0 {
+		for _, ass := range protected {
+			assets = append( /*@ perm(1/2), @*/ assets, ass.String())
+		}
+	}
+	log.Print(fmt.Sprintf("('SIGNED', <%s>)", strings.Join(assets, ", ")))
+	return nil /*@, p @*/
+}
+
+// @ trusted
+// @ requires acc(protected, _) &&
+// @ 	forall i int :: 0 <= i && i < len(protected) ==> acc(protected[i].Mem(), _)
+// @ requires place.token(p) && iospec.e_OutFact(p, rid, OrganizationalOut(ai, oi)) && gamma(ai) == ident.AbsAI(protected) && gamma(oi) == stringB(iss)
+// @ ensures acc(protected, _) &&
+// @ 	forall i int :: 0 <= i && i < len(protected) ==> acc(protected[i].Mem(), _)
+// @ ensures err == nil ==> place.token(p0) && p0 == old(iospec.get_e_OutFact_placeDst(p, rid, OrganizationalOut(ai, oi)))
+func DoOutputOrganizational(protected []*ident.AI, iss string /*@, ghost p place.Place, ghost rid, ai, oi Term @*/) (err error /*@, ghost p0 place.Place @*/) {
+	assets := make([]string, 0, len(protected))
+	if len(protected) > 0 {
+		for _, ass := range protected {
+			assets = append( /*@ perm(1/2), @*/ assets, ass.String())
+		}
+	}
+	log.Print(fmt.Sprintf("('ORGANIZATIONAL', <%s>, %s)", strings.Join(assets, ", "), iss))
+	return nil /*@, p @*/
+}
+
+// @ trusted
+// @ requires place.token(p) && iospec.e_OutFact(p, rid, EndorsedOut(t)) && gamma(t) == stringB(auth)
+// @ ensures err == nil ==> place.token(p0) && p0 == old(iospec.get_e_OutFact_placeDst(p, rid, EndorsedOut(t)))
+func DoOutputEndorsed(auth string /*@, ghost p place.Place, ghost rid, t term.Term @*/) (err error /*@, ghost p0 place.Place @*/) {
+	log.Print(fmt.Sprintf("('ENDORSED', %s)", auth))
+	return nil /*@, p @*/
+}
+
+// we mark this function as trusted as it is only meant for demonstration purposes on the usage of I/O permissions
+// @ trusted
+// @ requires place.token(p) && iospec.P_Verifier(p, rid, s)
+// @ requires acc(res.results, _) &&
+// @ 	acc(res.protected, _) &&
+// @ 		(forall i int :: 0 <= i && i < len(res.protected) ==> acc(res.protected[i].Mem(), _)) &&
+// @ 	acc(res.endorsedBy, _)
+// @ requires forall i, j int :: { res.results[i] } 0 <= i && i < j && j < len(res.results) ==> res.results[i] != res.results[j]
+// @ requires (exists j int :: { res.results[j] } 0 <= j && j < len(res.results) && res.results[j] == consts.SIGNED) ==> fact.OutFact_Verifier(rid, SignedOut(ai)) in s && ident.AbsAI(res.protected) == gamma(ai)
+// @ requires (exists j int :: { res.results[j] } 0 <= j && j < len(res.results) && res.results[j] == consts.ORGANIZATIONAL) ==> fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s && ident.AbsAI(res.protected) == gamma(ai) && stringB(res.issuer) == gamma(oi)
+// @ requires len(res.endorsedBy) == len(authTs) &&
+// @ 	(forall i int :: { authTs[i] } 0 <= i && i < len(authTs) ==> fact.OutFact_Verifier(rid, EndorsedOut(authTs[i])) in s && stringB(res.endorsedBy[i]) == gamma(authTs[i]))
+// @ ensures err == nil ==> place.token(p0) && iospec.P_Verifier(p0, rid, s0)
+func (res VerificationResults) Output( /*@ ghost p place.Place, ghost s mset[fact.Fact], ghost rid, ai, oi term.Term, ghost authTs seq[term.Term] @*/ ) (err error /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact] @*/) {
+	/*
+	   Similar to the input facts in VerifyTokens, we assume the presence of output facts where needed.
+	   We do this due to constraints in the Gobra program verifier that lead to significant verification times
+	*/
+
+	// @ invariant place.token(p) && iospec.P_Verifier(p, rid, s)
+	// @ invariant acc(res.results, _) &&
+	// @ 	acc(res.protected, _) &&
+	// @ 		(forall i int :: 0 <= i && i < len(res.protected) ==> acc(res.protected[i].Mem(), _)) &&
+	// @ 	acc(res.endorsedBy, _)
+	// @ invariant forall i, j int :: { res.results[i] } 0 <= i && i < j && j < len(res.results) ==> res.results[i] != res.results[j]
+	// @ invariant (exists i int :: { res.results[i] == consts.SIGNED } 0 <= i && i0 <= i && i < len(res.results) && res.results[i] == consts.SIGNED) ==> ident.AbsAI(res.protected) == gamma(ai)
+	// @ invariant (exists i int :: { res.results[i] == consts.ORGANIZATIONAL } 0 <= i && i0 <= i && i < len(res.results) && res.results[i] == consts.ORGANIZATIONAL) ==> ident.AbsAI(res.protected) == gamma(ai) && stringB(res.issuer) == gamma(oi)
+	// @ invariant (exists i int :: { res.results[i] == consts.ENDORSED } 0 <= i && i0 <= i && i < len(res.results) && res.results[i] == consts.ENDORSED) ==> len(res.endorsedBy) == len(authTs) &&
+	// @ 	(forall i int :: { authTs[i] } 0 <= i && i < len(authTs) ==> stringB(res.endorsedBy[i]) == gamma(authTs[i]))
+	for _, r := range res.results /*@ with i0 @*/ {
+		switch r {
+		case consts.INVALID:
+			// TODO
+		case consts.UNSIGNED:
+			// TODO
+		case consts.SIGNED:
+			// @ assume fact.OutFact_Verifier(rid, SignedOut(ai)) in s
+			// @ s = GetOutPerm(p, s, rid, SignedOut(ai))
+			if err /*@, p @*/ = DoOutputSigned(res.protected /*@, p, rid, ai @*/); err != nil {
+				log.Print("Could not output security level SIGNED")
+				return err /*@, p, s @*/
+			}
+		case consts.ORGANIZATIONAL:
+			// @ assume fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s
+			// @ s = GetOutPerm(p, s, rid, OrganizationalOut(ai, oi))
+			if err /*@, p @*/ = DoOutputOrganizational(res.protected, res.issuer /*@, p, rid, ai, oi @*/); err != nil {
+				log.Print("Could not output security level ORGANIZATIONAL")
+				return err /*@, p, s @*/
+			}
+		case consts.ENDORSED:
+			// @ invariant place.token(p) && iospec.P_Verifier(p, rid, s)
+			// @ invariant acc(res.endorsedBy, _)
+			// @ invariant len(res.endorsedBy) == len(authTs) &&
+			// @ 	(forall i int :: { gamma(authTs[i]) } 0 <= i && i < len(authTs) ==> stringB(res.endorsedBy[i]) == gamma(authTs[i]))
+			for _, iss := range res.endorsedBy /*@ with j0 @*/ {
+				// TODO
+				// Similar to in facts, we assume the presence of a required Out fact due to restrictions in mset multiplicity
+				// @ assume fact.OutFact_Verifier(rid, EndorsedOut(authTs[j0])) in s
+				// @ s = GetOutPerm(p, s, rid, EndorsedOut(authTs[j0]))
+				if err /*@, p @*/ = DoOutputEndorsed(iss /*@, p, rid, authTs[j0] @*/); err != nil {
+					log.Print("Could not output security level ENDORSED")
+					return err /*@, p, s @*/
+				}
+			}
+		default:
+			// Do nothing
+		}
+	}
+	return nil /*@, p, s @*/
 }
 
 // @ trusted
@@ -212,15 +329,17 @@ func resultsRecv(results chan *TokenVerificationResult /*@, ghost loc *int, ghos
 // @ requires acc(rawTokens)
 // @ requires forall i int :: { rawTokens[i] } 0 <= i && i < len(rawTokens) ==> acc(rawTokens[i])
 // @ requires trustedKeys != nil && trustedKeys.Mem() && jwk.KeySeq(trustedKeys.Elems())
+// @ ensures place.token(p0) && iospec.P_Verifier(p0, rid, s0)
 // @ ensures acc(res.results, _) &&
 // @ 	acc(res.protected, _) &&
-// @ 	acc(res.endorsedBy)
-//
-//	ensures forall j int :: { res.results[j] } 0 <= j && j < len(res.results) ==> (
-//		(res.results[j] == consts.SIGNED ==> fact.OutFact_Verifier(rid, SignedOut(ai)) in s0) &&
-//		(res.results[j] == consts.ORGANIZATIONAL ==> gamma(oi) == stringB(res.issuer) && fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s0) &&
-//		(res.results[j] == consts.ENDORSED ==> len(res.endorsedBy) == len(authTs) && (forall i int :: { authTs[i] } 0 <= i && i < len(authTs) ==> stringB(res.endorsedBy[i]) == gamma(authTs[i]) && fact.OutFact_Verifier(rid, EndorsedOut(authTs[i])) in s0)))
-func VerifyTokens(runId uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost p place.Place @*/) (res VerificationResults /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost ai term.Term, ghost oi term.Term, ghost rootKey term.Term, ghost rid term.Term, ghost authTs seq[term.Term] @*/) {
+// @ 		(forall i int :: 0 <= i && i < len(res.protected) ==> acc(res.protected[i].Mem(), _)) &&
+// @ 	acc(res.endorsedBy, _)
+// @ ensures forall i, j int :: { res.results[i] } 0 <= i && i < j && j < len(res.results) ==> res.results[i] != res.results[j]
+// @ ensures (exists j int :: { res.results[j] } 0 <= j && j < len(res.results) && res.results[j] == consts.SIGNED) ==> fact.OutFact_Verifier(rid, SignedOut(ai)) in s0 && ident.AbsAI(res.protected) == gamma(ai)
+// @ ensures (exists j int :: { res.results[j] } 0 <= j && j < len(res.results) && res.results[j] == consts.ORGANIZATIONAL) ==> fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s0 && ident.AbsAI(res.protected) == gamma(ai) && stringB(res.issuer) == gamma(oi)
+// @ ensures len(res.endorsedBy) == len(authTs) &&
+// @ 	(forall i int :: { authTs[i] } 0 <= i && i < len(authTs) ==> fact.OutFact_Verifier(rid, EndorsedOut(authTs[i])) in s0 && stringB(res.endorsedBy[i]) == gamma(authTs[i]))
+func VerifyTokens(runId uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, ghost p place.Place @*/) (res VerificationResults /*@, ghost p0 place.Place, ghost s0 mset[fact.Fact], ghost rid, ai, oi term.Term, ghost authTs seq[term.Term] @*/) {
 	// @ ghost rid := term.freshTerm(fresh.fr_integer64(runId))
 	// @ ghost s := mset[fact.Fact]{}
 
@@ -229,12 +348,11 @@ func VerifyTokens(runId uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, gho
 	// @ p = iospec.get_e_Setup_Verifier_placeDst(p, rid)
 	// @ s = mset[fact.Fact] { fact.Setup_Verifier(rid) }
 
-	// TODO: Is there a better way to do this? Or is this just the assumption that library functions are allowed to make
 	// @ inhale place.token(p)
 
 	// Early termination for empty rawTokens slice
 	if len(rawTokens) == 0 {
-		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
+		return ResultInvalid() /*@, p, s, rid, GenericTerm(), GenericTerm(), seq[term.Term] {} @*/
 	}
 
 	/*
@@ -246,7 +364,6 @@ func VerifyTokens(runId uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, gho
 
 	// (lmeinen) 0 - set up chain of promises from root keys to signing keys
 
-	// INIT SECTION
 	/*@
 	preserves acc(tokens.PkgMem(), _)
 	preserves place.token(p) && iospec.P_Verifier(p, rid, s)
@@ -548,8 +665,7 @@ func VerifyTokens(runId uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, gho
 	// @ invariant emblem != nil ==> (
 	// @ 	ValidToken(emblem) &&
 	// @ 	Emblem(emblem) &&
-	// @ 	Abs(emblem) == gamma(embT) &&
-	// @ 	(ValidToken(emblem) --* (acc(ValidToken(emblem), 1/2) && acc(protected, 1/4))))
+	// @ 	Abs(emblem) == gamma(embT))
 	// @ invariant TokenList(endorsements)
 	// @ invariant len(endorsements) == len(endTs)
 	// @ invariant unfolding TokenList(endorsements) in forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> unfolding TokenListElem(i, endorsements[i]) in Endorsement(endorsements[i])
@@ -562,10 +678,10 @@ func VerifyTokens(runId uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, gho
 			if emblem != nil {
 				// Multiple emblems
 				log.Print("Token set contains multiple emblems")
-				return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
+				return ResultInvalid() /*@, p, s, rid, GenericTerm(), GenericTerm(), seq[term.Term] {} @*/
 			} else if err := jwt.Validate(t.Token, jwt.WithValidator(tokens.EmblemValidator)); err != nil {
 				log.Printf("Invalid emblem: %s", err)
-				return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
+				return ResultInvalid() /*@, p, s, rid, GenericTerm(), GenericTerm(), seq[term.Term] {} @*/
 			} else {
 				emblem = t
 				// @ embT = terms[i0]
@@ -574,16 +690,6 @@ func VerifyTokens(runId uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, gho
 			// @ unfold tokens.EmblemValidator.Constraints(emblem.Token)
 			ass, _ := emblem.Token.Get("ass")
 			protected = ass.([]*ident.AI)
-			/*@
-			package ValidToken(emblem) --* (acc(ValidToken(emblem), 1/2) && acc(protected, 1/4)) {
-				unfold ValidToken(emblem)
-				unfold acc(jwt.FieldMem(emblem.Token.Values()), 1/2)
-				unfold acc(tokens.AssMem(protected), 1/2)
-				fold acc(tokens.AssMem(protected), 1/4)
-				fold acc(jwt.FieldMem(emblem.Token.Values()), 1/4)
-				fold acc(ValidToken(emblem), 1/2)
-			}
-			@*/
 
 			if emblem.Headers.Algorithm() == jwa.NoSignature {
 				// TODO: Apply IsUnsignedEmblem rule
@@ -593,7 +699,7 @@ func VerifyTokens(runId uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, gho
 				return VerificationResults{
 					results:   []consts.VerificationResult{consts.UNSIGNED},
 					protected: protected,
-				} /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
+				} /*@, p, s, rid, GenericTerm(), GenericTerm(), seq[term.Term] {} @*/
 			}
 
 			// @ fold ValidToken(emblem)
@@ -619,34 +725,36 @@ func VerifyTokens(runId uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, gho
 
 	if emblem == nil {
 		log.Print("no emblem found")
-		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
+		return ResultInvalid() /*@, p, s, rid, GenericTerm(), GenericTerm(), seq[term.Term] {} @*/
 	}
 
 	// (lmeinen) 3 - verify/determine the security levels of the emblem
 	vfyResults, root /*@, p, s, ai, oi, rootKey, rootIdx @*/ := verifySignedOrganizational(emblem, endorsements, trustedKeys /*@, embT, endTs, p, rid, s @*/)
+	// @ assert forall i int :: { vfyResults[i] } 0 <= i && i < len(vfyResults) ==> vfyResults[i] in seq[consts.VerificationResult] { consts.INVALID, consts.SIGNED, consts.SIGNED_TRUSTED, consts.ORGANIZATIONAL, consts.ORGANIZATIONAL_TRUSTED }
+	// @ assert forall i int :: { vfyResults[i] } 0 <= i && i < len(vfyResults) ==> vfyResults[i] != consts.ENDORSED
+	// @ assert forall i, j int :: 0 <= i && i < j && j < len(vfyResults) ==> vfyResults[i] != vfyResults[j]
 	if util.ContainsVerificationResult(vfyResults, consts.INVALID) {
-		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
+		return ResultInvalid() /*@, p, s, rid, GenericTerm(), GenericTerm(), seq[term.Term] {} @*/
 	}
 
 	var endorsedResults []consts.VerificationResult
 	var endorsedBy []string
-	// @ ghost endorsedByTs := GenericSeq()
+	// @ ghost endorsedByTs := seq[term.Term] {}
 
 	if util.ContainsVerificationResult(vfyResults, consts.ORGANIZATIONAL) {
 		endorsedResults, endorsedBy /*@, p, s, endorsedByTs @*/ = verifyEndorsed(emblem, root, endorsements, trustedKeys /*@, rootIdx, p, rid, s, ai, oi, endTs, rootKey @*/)
 	}
 
 	if util.ContainsVerificationResult(endorsedResults, consts.INVALID) {
-		return ResultInvalid() /*@, GenericPlace(), GenericSet(), GenericTerm(), GenericTerm(), GenericTerm(), GenericTerm(), GenericSeq() @*/
+		return ResultInvalid() /*@, p, s, rid, GenericTerm(), GenericTerm(), seq[term.Term] {} @*/
 	}
 
-	// @ assert forall j int :: { vfyResults[j] } 0 <= j && j < len(vfyResults) && vfyResults[j] == consts.SIGNED ==> fact.OutFact_Verifier(rid, SignedOut(ai)) in s
-	// @ assert forall j int :: { vfyResults[j] } 0 <= j && j < len(vfyResults) && vfyResults[j] == consts.ORGANIZATIONAL ==> fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s
-	// @ assert forall j int :: { endorsedResults[j] } 0 <= j && j < len(endorsedResults) && endorsedResults[j] == consts.ENDORSED ==> (forall i int :: { endorsedByTs[i] } 0 <= i && i < len(endorsedByTs) ==> fact.OutFact_Verifier(rid, EndorsedOut(endorsedByTs[i])) in s && stringB(endorsedBy[i]) == gamma(endorsedByTs[i]))
-
-	// TODO: (lmeinen) State transitions for out facts
-
-	// @ apply ValidToken(emblem) --* (acc(ValidToken(emblem), 1/2) && acc(protected, 1/4))
+	// @ unfold acc(ValidToken(emblem), 1/2)
+	// @ unfold acc(jwt.FieldMem(emblem.Token.Values()), 1/4)
+	ass, _ := emblem.Token.Get("ass")
+	protected = ass.([]*ident.AI)
+	// @ unfold acc(tokens.AssMem(protected), 1/4)
+	// @ assert ident.AbsAI(protected) == gamma(ai)
 
 	// @ unfold TokenList(endorsements)
 	// @ if root != emblem { unfold TokenListElem(rootIdx, root) }
@@ -654,11 +762,24 @@ func VerifyTokens(runId uint64, rawTokens [][]byte, trustedKeys jwk.Set /*@, gho
 	// @ if root != emblem { fold TokenListElem(rootIdx, root) }
 	// @ fold TokenList(endorsements)
 
+	// @ assert (exists i int :: { vfyResults[i] } 0 <= i && i < len(vfyResults) && vfyResults[i] == consts.SIGNED) ==> fact.OutFact_Verifier(rid, SignedOut(ai)) in s
+	// @ assert (exists i int :: { vfyResults[i] } 0 <= i && i < len(vfyResults) && vfyResults[i] == consts.ORGANIZATIONAL) ==> fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s
+	// @ assert forall i int :: { vfyResults[i] } 0 <= i && i < len(vfyResults) ==> vfyResults[i] != consts.ENDORSED
+
+	// @ assert forall i, j int :: { endorsedResults[i] } 0 <= i && i < j && j < len(endorsedResults) ==> endorsedResults[i] != endorsedResults[j]
+	// @ assert len(endorsedByTs) == len(endorsedBy)
+	// @ assert forall i int :: { endorsedByTs[i] } 0 <= i && i < len(endorsedByTs) ==> fact.OutFact_Verifier(rid, EndorsedOut(endorsedByTs[i])) in s && stringB(endorsedBy[i]) == gamma(endorsedByTs[i])
+
+	securityLevels := append( /*@ perm(1/2), @*/ vfyResults, endorsedResults...)
+	// @ assert (exists i int :: { securityLevels[i] } 0 <= i && i < len(securityLevels) && securityLevels[i] == consts.SIGNED) ==> fact.OutFact_Verifier(rid, SignedOut(ai)) in s
+	// @ assert (exists i int :: { securityLevels[i] } 0 <= i && i < len(securityLevels) && securityLevels[i] == consts.ORGANIZATIONAL) ==> fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s
+	// @ assert forall i, j int :: { securityLevels[i] } 0 <= i && i < j && j < len(securityLevels) ==> securityLevels[i] != securityLevels[j]
+
 	// (lmeinen) 4 - return results
 	return VerificationResults{
-		results:    append( /*@ perm(1/2), @*/ vfyResults, endorsedResults...),
+		results:    securityLevels,
 		issuer:     iss,
 		endorsedBy: endorsedBy,
 		protected:  protected,
-	} /*@, p, s, ai, oi, rootKey, rid, endorsedByTs @*/
+	} /*@, p, s, rid, ai, oi, endorsedByTs @*/
 }

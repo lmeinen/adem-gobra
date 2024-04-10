@@ -34,8 +34,10 @@ ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Cus
 ensures unfolding acc(ValidToken(t), 1/4) in
 	unfolding acc(jwt.FieldMem(t.Token.Values()), 1/8) in
 	t.Headers.ContentType() == string(consts.EmblemCty) && t.Token.Contains("ass") && t.Headers.Algorithm() == jwa.NoSignature &&
-	Abs(t) == tuple2B(emblemB(), stringB(t.Token.PureAI())) &&
-	oneTerm(stringB(t.Token.PureAI())) == ai &&
+	let ass := t.Token.PureGet("ass").([]*ident.AI) in
+	unfolding acc(tokens.AssMem(ass), 1/8) in
+	Abs(t) == tuple2B(emblemB(), ident.AbsAI(ass)) &&
+	oneTerm(ident.AbsAI(ass)) == ai &&
 	Abs(t) == gamma(term.pair(term.pubTerm(pub.const_emblem_pub()), ai))
 func UnsignedEmblemPattern(t *ADEMToken) (ai Term)
 
@@ -50,9 +52,11 @@ ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Cus
 ensures unfolding acc(ValidToken(t), 1/4) in
 	unfolding acc(jwt.FieldMem(t.Token.Values()), 1/8) in
 	t.Headers.ContentType() == string(consts.EmblemCty) && t.Token.Contains("ass") && t.Headers.Algorithm() != jwa.NoSignature && t.Token.Issuer() == "" &&
-	Abs(t) == tuple3B(stringB(t.VerificationKey.KeyID(none[perm])), tuple2B(emblemB(), stringB(t.Token.PureAI())), stringB("sig")) &&
+	let ass := t.Token.PureGet("ass").([]*ident.AI) in
+	unfolding acc(tokens.AssMem(ass), 1/8) in
+	Abs(t) == tuple3B(stringB(t.VerificationKey.KeyID(none[perm])), tuple2B(emblemB(), ident.AbsAI(ass)), stringB("sig")) &&
 	oneTerm(stringB(t.VerificationKey.KeyID(none[perm]))) == key &&
-	oneTerm(stringB(t.Token.PureAI())) == ai &&
+	oneTerm(ident.AbsAI(ass)) == ai &&
 	oneTerm(stringB("sig")) == sig &&
 	Abs(t) == gamma(tuple3(key, term.pair(term.pubTerm(pub.const_emblem_pub()), ai), sig))
 func AnonEmblemPattern(t *ADEMToken) (key, ai, sig Term)
@@ -68,8 +72,10 @@ ensures acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Cus
 ensures unfolding acc(ValidToken(t), 1/4) in
 	unfolding acc(jwt.FieldMem(t.Token.Values()), 1/8) in
 	t.Headers.ContentType() == string(consts.EmblemCty) && t.Token.Contains("ass") && t.Headers.Algorithm() != jwa.NoSignature && t.Token.Issuer() != "" && gamma(oi) == stringB(t.Token.Issuer()) && gamma(key) == stringB(t.VerificationKey.KeyID(none[perm])) &&
-	Abs(t) == tuple4B(stringB(t.VerificationKey.KeyID(none[perm])), stringB(t.Token.Issuer()), tuple3B(emblemB(), stringB(t.Token.PureAI()), stringB(t.Token.Issuer())), stringB("sig")) &&
-	oneTerm(stringB(t.Token.PureAI())) == ai &&
+	let ass := t.Token.PureGet("ass").([]*ident.AI) in
+	unfolding acc(tokens.AssMem(ass), 1/8) in
+	Abs(t) == tuple4B(stringB(t.VerificationKey.KeyID(none[perm])), stringB(t.Token.Issuer()), tuple3B(emblemB(), ident.AbsAI(ass), stringB(t.Token.Issuer())), stringB("sig")) &&
+	oneTerm(ident.AbsAI(ass)) == ai &&
 	oneTerm(stringB("sig")) == sig &&
 	Abs(t) == gamma(tuple4(key, oi, tuple3(term.pubTerm(pub.const_emblem_pub()), ai, oi), sig))
 func SignedEmblemPattern(t *ADEMToken, key, oi Term) (ai, sig Term)

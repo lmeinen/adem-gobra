@@ -7,6 +7,7 @@ import (
 
 	"github.com/adem-wg/adem-proto/pkg/consts"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
+	// @ "github.com/adem-wg/adem-proto/pkg/ident"
 	// @ . "lib"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	// @ "github.com/lestrrat-go/jwx/v2/jwa"
@@ -23,7 +24,12 @@ import (
 // @ preserves acc(tokens.PkgMem(), _)
 // @ preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
 // @ preserves trustedKeys != nil && trustedKeys.Mem() && acc(jwk.KeySeq(trustedKeys.Elems()), _)
-// @ preserves ValidToken(emblem) && Emblem(emblem)
+// @ preserves ValidToken(emblem) && Emblem(emblem) &&
+// @ 	unfolding ValidToken(emblem) in
+// @ 	unfolding acc(jwt.FieldMem(emblem.Token.Values()), 1/8) in
+// @ 	let ass := emblem.Token.PureGet("ass").([]*ident.AI) in
+// @ 	unfolding acc(tokens.AssMem(ass), 1/8) in
+// @ 	ident.AbsAI(ass) == gamma(ai)
 // @ preserves TokenList(endorsements)
 // @ preserves len(endorsements) == len(terms)
 // @ preserves unfolding TokenList(endorsements) in
@@ -55,12 +61,16 @@ import (
 // @ requires fact.OutFact_Verifier(rid, SignedOut(ai)) in s
 // @ requires fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s
 // @ ensures acc(endorsedResults)
+// @ ensures len(endorsedResults) <= 2 &&
+// @ 	(forall i int :: { endorsedResults[i] } 0 <= i && i < len(endorsedResults) ==> endorsedResults[i] in seq[consts.VerificationResult] { consts.INVALID, consts.ENDORSED, consts.ENDORSED_TRUSTED }) &&
+// @ 	(forall i, j int :: { endorsedResults[i] } 0 <= i && i < j && j < len(endorsedResults) ==> endorsedResults[i] != endorsedResults[j]) &&
+// @ 	((exists i int :: { endorsedResults[i] } 0 <= i && i < len(endorsedResults) && endorsedResults[i] == consts.INVALID) ==> len(endorsedResults) == 1)
 // @ ensures acc(endorsedBy)
 // @ ensures iospec.P_Verifier(p0, rid, s0) && place.token(p0)
 // @ ensures fact.OutFact_Verifier(rid, SignedOut(ai)) in s0
 // @ ensures fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s0
 // @ ensures len(endorsedBy) == len(authTs) &&
-// @ 	forall i int :: { fact.OutFact_Verifier(rid, EndorsedOut(authTs[i])) } 0 <= i && i < len(endorsedBy) ==> (
+// @ 	forall i int :: { authTs[i] } 0 <= i && i < len(endorsedBy) ==> (
 // @ 		stringB(endorsedBy[i]) == gamma(authTs[i]) &&
 // @ 		fact.OutFact_Verifier(rid, EndorsedOut(authTs[i])) in s0)
 func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToken, trustedKeys jwk.Set /*@, ghost rootIdx int, ghost p place.Place, ghost rid term.Term, ghost s mset[fact.Fact], ghost ai, oi term.Term, ghost terms seq[term.Term], ghost rootKey term.Term @*/) (
@@ -81,7 +91,12 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 	// @ invariant iospec.P_Verifier(p, rid, s) && place.token(p) && fact.St_Verifier_4(rid, oi, rootKey) in s
 	// @ invariant fact.OutFact_Verifier(rid, SignedOut(ai)) in s
 	// @ invariant fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s
-	// @ invariant ValidToken(emblem) && Emblem(emblem)
+	// @ invariant ValidToken(emblem) && Emblem(emblem) &&
+	// @ 	unfolding ValidToken(emblem) in
+	// @ 	unfolding acc(jwt.FieldMem(emblem.Token.Values()), 1/8) in
+	// @ 	let ass := emblem.Token.PureGet("ass").([]*ident.AI) in
+	// @ 	unfolding acc(tokens.AssMem(ass), 1/8) in
+	// @ 	ident.AbsAI(ass) == gamma(ai)
 	// @ invariant acc(endorsements)
 	// @ invariant forall i int :: { TokenListElem(i, endorsements[i]) } 0 <= i && i < len(endorsements) ==> TokenListElem(i, endorsements[i])
 	// @ invariant forall i int :: { endorsements[i] } 0 <= i && i < len(endorsements) ==> (
@@ -171,6 +186,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 			// @ fold acc(TokenListElem(rootIdx, root), 1/2)
 			// @ fold acc(ValidToken(endorsements[i0]), 1/2)
 			// @ fold acc(TokenListElem(i0, endorsements[i0]), 1/2)
+			// @ assert len(x) == 1
 			return x, nil /*@, p, s, seq[term.Term] { } @*/
 		} else {
 			/*@
@@ -216,6 +232,7 @@ func verifyEndorsed(emblem *ADEMToken, root *ADEMToken, endorsements []*ADEMToke
 		if trustedFound {
 			results = append( /*@ perm(1/2), @*/ results, consts.ENDORSED_TRUSTED)
 		}
+		// @ assert len(results) <= 2
 		return results, issuers /*@, p, s, authTs @*/
 	} else {
 		return nil, nil /*@, p, s, seq[term.Term] {} @*/

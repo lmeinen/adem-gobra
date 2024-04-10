@@ -5,6 +5,7 @@ package vfy
 import (
 	"sync"
 
+	"github.com/adem-wg/adem-proto/pkg/ident"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 	"github.com/adem-wg/adem-proto/pkg/roots"
 
@@ -12,6 +13,7 @@ import (
 
 	. "lib"
 
+	"term"
 	"place"
 	"iospec"
 )
@@ -162,3 +164,19 @@ func permissionIn(ghost t Term, ghost p place.Place, ghost rid Term) (ghost tt T
 	return tt, pp
 }
 
+ghost
+trusted
+requires place.token(p) && iospec.e_OutFact(p, rid, t) && gamma(t) == b
+ensures place.token(p0) && p0 == old(iospec.get_e_OutFact_placeDst(p, rid, t))
+func DoOutput(b Bytes, p place.Place, rid, t Term) (p0 place.Place)
+
+ghost
+requires acc(res.results, _) &&
+	acc(res.protected, _) &&
+		(forall i int :: 0 <= i && i < len(res.protected) ==> acc(res.protected[i].Mem(), _)) &&
+	acc(res.endorsedBy, _)
+requires ident.AbsAI(res.protected) == gamma(ai)
+requires stringB(res.issuer) == gamma(oi)
+func test(res VerificationResults, ai, oi Term) {
+	assert tuple2B(ident.AbsAI(res.protected), stringB(res.issuer)) == gamma(term.pair(ai, oi))
+}

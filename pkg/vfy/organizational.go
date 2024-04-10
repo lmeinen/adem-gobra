@@ -37,13 +37,19 @@ import (
 // @ ensures acc(vfyResults)
 // @ ensures t != nil && t != emblem ==> unfolding TokenList(endorsements) in
 // @ 	0 <= rootIdx && rootIdx < len(endorsements) && t == endorsements[rootIdx]
-// @ ensures let resSeq := toSeqResult(vfyResults) in
-// @	(!(consts.INVALID in resSeq) ==> t != nil) &&
-// @	(consts.SIGNED in resSeq ==> (
+// @ ensures 0 < len(vfyResults) && len(vfyResults) <= 4 &&
+// @ 	(forall i int :: 0 <= i && i < len(vfyResults) ==> vfyResults[i] in seq[consts.VerificationResult] { consts.INVALID, consts.SIGNED, consts.SIGNED_TRUSTED, consts.ORGANIZATIONAL, consts.ORGANIZATIONAL_TRUSTED }) &&
+// @ 	(forall i, j int :: 0 <= i && i < j && j < len(vfyResults) ==> vfyResults[i] != vfyResults[j]) &&
+// @ 	((exists i int :: 0 <= i && i < len(vfyResults) && vfyResults[i] == consts.INVALID) ? len(vfyResults) == 1 : vfyResults[0] == consts.SIGNED) &&
+// @	((exists i int :: 0 <= i && i < len(vfyResults) && vfyResults[i] == consts.SIGNED) ==> (
 // @		t != nil &&
-// @		(fact.OutFact_Verifier(rid, SignedOut(ai)) in s0))) &&
-// @	(consts.ORGANIZATIONAL in resSeq ==> (
-// @ 		consts.SIGNED in resSeq &&
+// @		(fact.OutFact_Verifier(rid, SignedOut(ai)) in s0) &&
+// @		unfolding ValidToken(emblem) in
+// @ 		unfolding acc(jwt.FieldMem(emblem.Token.Values()), 1/8) in
+// @ 		let ass := emblem.Token.PureGet("ass").([]*ident.AI) in
+// @ 		unfolding acc(tokens.AssMem(ass), 1/8) in
+// @ 		ident.AbsAI(ass) == gamma(ai))) &&
+// @	((exists i int :: 0 <= i && i < len(vfyResults) && vfyResults[i] == consts.ORGANIZATIONAL) ==> (
 // @		t != nil && t != emblem &&
 // @		(fact.St_Verifier_4(rid, oi, rootKey) in s0) &&
 // @		(fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) in s0) &&
@@ -180,8 +186,8 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	// @ invariant root != nil ==> root == last
 	for root == nil {
 		// @ ghost { if last != emblem { unfold acc(TokenListElem(rootIdx, last), 1/2) } }
-		// @ _, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(ValidToken(last), 1/2) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ ) /*@, perm(1/2) @*/)
-		// @ trustedFound = trustedFound || ok
+		_, ok := trustedKeys.LookupKeyID( /*@ unfolding acc(ValidToken(last), 1/2) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ ) /*@, perm(1/2) @*/)
+		trustedFound = trustedFound || ok
 
 		kid := /*@ unfolding acc(ValidToken(last), 1/2) in @*/ last.VerificationKey.KeyID( /*@ none[perm] @*/ )
 		if endorsing := endorsedBy[kid]; endorsing != nil {
@@ -217,6 +223,8 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 	if trustedFound {
 		results = append( /*@ perm(1/2), @*/ results, consts.SIGNED_TRUSTED)
 	}
+
+	// @ assert len(results) <= 2
 
 	// @ ghost { if root != emblem { unfold TokenListElem(rootIdx, root) } }
 	// @ unfold acc(ValidToken(root), 1/2)
@@ -254,16 +262,16 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 		if _, ok := trustedKeys.LookupKeyID( /*@ unfolding TokenListElem(rootIdx, root) in unfolding ValidToken(root) in @*/ root.VerificationKey.KeyID( /*@ none[perm] @*/ ) /*@, perm(1/2) @*/); ok {
 			results = append( /*@ perm(1/2), @*/ results, consts.ORGANIZATIONAL_TRUSTED)
 		}
-		// @ assert consts.SIGNED == results[0]
+		// @ assert len(results) <= 4
 	} else {
 		// apply state transition 2 -> 0
 		/*@
-			unfold acc(ValidToken(emblem), 1/2)
+			// unfold acc(ValidToken(emblem), 3/4)
 
 			// Parse emblem pattern
 			ghost someKey, someAi, someSig := AnonEmblemPattern(emblem)
 
-			fold acc(ValidToken(emblem), 1/2)
+			// fold acc(ValidToken(emblem), 3/4)
 
 			ghost var keyT term.Term
 			ghost var sigT term.Term
@@ -282,7 +290,10 @@ func verifySignedOrganizational(emblem *ADEMToken, endorsements []*ADEMToken, tr
 			p = iospec.internBIO_e_IsSignedEmblem(p, rid, keyT, ai, sigT, l, a, r)
 			s = fact.U(l, r, s)
 		@*/
+		// @ assert len(results) <= 2
 	}
+
+	// @ assert consts.SIGNED == results[0]
 
 	return results, root /*@, p, s, ai, oi, rootKey, rootIdx @*/
 }

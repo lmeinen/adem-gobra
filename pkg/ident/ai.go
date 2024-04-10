@@ -197,10 +197,10 @@ func ParseAI(aiStr string) (r *AI, err error) {
 	return &ai, nil
 }
 
-// @ preserves ai.Mem()
+// @ preserves acc(ai.Mem(), _)
 func (ai *AI) String() string {
-	// @ unfold ai.Mem()
-	// @ ghost defer fold ai.Mem()
+	// @ unfold acc(ai.Mem(), _)
+	// @ ghost defer fold acc(ai.Mem(), _)
 
 	var port string
 	if ai.port != nil {
@@ -220,9 +220,7 @@ func (ai *AI) String() string {
 	return addr + port
 }
 
-// @ preserves ai.Mem()
-// @ preserves PkgMem()
-// @ ensures err == nil ==> acc(bs)
+// @ trusted
 func (ai *AI) MarshalJSON() (bs []byte, err error) {
 	return json.Marshal(ai.String())
 }

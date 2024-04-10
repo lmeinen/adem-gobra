@@ -4,6 +4,7 @@ package vfy
 
 import (
 	"github.com/adem-wg/adem-proto/pkg/consts"
+	"github.com/adem-wg/adem-proto/pkg/ident"
 	"github.com/adem-wg/adem-proto/pkg/tokens"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -19,11 +20,11 @@ import (
 
 ghost
 preserves acc(&jwt.Custom, _) && acc(jwt.Custom, _) && tokens.CustomFields(jwt.Custom)
-preserves ValidToken(emblem) && Emblem(emblem)
+preserves acc(ValidToken(emblem), 3/4) && Emblem(emblem)
 preserves ValidToken(root) && Endorsement(root)
 preserves root != emblem
 preserves gamma(rootT) == Abs(root) && gamma(embT) == Abs(emblem)
-preserves unfolding ValidToken(emblem) in 
+preserves unfolding acc(ValidToken(emblem), 1/2) in 
 	unfolding acc(jwt.FieldMem(emblem.Token.Values()), 1/8) in
 		emblem.Headers.ContentType() == string(consts.EmblemCty) && 
 		emblem.Token.Contains("ass") && 
@@ -43,6 +44,11 @@ ensures iospec.P_Verifier(p0, rid, s0) &&
 ensures unfolding ValidToken(root) in 
 	gamma(rootKey) == stringB(root.VerificationKey.KeyID(none[perm])) &&
 	gamma(oi) == stringB(root.Token.Issuer())
+ensures unfolding acc(ValidToken(emblem), 1/2) in
+	unfolding acc(jwt.FieldMem(emblem.Token.Values()), 1/8) in
+	let ass := emblem.Token.PureGet("ass").([]*ident.AI) in
+	unfolding acc(tokens.AssMem(ass), 1/8) in
+	ident.AbsAI(ass) == gamma(ai)
 func GetOrganizationalOut(emblem, root *ADEMToken, p place.Place, s mset[fact.Fact], rid, rootT, embT Term) (p0 place.Place, s0 mset[fact.Fact], oi, rootKey, ai Term) {
 	// TODO: (lmeinen) Drop assumption
 	// Simplification: Assume root directly endorses emblem
@@ -52,9 +58,6 @@ func GetOrganizationalOut(emblem, root *ADEMToken, p place.Place, s mset[fact.Fa
 
 	ghost var endorsedKeyT Term
 	p, s, oi, rootKey, endorsedKeyT = ApplyIsOrganizationalEmblem(emblem, root, p, s, rid, rootT)
-
-	// Loop over internal endorsements
-	// orgIdx, p, s, endorsedKeyT = WalkEndorsementChain(emblem, endorsements, endorsementChain, set[int] {}, endTs, p, s, rid, embT, rootKey, oi, endorsedKeyT)
 
 	assume fact.ValidTokenIn_Verifier(rid, embT) in s
 
@@ -161,6 +164,11 @@ ensures iospec.P_Verifier(p0, rid, s0) && place.token(p0) && s0 == s setminus
 		fact.St_Verifier_4(rid, oi, rootKey),
 		fact.OutFact_Verifier(rid, SignedOut(ai)),
 		fact.OutFact_Verifier(rid, OrganizationalOut(ai, oi)) }
+ensures unfolding acc(ValidToken(emblem), 1/4) in
+	unfolding acc(jwt.FieldMem(emblem.Token.Values()), 1/8) in
+	let ass := emblem.Token.PureGet("ass").([]*ident.AI) in
+	unfolding acc(tokens.AssMem(ass), 1/8) in
+	ident.AbsAI(ass) == gamma(ai)
 func ApplyCollectAuthorityEndorsements(emblem *ADEMToken, p place.Place, s mset[fact.Fact], rid, embT, rootKey, oi, endorsedKeyT Term) (p0 place.Place, s0 mset[fact.Fact], ai Term) {
 	// Parse emblem pattern
 	ghost someAi, someSig := SignedEmblemPattern(emblem, endorsedKeyT, oi)
@@ -220,4 +228,18 @@ func ApplyIsEndorsedEmblem(endorsement *ADEMToken, p place.Place, s mset[fact.Fa
 	s = fact.U(l, r, s)
 
 	return p, s, auth
+}
+
+ghost
+requires place.token(p) && iospec.P_Verifier(p, rid, s) && fact.OutFact_Verifier(rid, t) in s
+ensures iospec.e_OutFact(p, rid, t)
+ensures place.token(p) && iospec.P_Verifier(iospec.get_e_OutFact_placeDst(p, rid, t), rid, s0)
+ensures s0 == s setminus mset[fact.Fact] { fact.OutFact_Verifier(rid, t) }
+func GetOutPerm(p place.Place, s mset[fact.Fact], rid, t Term) (s0 mset[fact.Fact]) {
+	unfold iospec.P_Verifier(p, rid, s)
+	unfold iospec.phiRG_Verifier_15(p, rid, s)
+
+	s0 = s setminus mset[fact.Fact] { fact.OutFact_Verifier(rid, t) }
+
+	return s0
 }
