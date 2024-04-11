@@ -6,7 +6,6 @@ import subprocess
 from typing import List
 
 logging.basicConfig()
-logging.getLogger().setLevel(logging.INFO)
 
 NUM_RUNS = 10
 SCRIPT = "verify.sh"
@@ -33,6 +32,12 @@ parser.add_argument(
     help="Number of seconds before the verification should time out.",
 )
 parser.add_argument(
+    "-s",
+    "--skip",
+    action="store_true",
+    help="Skip verification time measurements for single packages and instead only measure total verification time. If this option is enabled, the packages option will be ignored.",
+)
+parser.add_argument(
     "-p",
     "--packages",
     nargs="*",
@@ -40,27 +45,37 @@ parser.add_argument(
     help="Packages to verify. If all packages are verified, another round of measurements will be taken for total verification time.",
     choices=PACKAGES,
 )
+parser.add_argument(
+    "-r", "--runs", default=10, help="Number of runs to average over", type=int
+)
+parser.add_argument(
+    "-d",
+    "--debug",
+    action="store_true",
+    help="Debug logging level",
+)
 
 
-def setup(bin: str, timeout: int, ps: List[str]) -> List[str]:
+def setup(bin: str, timeout: int, ps: List[str], skip: bool) -> List[str]:
     if os.path.isfile(bin):
         os.environ["BIN"] = bin
     if timeout > 0:
         os.environ["TIMEOUT"] = f"{timeout}s"
     ls = []
-    for p in ps:
-        ls.append(f"--includePackages {p}")
-    if len(ls) == len(PACKAGES):
+    if not skip:
+        for p in ps:
+            ls.append(f"--includePackages {p}")
+    if len(ls) == len(PACKAGES) or skip:
         # run all packages at once
         ls.append(f"")
     return ls
 
 
 def bench_for_arg(arg: str) -> int:
-    logging.debug(f"running benchmark for arg '{arg}'")
     data = []
-    tries = 0
     for i in range(NUM_RUNS):
+        tries = 0
+        logging.debug(f"running for arg '{arg}' ({i + 1}/{NUM_RUNS})")
         start = time.time()
         try:
             subprocess.run(
@@ -74,14 +89,13 @@ def bench_for_arg(arg: str) -> int:
                 f"Gobra threw an exception with stdout:\n\n{e.stdout.decode('utf-8')}"
             )
             tries += 1
-            if tries == 3:
+            if tries > 3:
                 raise e
             else:
-                logging.warning(f"trying again... ({tries}/3)")
+                logging.debug(f"trying again ({tries}/3)")
                 i -= 1
                 continue
         end = time.time()
-        logging.debug(f"run {i}/{NUM_RUNS} took {end - start}s")
         data.append(end - start)
     return sum(data) / len(data)
 
@@ -93,5 +107,14 @@ def bench(args: List[str]):
 
 
 args = parser.parse_args()
-verify_args = setup(args.gobra, args.timeout, args.packages)
+
+verify_args = setup(args.gobra, args.timeout, args.packages, args.skip)
+
+if args.runs > 0:
+    NUM_RUNS = args.runs
+if args.debug:
+    logging.getLogger().setLevel(logging.DEBUG)
+else:
+    logging.getLogger().setLevel(logging.INFO)
+
 bench(verify_args)
